@@ -1,0 +1,111 @@
+- have a single node as a book. clients can register to it.
+
+
+- book
+    - [rpc] register
+        - [arg] unique ID :: id_t
+    - [rpc] unregister
+        - explicit
+        - network failiure
+        - timeouts
+
+    * maybe cache contracts?
+    * the book is just a regular service with those two calls. when a client
+      registers, it appears as a delegate in the book's tree.
+      beautifully abstract!
+
+- service
+    - [fn] register(book: node_id_t, id: id_t, info: reginfo_t): ok_t
+    - [fn] set_contract(contract: contract_t): ok_t
+
+    - [rpc] get_contract(): contract_t
+    - [rpc] subscribe_contract(): sub_t<contract_t>
+    - [rpc] call(args_t): value_t
+
+- client
+    - [fn] construct(target: pid_t)
+    - [fn] get_contract(): contract_t
+    - [fn] subscribe_contract(): sub_t<contract_t>
+    - [fn] call(method: method_path_t, args: args_t): value_t
+
+
+- types!:
+    - basic_t :: {:number, NUMERIC} | {:string, STRING} | {:bool, BOOL}
+    - maybe_basic_t :: nil | basic_t
+    - array<x> :: [x, x, ...]
+    - map<x, y> :: {x: y, x: y ...}
+    - struct<{name, t}>
+    - pair<x, y> :: (x, y)
+
+    - type_spec_t :: string
+    - tagged_spec_t :: pair<type_spec_t, any_t>
+    - args_spec_t :: map<string, tagged_spec_t>
+
+- node types:
+    - regular (string, int, symbol?, dict of those, array of those)
+    - method (callable, arguments, return value)
+    - delegate (delegates part of the subtree to another service)
+
+- sample contract:
+    {
+        "device_type": "light_controller"
+        "description": "Light controller"
+        "human_name": "Lamp in living room"
+        "controls": {
+            "description": "Controls"
+            "lightness": {
+                "description": "Lightness"
+                "get": {
+                    "_type": "method"
+                    "description": "Get the current lightness"
+                    "arguments": {
+                    }
+                    "retval": {
+                        "_type": "int"
+                    }
+                }
+                "set": {
+                    "_type": "method"
+                    "description": "Set the current lightness"
+                    "arguments": {
+                        "lightness": {
+                            "_type": "int"
+                            "min": 0
+                            "max: 65535
+                        }
+                    }
+                    "retval": {
+                        "_type": "void"
+                    }
+                }
+                "subscribe": {
+                    "_type": "subscription"
+                    "description": "Subscribe to changes to lightness"
+                }
+            }
+        }
+    }
+
+
+- elixir code:
+
+defcontract do
+    prop "device_type" "light_controller"
+    prop "description" "Light controller"
+    prop "human_name" "Lamp in living room"
+    subcontract "controls" do   # syntax sugar for prop "controls" (defcontract do ...
+        prop "description" "controls"
+        subcontract "lightness" do
+            prop "description" "Lightness"
+            method "get" type{() -> int} do
+                return foo
+            end
+            method "set" type{(int) -> ()} %{min: 0, max: 65535} do
+                do stuff
+            end
+            method "subscribe" type{() -> chan<int>} do
+                return newchan bla
+            end
+        end
+    end
+end

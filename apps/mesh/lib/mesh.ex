@@ -3,16 +3,17 @@ defmodule Mesh do
   Documentation for Mesh.
   """
 
+  def call(target, function, arguments) do
+    case check_arguments(function, arguments) do
+      {:fail, err}  -> {:fail, err}
+      :ok           -> GenServer.call(target, {function.name, arguments})
+    end
+  end
+
   @doc """
-  Hello world.
-
-  ## Examples
-
-      iex> Mesh.hello
-      :world
-
+  Checks if the given (concrete) arguments match the contract.
   """
-  def hello do
-    :world
+  def check_arguments(function, arguments) do
+    :ok
   end
 end
