@@ -18,7 +18,8 @@ defmodule Mesh.Registry do
   end
 
   defp contract({static_data, services}) do
-    Map.merge(static_data,
+    Map.merge(
+      static_data,
       %{
         "register" => %Mesh.Contract.Function{
           name: "register",
