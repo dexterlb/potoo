@@ -14,15 +14,12 @@ defmodule Mesh.Registry do
   end
 
   defp register(services, name, delegate) do
-    %{
-      services |
-        name => delegate
-    }
+    Map.put(services, name, delegate)
   end
 
   defp contract({static_data, services}) do
-    %{
-      static_data |
+    Map.merge(static_data,
+      %{
         "register" => %Mesh.Contract.Function{
           name: "register",
           args: %{
@@ -42,6 +39,7 @@ defmodule Mesh.Registry do
           }
         },
         "services" => services
-    }
+      }
+    )
   end
 end

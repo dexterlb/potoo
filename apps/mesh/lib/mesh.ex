@@ -10,6 +10,11 @@ defmodule Mesh do
     end
   end
 
+  def direct_call(target, path, arguments) do
+    contract = Mesh.get_contract(target)
+    contract_call(target, contract, path, arguments)
+  end
+
   def contract_call(target, contract, [], arguments) do
     call(target, contract, arguments)
   end
