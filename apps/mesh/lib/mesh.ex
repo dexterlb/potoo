@@ -39,6 +39,14 @@ defmodule Mesh do
   Checks if the given (concrete) arguments match the contract.
   """
   def check_arguments(function, arguments) do
-    :ok
+    arg_types = function.args
+      |> Map.to_list
+      |> Enum.map(fn({key, data}) -> {key, Map.get(data, "type")} end)
+      |> Map.new
+
+    case Contract.Type.is_of({:struct, arg_types}, arguments) do
+      false -> {:fail, "function arguments don't match types in contract"}
+      true  -> :ok
+    end
   end
 end
