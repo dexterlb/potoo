@@ -1,1 +1,3 @@
-defmodule Mesh.Contract
+defmodule Mesh.Contract do
+
+end

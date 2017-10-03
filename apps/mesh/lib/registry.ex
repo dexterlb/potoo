@@ -1,4 +1,4 @@
-defmodule Mesh.Registry
+defmodule Mesh.Registry do
   use GenServer
 
   def init(static_data) do

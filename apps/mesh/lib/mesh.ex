@@ -10,6 +10,10 @@ defmodule Mesh do
     end
   end
 
+  def get_contract(target) do
+    GenServer.call(target, :contract)
+  end
+
   @doc """
   Checks if the given (concrete) arguments match the contract.
   """
