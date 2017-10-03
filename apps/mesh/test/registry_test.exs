@@ -79,4 +79,21 @@ defmodule RegistryTest do
         %{"item" => "bar"}
       ) == "Hello, bar!"
   end
+
+  test "can perform direct call across delegate boundary" do
+    {:ok, registry} = GenServer.start_link(Mesh.Registry, %{})
+
+    {:ok, hello} = GenServer.start_link(RegistryTest.Hello, nil)
+
+    Mesh.direct_call(registry, ["register"], %{
+        "name" => "hello_service", 
+        "delegate" => %Mesh.Contract.Delegate{destination: hello}
+    })
+
+    assert Mesh.direct_call(
+        registry, 
+        ["services", "hello_service", "methods", "hello"],
+        %{"item" => "bar"}
+      ) == "Hello, bar!"
+  end
 end
