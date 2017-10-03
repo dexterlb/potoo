@@ -18,9 +18,17 @@ defmodule Mesh do
   def contract_call(target, contract, [], arguments) do
     call(target, contract, arguments)
   end
+  
+  def contract_call(_, %Mesh.Contract.Delegate{destination: new_target}, path, arguments) do
+    direct_call(new_target, path, arguments)
+  end
 
   def contract_call(target, contract = %{}, [key | rest], arguments) do
     contract_call(target, Map.get(contract, key), rest, arguments)
+  end
+
+  def contract_call(_, nil, _, _) do
+    raise "nil contract"
   end
 
   def get_contract(target) do

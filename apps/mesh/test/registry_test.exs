@@ -47,6 +47,8 @@ defmodule RegistryTest do
 
     registry_contract = Mesh.get_contract(registry)
 
+    assert registry_contract != nil
+
     hello_contract = Kernel.get_in(registry_contract, ["services", "hello_service"])
 
     assert hello_contract != nil
@@ -54,5 +56,27 @@ defmodule RegistryTest do
     %Mesh.Contract.Delegate{destination: hello_destination} = hello_contract
 
     assert hello_destination == hello
+  end
+
+  test "can perform contract call across delegate boundary" do
+    {:ok, registry} = GenServer.start_link(Mesh.Registry, %{})
+
+    {:ok, hello} = GenServer.start_link(RegistryTest.Hello, nil)
+
+    Mesh.direct_call(registry, ["register"], %{
+        "name" => "hello_service", 
+        "delegate" => %Mesh.Contract.Delegate{destination: hello}
+    })
+
+    registry_contract = Mesh.get_contract(registry)
+
+    assert registry_contract != nil
+
+    assert Mesh.contract_call(
+        registry, 
+        registry_contract,
+        ["services", "hello_service", "methods", "hello"],
+        %{"item" => "bar"}
+      ) == "Hello, bar!"
   end
 end
