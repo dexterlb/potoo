@@ -10,6 +10,14 @@ defmodule Mesh do
     end
   end
 
+  def contract_call(target, contract, [], arguments) do
+    call(target, contract, arguments)
+  end
+
+  def contract_call(target, contract = %{}, [key | rest], arguments) do
+    contract_call(target, Map.get(contract, key), rest, arguments)
+  end
+
   def get_contract(target) do
     GenServer.call(target, :contract)
   end

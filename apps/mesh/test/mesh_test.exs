@@ -46,4 +46,13 @@ defmodule MeshTest do
 
     assert Mesh.call(pid, hello, %{"item" => "foo"}) == "Hello, foo!"
   end
+
+  test "can call function with deep contract call" do
+    {:ok, pid} = GenServer.start_link(MeshTest.FooService, nil)
+
+    contract = Mesh.get_contract(pid)
+
+    assert Mesh.contract_call(pid, contract, ["methods", "hello"], %{"item" => "foo"})
+      == "Hello, foo!"
+  end
 end
