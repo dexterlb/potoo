@@ -63,6 +63,13 @@ defmodule Contract.Type do
     end
   end
 
+  def to_s(t) do
+    case is_valid(t) do
+      true -> Kernel.inspect(t)
+      _    -> "<invalid type>"
+    end
+  end
+
   defp is_valid_struct_field({key, value_type}) do
     (is_atom(key) || is_of(:string, key))
     && is_valid(value_type)
