@@ -10,15 +10,12 @@ defmodule MeshTest do
       "methods" => %{
         "hello" => %Mesh.Contract.Function{
           name: "methods.hello",
-          args: %{
-            "item" => %{
-              "type" => :string,
+          argument: {:struct, %{
+            "item" => {:type, :string, %{
               "description" => "item to greet"
-            }
-          },
-          retval: %{
-            "type" => :string
-          },
+            }}
+          }},
+          retval: :string,
           data: %{
             "description" => "Performs a greeting"
           }

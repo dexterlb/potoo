@@ -1,5 +1,5 @@
 defmodule Mesh.Contract.Function do
   defstruct [
-      :name, args: %{}, retval: :void, data: %{}
+      :name, argument: nil, retval: nil, data: %{}
   ]
 end

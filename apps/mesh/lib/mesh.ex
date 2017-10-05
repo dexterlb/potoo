@@ -3,28 +3,28 @@ defmodule Mesh do
   Documentation for Mesh.
   """
 
-  def call(target, function, arguments) do
-    case check_arguments(function, arguments) do
+  def call(target, function, argument) do
+    case check_argument(function, argument) do
       {:fail, err}  -> {:fail, err}
-      :ok           -> GenServer.call(target, {function.name, arguments})
+      :ok           -> GenServer.call(target, {function.name, argument})
     end
   end
 
-  def direct_call(target, path, arguments) do
+  def direct_call(target, path, argument) do
     contract = Mesh.get_contract(target)
-    contract_call(target, contract, path, arguments)
+    contract_call(target, contract, path, argument)
   end
 
-  def contract_call(target, contract, [], arguments) do
-    call(target, contract, arguments)
+  def contract_call(target, contract, [], argument) do
+    call(target, contract, argument)
   end
   
-  def contract_call(_, %Mesh.Contract.Delegate{destination: new_target}, path, arguments) do
-    direct_call(new_target, path, arguments)
+  def contract_call(_, %Mesh.Contract.Delegate{destination: new_target}, path, argument) do
+    direct_call(new_target, path, argument)
   end
 
-  def contract_call(target, contract = %{}, [key | rest], arguments) do
-    contract_call(target, Map.get(contract, key), rest, arguments)
+  def contract_call(target, contract = %{}, [key | rest], argument) do
+    contract_call(target, Map.get(contract, key), rest, argument)
   end
 
   def contract_call(_, nil, _, _) do
@@ -36,16 +36,11 @@ defmodule Mesh do
   end
 
   @doc """
-  Checks if the given (concrete) arguments match the contract.
+  Checks if the given (concrete) argument match the contract.
   """
-  def check_arguments(function, arguments) do
-    arg_types = function.args
-      |> Map.to_list
-      |> Enum.map(fn({key, data}) -> {key, Map.get(data, "type")} end)
-      |> Map.new
-
-    case Contract.Type.is_of({:struct, arg_types}, arguments) do
-      false -> {:fail, "function arguments don't match types in contract"}
+  def check_argument(function, argument) do
+    case Contract.Type.is_of(function.argument, argument) do
+      false -> {:fail, "function argument don't match types in contract"}
       true  -> :ok
     end
   end

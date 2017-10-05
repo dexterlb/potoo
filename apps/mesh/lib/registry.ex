@@ -23,18 +23,14 @@ defmodule Mesh.Registry do
       %{
         "register" => %Mesh.Contract.Function{
           name: "register",
-          args: %{
-            "name" => %{
-              "type" => :string,
-              "description" => "Unique name for the service"
+          argument: {:struct, %{
+            "name" => {:type,
+              :string,
+              %{"description" => "Unique name for the service"}
             },
-            "delegate" => %{
-              "type" => :delegate,
-            }
-          },
-          retval: %{
-            "type" => :maybe_ok
-          },
+            "delegate" => :delegate
+          }},
+          retval: :maybe_ok,
           data: %{
             "description" => "Registers a new service into the registry"
           }
