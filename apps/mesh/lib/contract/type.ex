@@ -6,6 +6,7 @@ defmodule Contract.Type do
   def is_valid(:float), do: true
   def is_valid(:string), do: true
   def is_valid(:delegate), do: true
+  def is_valid({:type, t, %{}}), do: is_valid(t)
   def is_valid({:union, t1, t2}), do: is_valid(t1) && is_valid(t2)
   def is_valid({:list, t}), do: is_valid(t)
   def is_valid({:map, t1, t2}), do: is_valid(t1) && is_valid(t2)
@@ -21,6 +22,7 @@ defmodule Contract.Type do
   def is_of(:float, x) when is_float(x), do: true
   def is_of(:string, x) when is_bitstring(x), do: true
   def is_of(:delegate, %Mesh.Contract.Delegate{}), do: true
+  def is_of({:type, t, %{}}, x), do: is_of(t, x)
   def is_of({:union, t1, t2}, x) do
     is_of(t1, x) || is_of(t2, x)
   end
