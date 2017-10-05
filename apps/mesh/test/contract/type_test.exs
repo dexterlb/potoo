@@ -16,6 +16,7 @@ defmodule TypeTest do
     assert is_valid({:list, :string}) == true
     assert is_valid({:map, :string, :integer}) == true
     assert is_valid({:struct, %{"foo" => :integer, "bar" => :float}})
+    assert is_valid({:struct, [:integer, :string]})
     assert is_valid({:type, :integer, %{"foo" => "bar"}}) == true
     assert is_valid({:struct, %{"foo" => {:type, :integer, %{"description" => "the Foo field"}}}}) == true
   end
@@ -81,5 +82,13 @@ defmodule TypeTest do
       },
       %{"foo" => :not_int, "bar" => 42.5}
     ) == false
+
+    assert is_of({:struct, [:integer, :float]}, [42, 42.5]) == true
+    assert is_of({:struct, [:integer, :float]}, [42.5, 42]) == false
+
+    assert is_of({:struct, {:integer, :float}}, {42, 42.5}) == true
+    assert is_of({:struct, {:integer, :float}}, {42.5, 42}) == false
+
+    assert is_of({:struct, {:integer, :float}}, [42, 42.5]) == false
   end
 end

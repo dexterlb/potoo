@@ -13,6 +13,12 @@ defmodule Contract.Type do
   def is_valid({:struct, fields = %{}}) do
     fields |> Map.to_list |> Enum.all?(&is_valid_struct_field/1)
   end
+  def is_valid({:struct, fields = [_|_]}) do
+    fields |> Enum.all?(&is_valid/1)
+  end
+  def is_valid({:struct, fields}) when is_tuple(fields) do
+    is_valid({:struct, Tuple.to_list(fields)})
+  end
   def is_valid(_), do: false
 
   def is_of(nil, nil), do: true
@@ -44,6 +50,12 @@ defmodule Contract.Type do
         end)
       |> Enum.all?(&is_of_struct_field/1)
   end
+  def is_of({:struct, fields = [_|_]}, struct = [_|_]) do
+    Enum.zip(fields, struct) |> Enum.all?(&is_of_struct_field/1)
+  end
+  def is_of({:struct, fields}, struct) when (is_tuple(fields) and is_tuple(struct)) do
+    is_of({:struct, Tuple.to_list(fields)}, Tuple.to_list(struct))
+  end
   def is_of(t, v) do
     case is_valid(t) do
       true  -> false
@@ -59,5 +71,9 @@ defmodule Contract.Type do
   defp is_of_struct_field({key, value_type, value}) do
     (is_atom(key) || is_of(:string, key))
     && is_of(value_type, value)   
+  end
+
+  defp is_of_struct_field({value_type, value}) do
+    is_of(value_type, value)   
   end
 end
