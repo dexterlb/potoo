@@ -1,7 +1,7 @@
 defmodule UiWeb.ApiView do
   use UiWeb, :view
 
-  def render("foo.json", _) do
-    %{"foo" => "bar"}
+  def render("call_function.json", %{path: path}) do
+    %{"foo" => path}
   end
 end
