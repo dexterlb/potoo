@@ -91,4 +91,28 @@ defmodule TypeTest do
 
     assert is_of({:struct, {:integer, :float}}, [42, 42.5]) == false
   end
+
+  test "some casts work" do
+    assert cast("42", :integer) == {:ok, 42}
+    assert cast(42, :float) == {:ok, 42}
+    assert cast("42.5", :float) == {:ok, 42.5}
+    
+    assert cast(42, :string) == {:ok, "42"}
+    assert cast(42.5, :string) == {:ok, "42.5"}
+
+    assert cast("true", :bool) == {:ok, true}
+    assert cast("false", :bool) == {:ok, false}
+
+    assert cast(
+      %{"foo" => "42", "bar" => "26"},
+      {:struct, %{"foo" => :integer, "bar" => :float}}
+    ) == %{"foo" => 42, "bar" => 26.0}
+
+    assert cast(
+      ["42", 26.0],
+      {:list, :integer}
+    ) == [42, 26]
+
+
+  end
 end
