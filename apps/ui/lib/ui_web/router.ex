@@ -22,6 +22,6 @@ defmodule UiWeb.Router do
   scope "/api", UiWeb do
     pipe_through :api
 
-    get "/call/:path", ApiController, :call_function
+    post "/deep_call", ApiController, :deep_call
   end
 end
