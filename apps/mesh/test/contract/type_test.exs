@@ -11,6 +11,7 @@ defmodule TypeTest do
     assert is_valid(:float) == true
     assert is_valid(:integer) == true
     assert is_valid(:string) == true
+    assert is_valid({:literal, :error}) == true
     assert is_valid({:union, :string, nil}) == true
     assert is_valid({:union, {:union, :float, :string}, :integer}) == true
     assert is_valid({:list, :string}) == true
@@ -43,6 +44,9 @@ defmodule TypeTest do
 
     assert is_of(:string, "foo") == true
     assert is_of(:string, 42) == false
+
+    assert is_of({:literal, :error}, :error) == true
+    assert is_of({:literal, :error}, :foo) == false
 
     assert is_of({:union, :integer, :string}, "42") == true
     assert is_of({:union, :integer, :string}, 42) == true
