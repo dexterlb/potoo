@@ -33,7 +33,7 @@ defmodule RegistryTest do
   end
 
   test "can register service" do
-    {:ok, registry} = GenServer.start_link(Mesh.Registry, %{})
+    {:ok, registry} = Mesh.Registry.start_link(%{})
 
     {:ok, hello} = GenServer.start_link(RegistryTest.Hello, nil)
 
@@ -56,7 +56,7 @@ defmodule RegistryTest do
   end
 
   test "can perform contract call across delegate boundary" do
-    {:ok, registry} = GenServer.start_link(Mesh.Registry, %{})
+    {:ok, registry} = Mesh.Registry.start_link(%{})
 
     {:ok, hello} = GenServer.start_link(RegistryTest.Hello, nil)
 
@@ -78,7 +78,7 @@ defmodule RegistryTest do
   end
 
   test "can perform direct call across delegate boundary" do
-    {:ok, registry} = GenServer.start_link(Mesh.Registry, %{})
+    {:ok, registry} = Mesh.Registry.start_link(%{})
 
     {:ok, hello} = GenServer.start_link(RegistryTest.Hello, nil)
 

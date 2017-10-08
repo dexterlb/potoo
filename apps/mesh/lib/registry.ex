@@ -1,6 +1,10 @@
 defmodule Mesh.Registry do
   use GenServer
 
+  def start_link(static_data, opts \\ []) do
+    GenServer.start_link(__MODULE__, static_data, opts)
+  end
+
   def init(static_data) do
     {:ok, {static_data, %{}}}
   end
