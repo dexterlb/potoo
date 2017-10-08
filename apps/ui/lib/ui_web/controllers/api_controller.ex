@@ -4,7 +4,7 @@ defmodule UiWeb.ApiController do
   def deep_call(conn, %{"path" => path, "argument" => argument}) do
     root = Ui.PidCache.get(Ui.PidCache, 0)
 
-    result = Mesh.fuzzy_direct_call(root, String.split(path, "/"), argument)
+    result = Mesh.direct_call(root, String.split(path, "/"), argument, true)
 
     render conn, "generic.json", data: result
   end

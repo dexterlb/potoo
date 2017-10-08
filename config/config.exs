@@ -17,4 +17,4 @@ import_config "../apps/*/config/config.exs"
 #       metadata: [:user_id]
 
 config :ui,
-  root_target: :global_mesh_registry
+  root_target: {:global, :global_registry}
