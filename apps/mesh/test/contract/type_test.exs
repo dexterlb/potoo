@@ -110,13 +110,59 @@ defmodule TypeTest do
     assert cast(
       %{"foo" => "42", "bar" => "26"},
       {:struct, %{"foo" => :integer, "bar" => :float}}
-    ) == %{"foo" => 42, "bar" => 26.0}
+    ) == {:ok, %{"foo" => 42, "bar" => 26.0}}
+
+    assert cast(
+      ["42", "26"],
+      {:struct, [:integer, :float]}
+    ) == {:ok, [42, 26.0]}
+
+    assert cast(
+      {"42", "26"},
+      {:struct, [:integer, :float]}
+    ) == {:ok, [42, 26.0]}
+
+    assert cast(
+      ["42", "26"],
+      {:struct, {:integer, :float}}
+    ) == {:ok, {42, 26.0}}
+
+    assert cast(
+      {"42", "26"},
+      {:struct, {:integer, :float}}
+    ) == {:ok, {42, 26.0}}
+
+    assert cast(
+      {"42", "26"},
+      {:type, {:struct, [{:type, :integer, %{"foo" => "bar"}}, :float]}, %{}}
+    ) == {:ok, [42, 26.0]}
 
     assert cast(
       ["42", 26.0],
       {:list, :integer}
-    ) == [42, 26]
+    ) == {:ok, [42, 26]}
 
+    assert cast(
+      :foo,
+      {:literal, :foo}
+    ) == {:ok, :foo}
 
+    assert cast(
+      %{"foo" => "42", "bar" => "26"},
+      {:map, :string, :integer}
+    ) == {:ok, %{"foo" => 42, "bar" => 26}}
+
+    assert cast(
+      %{42 => "42", 26 => "26"},
+      {:map, :string, :integer}
+    ) == {:ok, %{"42" => 42, "26" => 26}}
+
+    assert cast(
+      %{"foo" => "42", "bar" => "26"},
+      {:union,
+        {:map, :string, :integer},
+        :integer
+      }
+    ) == {:ok, %{"foo" => 42, "bar" => 26}}
   end
 end
