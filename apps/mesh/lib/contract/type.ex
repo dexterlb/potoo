@@ -72,7 +72,7 @@ defmodule Contract.Type do
     end
   end
 
-  def cast(t, x), do: nil
+  def cast(x, _t), do: {:ok, x}
 
   defp is_valid_struct_field({key, value_type}) do
     (is_atom(key) || is_of(:string, key))

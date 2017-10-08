@@ -37,7 +37,7 @@ defmodule RegistryTest do
 
     {:ok, hello} = GenServer.start_link(RegistryTest.Hello, nil)
 
-    Mesh.direct_call(registry, ["register"], %{
+    :ok = Mesh.direct_call(registry, ["register"], %{
         "name" => "hello_service", 
         "delegate" => %Mesh.Contract.Delegate{destination: hello}
     })
@@ -60,7 +60,7 @@ defmodule RegistryTest do
 
     {:ok, hello} = GenServer.start_link(RegistryTest.Hello, nil)
 
-    Mesh.direct_call(registry, ["register"], %{
+    :ok = Mesh.direct_call(registry, ["register"], %{
         "name" => "hello_service", 
         "delegate" => %Mesh.Contract.Delegate{destination: hello}
     })
@@ -82,7 +82,7 @@ defmodule RegistryTest do
 
     {:ok, hello} = GenServer.start_link(RegistryTest.Hello, nil)
 
-    Mesh.direct_call(registry, ["register"], %{
+    :ok = Mesh.direct_call(registry, ["register"], %{
         "name" => "hello_service", 
         "delegate" => %Mesh.Contract.Delegate{destination: hello}
     })

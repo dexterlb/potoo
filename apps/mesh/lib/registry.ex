@@ -30,7 +30,10 @@ defmodule Mesh.Registry do
             },
             "delegate" => :delegate
           }},
-          retval: :maybe_ok,
+          retval: {:union, 
+            {:literal, :ok}, 
+            {:struct, {{:literal, :fail}, :string}}
+          },
           data: %{
             "description" => "Registers a new service into the registry"
           }
