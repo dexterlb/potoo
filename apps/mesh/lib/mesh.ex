@@ -52,10 +52,10 @@ defmodule Mesh do
   """
   def check_argument(function, argument) do
     case Contract.Type.is_valid(function.argument) do
-      false -> {:fail, "function argument type in contract is invalid"}
+      false -> {:fail, "function argument type (#{inspect(function.argument)}) in contract is invalid"}
       true ->
         case Contract.Type.is_of(function.argument, argument) do
-          false -> {:fail, "function argument doesn't match type in contract"}
+          false -> {:fail, "function argument (#{inspect(argument)}) doesn't match type in contract (#{inspect(function.argument)})"}
           true  -> :ok
         end
     end
