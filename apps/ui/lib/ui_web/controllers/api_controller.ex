@@ -6,6 +6,12 @@ defmodule UiWeb.ApiController do
 
     result = Mesh.direct_call(root, String.split(path, "/"), argument, true)
 
-    render conn, "generic.json", data: result
+    render conn, "generic.json", data: check_fail(result)
   end
+
+  defp check_fail({:fail, err}) do
+    %{"error" => err}
+  end
+  defp check_fail({:ok, x}), do: x
+  defp check_fail(x), do: x
 end

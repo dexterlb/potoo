@@ -40,7 +40,7 @@ defmodule Mesh do
   end
 
   def contract_call(_, nil, _, _, _) do
-    raise "nil contract"
+    {:fail, "nil contract (probably obtained by wrong path?)"}
   end
 
   def get_contract(target) do
