@@ -23,5 +23,6 @@ defmodule UiWeb.Router do
     pipe_through :api
 
     post "/deep_call", ApiController, :deep_call
+    post "/get_contract", ApiController, :get_contract
   end
 end
