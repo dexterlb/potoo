@@ -11,7 +11,17 @@ defmodule Mesh.ChannelTest do
   end
 
   test "suspicious things are not channels" do
-    assert Channel.is_channel(42) == false
+    assert Channel.is_channel((fn() -> 42 end).()) == false
     assert Channel.is_channel({Mesh.Channel, 42}) == false
+  end
+
+  test "can use channel to send a message to one recipient" do
+    ch = Channel.start_link()
+
+    :ok = Channel.subscribe(ch, :foo)
+
+    spawn(fn() -> Channel.send(ch, 42) end)
+
+    assert_receive({:foo, 42})
   end
 end
