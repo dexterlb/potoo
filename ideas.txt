@@ -45,7 +45,7 @@ defcontract do
 end
 
 - todo:
-    - expose contracts via json (figure out how to serialise them)
+    - remove phoenix shit and use a simple cowboy / plug setup with websockets
     - implement type casts
     - persistent register, which monitors the state of the registry and re-registers if needed (or sends a message when it goes down)
     - subscriptions
