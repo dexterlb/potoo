@@ -1,4 +1,6 @@
 defmodule Mesh.Channel do
+  use GenServer
+
   defmacro is_channel(value) do
     quote do
       (
@@ -10,13 +12,32 @@ defmodule Mesh.Channel do
     end
   end
 
-  def start_link do
-    {__MODULE__, spawn_link(fn() -> useless() end)}
+  def start_link(opts \\ []) do
+    case GenServer.start_link(__MODULE__, %{}, opts) do
+      {:ok, pid} -> {:ok, {__MODULE__, pid}}
+      err        -> err
+    end
   end
 
-  defp useless do
-    receive do
-      _ -> useless()
-    end
+  def subscribe({__MODULE__, channel}, pid, token) do
+    GenServer.call(channel, {:subscribe, pid, token})
+  end
+
+  def send({__MODULE__, channel}, message) do
+    GenServer.cast(channel, {:send, message})
+  end
+
+  def handle_call({:subscribe, pid, token}, _from, subscribers) do
+    {:reply, :ok, Map.put(subscribers, pid, token)}
+  end
+
+  def handle_cast({:send, message}, subscribers) do
+    subscribers |> Enum.map(fn(target) -> dispatch(target, message) end)
+
+    {:noreply, subscribers}
+  end
+
+  defp dispatch({pid, token}, message) do
+    Kernel.send(pid, {token, message})
   end
 end

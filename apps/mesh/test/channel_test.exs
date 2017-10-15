@@ -5,7 +5,7 @@ defmodule Mesh.ChannelTest do
   alias Mesh.Channel
 
   test "item returned by start_link is a channel" do
-    ch = Channel.start_link()
+    {:ok, ch} = Channel.start_link()
 
     assert Channel.is_channel(ch) == true
   end
@@ -16,9 +16,9 @@ defmodule Mesh.ChannelTest do
   end
 
   test "can use channel to send a message to one recipient" do
-    ch = Channel.start_link()
+    {:ok, ch} = Channel.start_link()
 
-    :ok = Channel.subscribe(ch, :foo)
+    :ok = Channel.subscribe(ch, self(), :foo)
 
     spawn(fn() -> Channel.send(ch, 42) end)
 
