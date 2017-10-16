@@ -1,4 +1,6 @@
 defmodule Contract.Type do
+  require Mesh.Channel
+
   def is_valid(nil), do: true
   def is_valid(:bool), do: true
   def is_valid(:atom), do: true
@@ -6,6 +8,7 @@ defmodule Contract.Type do
   def is_valid(:float), do: true
   def is_valid(:string), do: true
   def is_valid(:delegate), do: true
+  def is_valid({:channel, t}), do: is_valid(t)
   def is_valid({:literal, _}), do: true
   def is_valid({:type, t, %{}}), do: is_valid(t)
   def is_valid({:union, t1, t2}), do: is_valid(t1) && is_valid(t2)
@@ -29,6 +32,9 @@ defmodule Contract.Type do
   def is_of(:float, x) when is_float(x), do: true
   def is_of(:string, x) when is_bitstring(x), do: true
   def is_of(:delegate, %Mesh.Contract.Delegate{}), do: true
+  def is_of({:channel, t}, x) when Mesh.Channel.is_channel(x) do
+    is_valid(t)  # todo: typed channels
+  end
   def is_of({:literal, x}, y), do: x == y
   def is_of({:type, t, %{}}, x), do: is_of(t, x)
   def is_of({:union, t1, t2}, x) do

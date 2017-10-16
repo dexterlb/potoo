@@ -3,6 +3,7 @@ defmodule TypeTest do
   doctest Contract.Type
 
   import Contract.Type
+  require Mesh.Channel
 
   test "types I think are valid are valid" do
     assert is_valid(nil) == true
@@ -11,7 +12,9 @@ defmodule TypeTest do
     assert is_valid(:float) == true
     assert is_valid(:integer) == true
     assert is_valid(:string) == true
+    assert is_valid(:delegate) == true
     assert is_valid({:literal, :error}) == true
+    assert is_valid({:channel, :string}) == true
     assert is_valid({:union, :string, nil}) == true
     assert is_valid({:union, {:union, :float, :string}, :integer}) == true
     assert is_valid({:list, :string}) == true
@@ -25,6 +28,7 @@ defmodule TypeTest do
   test "types I think are not valid are not valid" do
     assert is_valid(42) == false
     assert is_valid(:foo) == false
+    assert is_valid({:channel, :foo}) == false
     assert is_valid({:list, {:union, :string, :foo}}) == false
   end
 
@@ -44,6 +48,13 @@ defmodule TypeTest do
 
     assert is_of(:string, "foo") == true
     assert is_of(:string, 42) == false
+
+    assert is_of(:delegate, %Mesh.Contract.Delegate{}) == true
+    assert is_of(:delegate, %{}) == false
+
+    {:ok, chan} = Mesh.Channel.start_link()
+    assert is_of({:channel, :string}, chan) == true
+    assert is_of({:channel, :string}, self()) == false
 
     assert is_of({:literal, :error}, :error) == true
     assert is_of({:literal, :error}, :foo) == false
