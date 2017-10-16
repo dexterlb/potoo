@@ -78,7 +78,13 @@ defmodule Contract.Type do
     end
   end
 
-  def cast(x, _t), do: {:ok, x}
+  def cast(x, t) do
+    case is_of(t, x) do
+      true  -> {:ok, x}
+      false -> do_cast(x, t)
+    end
+  end
+
 
   defp is_valid_struct_field({key, value_type}) do
     (is_atom(key) || is_of(:string, key))
@@ -93,4 +99,34 @@ defmodule Contract.Type do
   defp is_of_struct_field({value_type, value}) do
     is_of(value_type, value)   
   end
+
+  defp do_cast(x, :atom) when is_bitstring(x) do
+    try do
+      {:ok, String.to_existing_atom(x)}
+    rescue
+      err -> {:fail, err}
+    end
+  end
+  defp do_cast("false", :bool), do: {:ok, false}
+  defp do_cast("False", :bool), do: {:ok, false}
+  defp do_cast("FALSE", :bool), do: {:ok, false}
+  defp do_cast("f", :bool), do: {:ok, false}
+  defp do_cast("F", :bool), do: {:ok, false}
+  defp do_cast("#f", :bool), do: {:ok, false}
+  defp do_cast("no", :bool), do: {:ok, false}
+  defp do_cast("0", :bool), do: {:ok, false}
+  defp do_cast(:false, :bool), do: {:ok, false}
+  defp do_cast("true", :bool), do: {:ok, true}
+  defp do_cast("True", :bool), do: {:ok, true}
+  defp do_cast("TRUE", :bool), do: {:ok, true}
+  defp do_cast("t", :bool), do: {:ok, true}
+  defp do_cast("T", :bool), do: {:ok, true}
+  defp do_cast("#t", :bool), do: {:ok, true}
+  defp do_cast("yes", :bool), do: {:ok, true}
+  defp do_cast("1", :bool), do: {:ok, true}
+  defp do_cast(:true, :bool), do: {:ok, true}
+  defp do_cast(x, :bool) when is_integer(x), do: x != 0
+  
+  defp do_cast(x, t), do: {:fail, "cannot cast #{inspect(x)} to #{inspect(t)}"}
+
 end
