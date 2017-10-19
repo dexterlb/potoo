@@ -126,7 +126,39 @@ defmodule Contract.Type do
   defp do_cast("1", :bool), do: {:ok, true}
   defp do_cast(:true, :bool), do: {:ok, true}
   defp do_cast(x, :bool) when is_integer(x), do: x != 0
-  
+
+  defp do_cast(s, :integer) when is_string(s) do
+    case Integer.parse(s) do
+      :error -> {:fail, "unable to cast #{inspect(s)} to integer"}
+      {n, _} when is_integer(n) -> {:ok, n}
+    end
+  end
+  def do_cast(f, :integer) when is_float(f) do
+    {:ok, round(f)}
+  end
+
+  def do_cast(s, :float) when is_string(s) do
+    case Float.parse(s) do
+      :error -> {:fail, "unable to cast #{inspect(s)} to float"}
+      {n, _} when is_float(n) -> {:ok, n}
+    end
+  end
+  def do_cast(i, :float) when is_integer(i) do
+    {:ok, i / 1}
+  end
+
+  def do_cast(true, :string), do: "true"
+  def do_cast(false, :string), do: "false"
+  def do_cast(a, :string) when is_atom(a) do
+    {:ok, Atom.to_string(a)}
+  end
+  def do_cast(i, :string) when is_integer(i) do
+    {:ok, Integer.to_string(i)}
+  end
+  def do_cast(f, :string) when is_float(f) do
+    {:ok, Float.to_string(f)}
+  end
+
   defp do_cast(x, t), do: {:fail, "cannot cast #{inspect(x)} to #{inspect(t)}"}
 
 end
