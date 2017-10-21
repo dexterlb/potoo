@@ -45,6 +45,7 @@ defcontract do
 end
 
 - todo:
+    - unit tests for server_utils
     - remove phoenix shit and use a simple cowboy / plug setup with websockets
     - persistent register, which monitors the state of the registry and re-registers if needed (or sends a message when it goes down)
     - subscriptions
