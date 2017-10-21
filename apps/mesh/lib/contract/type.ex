@@ -181,7 +181,38 @@ defmodule Contract.Type do
   defp do_cast(tu, t = {:list, _}) when is_tuple(tu) do
     do_cast(Tuple.to_list(tu), t)
   end
+  defp do_cast(l, t = {:list, t1}) when is_list(l) do
+    l |> Enum.map(fn(x) -> cast(x, t1) end) |> check_list_results(
+      "cannot cast #{inspect(l)} to #{inspect(t)}"
+    )
+  end
 
   defp do_cast(x, t), do: {:fail, "cannot cast #{inspect(x)} to #{inspect(t)}"}
 
+
+  defp check_list_results(results, error_message) do
+    case results |> Enum.filter(&is_fail/1) do
+      [] -> compose_results(results)
+      fails -> compose_fails(fails, error_message)
+    end
+  end
+
+  defp is_fail({:fail, _}), do: true
+  defp is_fail({:ok, _}), do: false
+
+  defp compose_fails(fails, message) do
+    {:fail, [message | extract_fails(fails)]}
+  end
+
+  defp compose_results(results) do
+    {:ok, extract_oks(results)}
+  end
+
+  defp extract_fails(fails) do
+    fails |> Enum.map(fn({:fail, err}) -> err end)
+  end
+
+  defp extract_oks(results) do
+    results |> Enum.map(fn({:ok, result}) -> result end)
+  end
 end
