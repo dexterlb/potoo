@@ -187,6 +187,19 @@ defmodule Contract.Type do
     )
   end
 
+  defp do_cast(m, {:struct, fields = %{}} = struct) do
+    {keys, results} = fields
+      |> Map.to_list
+      |> Enum.map(
+        fn({key, type}) -> {key, cast(Map.get(m, key), type)} end)
+      |> Enum.unzip
+    
+    case check_list_results(results, "cannot cast #{inspect(m)} to #{inspect(struct)}") do
+      {:fail, _} = err -> err
+      {:ok, values} -> {:ok, Enum.zip(keys, values) |> Map.new}
+    end
+  end
+
   defp do_cast(x, t), do: {:fail, "cannot cast #{inspect(x)} to #{inspect(t)}"}
 
 
