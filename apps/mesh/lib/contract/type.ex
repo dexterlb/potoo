@@ -159,7 +159,7 @@ defmodule Contract.Type do
     {:ok, Float.to_string(f)}
   end
 
-  defp do_cast(x, {:type, t}) do
+  defp do_cast(x, {:type, t, _}) do
     cast(x, t)
   end
 
@@ -197,6 +197,24 @@ defmodule Contract.Type do
     case check_list_results(results, "cannot cast #{inspect(m)} to #{inspect(struct)}") do
       {:fail, _} = err -> err
       {:ok, values} -> {:ok, Enum.zip(keys, values) |> Map.new}
+    end
+  end
+  defp do_cast(l, {:struct, fields} = struct) when is_list(fields) and is_list(l) do
+    results = Enum.zip(fields, l) |> Enum.map(
+      fn({type, x}) -> cast(x, type) end)
+
+    case check_list_results(results, "cannot cast #{inspect(l)} to #{inspect(struct)}") do
+      {:fail, _} = err -> err
+      {:ok, _} = values -> values
+    end
+  end
+  defp do_cast(tu, {:struct, _} = struct) when is_tuple(tu) do
+    do_cast(Tuple.to_list(tu), struct)
+  end
+  defp do_cast(l, {:struct, fields}) when is_list(l) and is_tuple(fields) do
+    case do_cast(l, {:struct, Tuple.to_list(fields)}) do
+      {:ok, values} -> {:ok, List.to_tuple(values)}
+      {:fail, _} = err -> err
     end
   end
 
