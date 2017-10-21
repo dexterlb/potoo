@@ -1,8 +1,11 @@
 defmodule UiWeb.ApiController do
   use UiWeb, :controller
 
+  alias Mesh.ServerUtils.PidCache
+  alias Mesh.ServerUtils.Json
+
   def deep_call(conn, %{"path" => path, "argument" => argument}) do
-    root = Ui.PidCache.get(Ui.PidCache, 0)
+    root = PidCache.get(PidCache, 0)
 
     result = Mesh.direct_call(root, String.split(path, "/"), argument, true)
 
@@ -14,11 +17,11 @@ defmodule UiWeb.ApiController do
   end
 
   def get_contract(conn, %{"pid" => pid_id}) when is_integer(pid_id) do
-    pid = Ui.PidCache.get(Ui.PidCache, pid_id)
+    pid = PidCache.get(PidCache, pid_id)
 
     contract = Mesh.get_contract(pid)
 
-    render conn, "generic.json", data: Ui.PidCache.jsonify_contract(contract, Ui.PidCache)
+    render conn, "generic.json", data: Json.jsonify_contract(contract, PidCache)
   end
 
   defp check_fail({:fail, err}) do

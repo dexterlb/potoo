@@ -1,6 +1,8 @@
 defmodule Ui.Application do
   use Application
 
+  alias Mesh.ServerUtils.PidCache
+
   # See https://hexdocs.pm/elixir/Application.html
   # for more information on OTP Applications
   def start(_type, _args) do
@@ -12,7 +14,7 @@ defmodule Ui.Application do
       supervisor(UiWeb.Endpoint, []),
       # Start your own worker by calling: Ui.Worker.start_link(arg1, arg2, arg3)
       # worker(Ui.Worker, [arg1, arg2, arg3]),
-      worker(Ui.PidCache, [Ui.PidCache, Application.fetch_env!(:ui, :root_target)])
+      worker(PidCache, [PidCache, Application.fetch_env!(:ui, :root_target)])
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
