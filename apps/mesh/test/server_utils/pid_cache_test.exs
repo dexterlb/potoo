@@ -7,7 +7,7 @@ defmodule PidCacheTest do
   test "can put and retreive a pid" do
     {:ok, pc} = PidCache.start_link()
 
-    proc = spawn_link(fn() -> nil end)
+    proc = spawn_link(&dummy/0)
 
     id = PidCache.get(pc, {:my_pids, proc})
 
@@ -27,12 +27,57 @@ defmodule PidCacheTest do
   test "putting the same pid twice yields the same id" do
     {:ok, pc} = PidCache.start_link()
 
-    proc = spawn_link(fn() -> nil end)
+    proc = spawn_link(&dummy/0)
 
     id1 = PidCache.get(pc, {:my_pids, proc})
 
     id2 = PidCache.get(pc, {:my_pids, proc})
 
     assert id1 == id2
+  end
+
+  test "can drop by pid" do 
+    {:ok, pc} = PidCache.start_link()
+
+    proc = spawn_link(&dummy/0)
+
+    id = PidCache.get(pc, {:my_pids, proc})
+
+    PidCache.drop(pc, {:my_pids, proc})
+
+    :timer.sleep(50)
+
+    assert PidCache.get(pc, {:my_pids, id}) == nil
+  end
+
+  test "pid is only kept until process dies" do
+    {:ok, pc} = PidCache.start_link()
+
+    proc = spawn_link(&dummy/0)
+
+    id = PidCache.get(pc, {:my_pids, proc})
+
+    assert PidCache.get(pc, {:my_pids, id}) == proc
+
+    send(proc, :foo)
+
+    :timer.sleep(50)
+
+    assert PidCache.get(pc, {:my_pids, id}) == nil
+    assert PidCache.get(pc, {:my_pids, proc}) == nil
+  end
+
+  test "cannot store dead process" do
+    {:ok, pc} = PidCache.start_link()
+
+    proc = spawn_link(fn() -> nil end)
+
+    assert PidCache.get(pc, {:my_pids, proc}) == nil
+  end
+
+  defp dummy() do
+    receive do
+      _ -> nil
+    end
   end
 end
