@@ -64,15 +64,6 @@ defmodule PidCacheTest do
     :timer.sleep(50)
 
     assert PidCache.get(pc, {:my_pids, id}) == nil
-    assert PidCache.get(pc, {:my_pids, proc}) == nil
-  end
-
-  test "cannot store dead process" do
-    {:ok, pc} = PidCache.start_link()
-
-    proc = spawn_link(fn() -> nil end)
-
-    assert PidCache.get(pc, {:my_pids, proc}) == nil
   end
 
   test "can initialise with a pid" do

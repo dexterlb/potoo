@@ -24,21 +24,17 @@ defmodule Mesh.ServerUtils.PidCache do
   end
 
   def handle_call({:get, {bucket, pid}}, _from, {last_id, pid_to_id, id_to_pid}) when is_pid(pid) do
-    case Process.alive?(pid) do
-      true -> 
-        case Map.get(pid_to_id, {bucket, pid}) do
-          nil ->
-            new_id = last_id + 1
-            new_pid_to_id = Map.put(pid_to_id, {bucket, pid}, new_id)
-            new_id_to_pid = Map.put(id_to_pid, {bucket, new_id}, pid)
+    case Map.get(pid_to_id, {bucket, pid}) do
+      nil ->
+        new_id = last_id + 1
+        new_pid_to_id = Map.put(pid_to_id, {bucket, pid}, new_id)
+        new_id_to_pid = Map.put(id_to_pid, {bucket, new_id}, pid)
 
-            remote_monitor(pid, bucket)
+        remote_monitor(pid, bucket)
 
-            {:reply, new_id, {new_id, new_pid_to_id, new_id_to_pid}}
+        {:reply, new_id, {new_id, new_pid_to_id, new_id_to_pid}}
 
-          id -> {:reply, id, {last_id, pid_to_id, id_to_pid}}
-        end
-      false -> {:reply, nil, {last_id, pid_to_id, id_to_pid}}
+      id -> {:reply, id, {last_id, pid_to_id, id_to_pid}}
     end
   end
 

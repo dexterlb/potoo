@@ -13,7 +13,7 @@ defmodule Mesh.ServerUtils.Json do
   def jsonify_contract(%Mesh.Contract.Delegate{destination: destination, data: data}, pc) do
     %{
       "__type__" => "delegate",
-      "destination" => PidCache.get(pc, destination),
+      "destination" => PidCache.get(pc, {:delegate, destination}),
       "data" => data
     }
   end
