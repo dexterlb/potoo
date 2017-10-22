@@ -75,6 +75,20 @@ defmodule PidCacheTest do
     assert PidCache.get(pc, {:my_pids, proc}) == nil
   end
 
+  test "can initialise with a pid" do
+    proc = spawn_link(&dummy/0)
+    {:ok, pc} = PidCache.start_link([{:my_pids, proc, 42}])
+
+    assert PidCache.get(pc, {:my_pids, 42}) == proc
+  end
+
+  test "can initialise with a dead pid" do
+    proc = spawn_link(fn() -> nil end)
+    {:ok, pc} = PidCache.start_link([{:my_pids, proc, 42}])
+
+    assert PidCache.get(pc, {:my_pids, 42}) == proc
+  end
+
   defp dummy() do
     receive do
       _ -> nil

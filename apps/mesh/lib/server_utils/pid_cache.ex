@@ -1,8 +1,18 @@
 defmodule Mesh.ServerUtils.PidCache do
   use GenServer
 
-  def start_link(opts \\ [name: __MODULE__]) do
-    GenServer.start_link(__MODULE__, {0, %{}, %{}}, opts)
+  def start_link(initial_contents \\ [], opts \\ [name: __MODULE__]) do
+    pid_to_id = initial_contents
+      |> Enum.map(fn({bucket, pid, id}) -> {{bucket, pid}, id} end)
+      |> Map.new
+    id_to_pid = initial_contents
+      |> Enum.map(fn({bucket, pid, id}) -> {{bucket, id}, pid} end)
+      |> Map.new
+    last_id = initial_contents
+      |> Enum.map(fn({_, _, id}) -> id end)
+      |> Enum.max(fn() -> -1 end)
+
+    GenServer.start_link(__MODULE__, {last_id, pid_to_id, id_to_pid}, opts)
   end
 
   def get(cache_pid, target = {_, pid_or_id}) when is_pid(pid_or_id) or is_integer(pid_or_id) do
