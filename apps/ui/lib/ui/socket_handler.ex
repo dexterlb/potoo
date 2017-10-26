@@ -1,4 +1,6 @@
 defmodule Ui.SocketHandler do
+  alias Ui.Api
+
   @behaviour :cowboy_websocket_handler
 
   def init(_, _req, _opts) do
@@ -31,6 +33,11 @@ defmodule Ui.SocketHandler do
   # No matter why we terminate, remove all of this pids subscriptions
   def websocket_terminate(_reason, _req, _state) do
     :ok
+  end
+
+  defp json_handle(d = ["get_contract", arg], req, state) do
+    IO.inspect({:d, d})
+    Api.get_contract(arg) |> reply_json(req, state)
   end
 
   defp json_handle(data, req, state) do

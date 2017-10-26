@@ -15,10 +15,12 @@ defmodule Ui.Api do
   end
 
   def get_contract(%{"pid" => pid_id}) when is_integer(pid_id) do
-    PidCache
-      |> PidCache.get({:delegates, pid_id})
-      |> Mesh.get_contract
-      |> Json.jsonify_contract(PidCache)
+    case PidCache.get(PidCache, {:delegates, pid_id}) do
+      nil -> %{"error" => "no such pid: #{pid_id}"}
+      pid -> pid
+        |> Mesh.get_contract
+        |> Json.jsonify_contract(PidCache)
+    end
   end
 
   defp check_fail({:fail, err}) do
