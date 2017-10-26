@@ -19,9 +19,8 @@ defmodule Ui.SocketHandler do
   end
   
   # Handle other messages from the browser - don't reply
-  def websocket_handle({:text, message}, req, state) do
-    IO.puts(message)
-    {:ok, req, state}
+  def websocket_handle({:text, json_data}, req, state) do
+    json_data |> Poison.decode! |> json_handle(req, state)
   end
 
   # Format and forward elixir messages to client
@@ -32,5 +31,13 @@ defmodule Ui.SocketHandler do
   # No matter why we terminate, remove all of this pids subscriptions
   def websocket_terminate(_reason, _req, _state) do
     :ok
+  end
+
+  defp json_handle(data, req, state) do
+    reply_json(%{"data" => data}, req, state)
+  end
+
+  defp reply_json(data, req, state) do
+    {:reply, {:text, Poison.encode!(data)}, req, state}
   end
 end
