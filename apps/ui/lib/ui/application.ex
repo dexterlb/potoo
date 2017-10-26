@@ -20,7 +20,15 @@ defmodule Ui.Application do
         [name: PidCache]
       ]),
 
-      {Plug.Adapters.Cowboy, scheme: :http, plug: Ui.Router, options: [port: 4040]}
+      {
+        Plug.Adapters.Cowboy, 
+        scheme: :http,
+        plug: Ui.Router,
+        options: [
+          port: 4040,
+          dispatch: Ui.Dispatcher.dispatch
+        ]
+      }
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
