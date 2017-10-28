@@ -5,7 +5,7 @@ defmodule Ui.Api do
 
   def call(%{"path" => path, "argument" => argument}) do
     PidCache
-      |> PidCache.get({:delegates, 0})
+      |> PidCache.get({:delegate, 0})
       |> Mesh.direct_call(String.split(path, "/"), argument, true)
       |> check_fail
   end
@@ -15,7 +15,7 @@ defmodule Ui.Api do
   end
 
   def get_contract(%{"pid" => pid_id}) when is_integer(pid_id) do
-    case PidCache.get(PidCache, {:delegates, pid_id}) do
+    case PidCache.get(PidCache, {:delegate, pid_id}) do
       nil -> %{"error" => "no such pid: #{pid_id}"}
       pid -> pid
         |> Mesh.get_contract

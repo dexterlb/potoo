@@ -16,7 +16,7 @@ defmodule Ui.Application do
       # {Ui.Worker, arg},
 
       worker(PidCache, [
-        [{:delegates, Application.fetch_env!(:ui, :root_target), 0}],
+        [{:delegate, Application.fetch_env!(:ui, :root_target), 0}],
         [name: PidCache]
       ]),
 

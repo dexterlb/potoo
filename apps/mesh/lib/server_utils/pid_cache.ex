@@ -1,5 +1,6 @@
 defmodule Mesh.ServerUtils.PidCache do
   use GenServer
+  require Logger
 
   def start_link(initial_contents \\ [], opts \\ [name: __MODULE__]) do
     pid_to_id = initial_contents
@@ -27,6 +28,11 @@ defmodule Mesh.ServerUtils.PidCache do
     case Map.get(pid_to_id, {bucket, pid}) do
       nil ->
         new_id = last_id + 1
+
+        Logger.debug fn ->
+          "adding pid #{inspect({bucket, new_id, pid})} to cache #{inspect(self())}"
+        end
+
         new_pid_to_id = Map.put(pid_to_id, {bucket, pid}, new_id)
         new_id_to_pid = Map.put(id_to_pid, {bucket, new_id}, pid)
 
@@ -46,6 +52,9 @@ defmodule Mesh.ServerUtils.PidCache do
     case Map.get(pid_to_id, {bucket, pid}) do
       nil -> {:noreply, state}
       id ->
+        Logger.debug fn ->
+          "dropping pid #{inspect({bucket, id, pid})} from cache #{inspect(self())}"
+        end
         new_pid_to_id = Map.delete(pid_to_id, {bucket, pid})
         new_id_to_pid = Map.delete(id_to_pid, {bucket, id})
 
