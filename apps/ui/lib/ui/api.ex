@@ -10,6 +10,13 @@ defmodule Ui.Api do
       |> check_fail
   end
 
+  def call(%{"pid" => pid, "function" => function, "argument" => argument}) when is_integer(pid) do
+    PidCache
+      |> PidCache.get({:delegate, pid})
+      |> Mesh.call(function, argument, true)
+      |> check_fail
+  end
+
   def get_contract(empty) when empty == %{} do
     get_contract(%{"pid" => 0})
   end

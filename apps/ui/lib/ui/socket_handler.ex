@@ -35,9 +35,12 @@ defmodule Ui.SocketHandler do
     :ok
   end
 
-  defp json_handle(d = ["get_contract", arg], req, state) do
-    IO.inspect({:d, d})
+  defp json_handle(["get_contract", arg], req, state) do
     Api.get_contract(arg) |> reply_json(req, state)
+  end
+
+  defp json_handle(["call", arg], req, state) do
+    Api.call(arg) |> reply_json(req, state)
   end
 
   defp json_handle(data, req, state) do
@@ -45,6 +48,10 @@ defmodule Ui.SocketHandler do
   end
 
   defp reply_json(data, req, state) do
-    {:reply, {:text, Poison.encode!(data)}, req, state}
+    {:reply, {:text, encode_json(data)}, req, state}
+  end
+
+  defp encode_json(data) do
+    Poison.encode!(data, pretty: Application.get_env(:ui, :json_pretty, false))
   end
 end
