@@ -25,6 +25,12 @@ defmodule Ui.SocketHandler do
     json_data |> Poison.decode! |> json_handle(req, state)
   end
 
+  def websocket_info({{:subscription, token}, message}, req, state) do
+    ["message", token, message] 
+      |> Api.jsonify
+      |> reply_json(req, state)
+  end
+  
   # Format and forward elixir messages to client
   def websocket_info(message, req, state) do
     {:reply, {:text, message}, req, state}
@@ -45,6 +51,10 @@ defmodule Ui.SocketHandler do
 
   defp json_handle(["unsafe_call", arg], req, state) do
     Api.unsafe_call(arg) |> reply_json(req, state)
+  end
+
+  defp json_handle(["subscribe", arg], req, state) do
+    Api.subscribe(arg) |> reply_json(req, state)
   end
 
   defp json_handle(data, req, state) do
