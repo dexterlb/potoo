@@ -11,7 +11,7 @@ defmodule Ui.Api do
   end
 
   def call(%{"path" => _, "argument" => _} = handle) do
-    call(%{handle | "pid" => 0})
+    call(Map.put(handle, "pid", 0))
   end
 
   def unsafe_call(%{"pid" => pid, "function_name" => name, "argument" => argument}) when is_integer(pid) do

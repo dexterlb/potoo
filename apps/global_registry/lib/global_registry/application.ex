@@ -21,7 +21,8 @@ defmodule GlobalRegistry.Application do
           [name: {:global, :global_registry}]
         ]
       ),
-      worker(GlobalRegistry.Hello, [{:global, :global_registry}, [name: GlobalRegistry.Hello]])
+      worker(GlobalRegistry.Hello, [{:global, :global_registry}, [name: GlobalRegistry.Hello]]),
+      worker(GlobalRegistry.Clock, [{:global, :global_registry}, [name: GlobalRegistry.Clock]])
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
