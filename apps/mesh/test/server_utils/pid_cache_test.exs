@@ -80,6 +80,48 @@ defmodule PidCacheTest do
     assert PidCache.get(pc, {:my_pids, 42}) == proc
   end
 
+  test "can associate data with pid" do
+    {:ok, pc} = PidCache.start_link()
+
+    proc = spawn_link(&dummy/0)
+
+    id = PidCache.get(pc, {:my_pids, proc})
+
+    PidCache.set_data(pc, {:my_pids, id}, 42)
+
+    assert PidCache.get_data(pc, {:my_pids, id}) == 42
+  end
+
+  test "data dies with process" do
+    {:ok, pc} = PidCache.start_link()
+
+    proc = spawn_link(&dummy/0)
+
+    id = PidCache.get(pc, {:my_pids, proc})
+
+    PidCache.set_data(pc, {:my_pids, id}, 42)
+
+    send(proc, :foo)
+
+    :timer.sleep(50)
+
+    assert PidCache.get_data(pc, {:my_pids, id}) == nil
+  end
+
+  test "can perform function on data" do
+    {:ok, pc} = PidCache.start_link()
+
+    proc = spawn_link(&dummy/0)
+
+    id = PidCache.get(pc, {:my_pids, proc})
+
+    PidCache.set_data(pc, {:my_pids, id}, 42)
+
+    assert (
+      PidCache.get_data(pc, {:my_pids, id}, fn(x) -> x + 1 end)
+      == 43)
+  end
+
   defp dummy() do
     receive do
       _ -> nil
