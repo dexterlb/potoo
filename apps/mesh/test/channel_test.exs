@@ -38,4 +38,20 @@ defmodule Mesh.ChannelTest do
 
     refute_receive({:foo, 42})
   end
+
+  test "can unsubscribe from channel by token" do
+    {:ok, ch} = Channel.start_link()
+
+    :ok = Channel.subscribe(ch, self(), :foo)
+    :ok = Channel.subscribe(ch, self(), :bar)
+
+    Channel.unsubscribe(ch, self(), :foo)
+
+    :timer.sleep(100)
+
+    spawn(fn() -> Channel.send(ch, 42) end)
+
+    refute_receive({:foo, 42})
+    assert_receive({:bar, 42})
+  end
 end
