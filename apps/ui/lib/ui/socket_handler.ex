@@ -57,6 +57,10 @@ defmodule Ui.SocketHandler do
     Api.subscribe(arg) |> reply_json(req, state)
   end
 
+  defp json_handle(["unsubscribe", arg], req, state) do
+    Api.unsubscribe(arg) |> reply_json(req, state)
+  end
+
   defp json_handle(data, req, state) do
     reply_json(%{"data" => data}, req, state)
   end

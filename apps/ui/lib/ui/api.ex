@@ -20,6 +20,11 @@ defmodule Ui.Api do
       |> Mesh.Channel.subscribe(self(), {:subscription, token})
   end
 
+  def unsubscribe(%{"channel" => chan_id, "token" => token}) when is_integer(chan_id) do
+    {Mesh.Channel, PidCache.get(PidCache, {:channel, chan_id})}
+      |> Mesh.Channel.unsubscribe(self(), {:subscription, token})
+  end
+
   def unsafe_call(%{"pid" => pid, "function_name" => name, "argument" => argument}) when is_integer(pid) do
     PidCache
       |> PidCache.get({:delegate, pid})
