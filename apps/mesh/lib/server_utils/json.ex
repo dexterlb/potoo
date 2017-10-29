@@ -17,6 +17,12 @@ defmodule Mesh.ServerUtils.Json do
       "data" => data
     }
   end
+  def jsonify_contract({Mesh.Channel, chan_pid}, pc) do
+    %{
+      "__type__" => "channel",
+      "id" => PidCache.get(pc, {:channel, chan_pid})
+    }
+  end
   def jsonify_contract(contract = %{}, pc) do
     # todo: fix the case when there's a __key__ in the map
     contract |> Enum.map(fn({k, v}) -> {k, jsonify_contract(v, pc)} end) |> Map.new

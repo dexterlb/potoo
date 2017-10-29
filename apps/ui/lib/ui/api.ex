@@ -8,6 +8,7 @@ defmodule Ui.Api do
       |> PidCache.get({:delegate, pid})
       |> Mesh.direct_call(String.split(path, "/"), argument, true)
       |> check_fail
+      |> Json.jsonify_contract(PidCache)
   end
 
   def call(%{"path" => _, "argument" => _} = handle) do
@@ -18,6 +19,7 @@ defmodule Ui.Api do
     PidCache
       |> PidCache.get({:delegate, pid})
       |> Mesh.unsafe_call(name, argument)
+      |> Json.jsonify_contract(PidCache)
   end
 
   def get_contract(empty) when empty == %{} do
