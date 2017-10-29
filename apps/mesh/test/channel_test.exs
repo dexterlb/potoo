@@ -24,4 +24,18 @@ defmodule Mesh.ChannelTest do
 
     assert_receive({:foo, 42})
   end
+
+  test "can unsubscribe from channel" do
+    {:ok, ch} = Channel.start_link()
+
+    :ok = Channel.subscribe(ch, self(), :foo)
+
+    Channel.unsubscribe(ch, self())
+
+    :timer.sleep(100)
+
+    spawn(fn() -> Channel.send(ch, 42) end)
+
+    refute_receive({:foo, 42})
+  end
 end

@@ -1,6 +1,8 @@
 defmodule Mesh.Channel do
   use GenServer
 
+  require Logger
+
   defmacro is_channel(value) do
     quote do
       (
@@ -23,11 +25,21 @@ defmodule Mesh.Channel do
     GenServer.call(channel, {:subscribe, pid, token})
   end
 
+  def unsubscribe({__MODULE__, channel}, pid) do
+    GenServer.cast(channel, {:unsubscribe, pid})
+  end
+
   def send({__MODULE__, channel}, message) do
     GenServer.cast(channel, {:send, message})
   end
 
   def handle_call({:subscribe, pid, token}, _from, subscribers) do
+    Logger.debug fn ->
+      "subscribing pid #{inspect(pid)} to channel #{inspect(self())}"
+    end
+
+    Process.monitor(pid)
+
     {:reply, :ok, Map.put(subscribers, pid, token)}
   end
 
@@ -35,6 +47,17 @@ defmodule Mesh.Channel do
     subscribers |> Enum.map(fn(target) -> dispatch(target, message) end)
 
     {:noreply, subscribers}
+  end
+
+  def handle_cast({:unsubscribe, pid}, subscribers) do
+    Logger.debug fn ->
+      "unsubscribing pid #{inspect(pid)} from channel #{inspect(self())}"
+    end
+    {:noreply, Map.delete(subscribers, pid)}
+  end
+
+  def handle_info({:DOWN, _, :process, pid, _}, subscribers) do
+    handle_cast({:unsubscribe, pid}, subscribers)
   end
 
   defp dispatch({pid, token}, message) do
