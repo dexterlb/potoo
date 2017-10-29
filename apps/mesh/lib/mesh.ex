@@ -20,6 +20,10 @@ defmodule Mesh do
     end
   end
 
+  def unsafe_call(target, function_name, argument) do
+    GenServer.call(target, {function_name, argument})
+  end
+
   def direct_call(target, path, argument, fuzzy \\ false)
   def direct_call(target, path, argument, fuzzy) do
     contract = Mesh.get_contract(target)

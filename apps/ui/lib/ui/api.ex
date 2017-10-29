@@ -3,18 +3,21 @@ defmodule Ui.Api do
   alias Mesh.ServerUtils.PidCache
   alias Mesh.ServerUtils.Json
 
-  def call(%{"path" => path, "argument" => argument}) do
+  def call(%{"pid" => pid, "path" => path, "argument" => argument}) when is_integer(pid) do
     PidCache
-      |> PidCache.get({:delegate, 0})
+      |> PidCache.get({:delegate, pid})
       |> Mesh.direct_call(String.split(path, "/"), argument, true)
       |> check_fail
   end
 
-  def call(%{"pid" => pid, "function" => function, "argument" => argument}) when is_integer(pid) do
+  def call(%{"path" => _, "argument" => _} = handle) do
+    call(%{handle | "pid" => 0})
+  end
+
+  def unsafe_call(%{"pid" => pid, "function_name" => name, "argument" => argument}) when is_integer(pid) do
     PidCache
       |> PidCache.get({:delegate, pid})
-      |> Mesh.call(function, argument, true)
-      |> check_fail
+      |> Mesh.unsafe_call(name, argument)
   end
 
   def get_contract(empty) when empty == %{} do
