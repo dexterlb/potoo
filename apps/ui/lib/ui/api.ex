@@ -46,7 +46,7 @@ defmodule Ui.Api do
   end
 
   def jsonify(data) do
-    Json.jsonify_contract(data, PidCache)
+    Json.jsonify(data, PidCache)
   end
 
   defp check_fail({:fail, err}) do
