@@ -41,32 +41,37 @@ defmodule Ui.SocketHandler do
     :ok
   end
 
-  defp json_handle(["get_contract", arg], req, state) do
-    Api.get_contract(arg) |> reply_json(req, state)
+  defp json_handle(["get_contract", arg | token], req, state) do
+    Api.get_contract(arg) |> reply_json(req, state, token)
   end
 
-  defp json_handle(["call", arg], req, state) do
-    Api.call(arg) |> reply_json(req, state)
+  defp json_handle(["call", arg | token], req, state) do
+    Api.call(arg) |> reply_json(req, state, token)
   end
 
-  defp json_handle(["unsafe_call", arg], req, state) do
-    Api.unsafe_call(arg) |> reply_json(req, state)
+  defp json_handle(["unsafe_call", arg | token], req, state) do
+    Api.unsafe_call(arg) |> reply_json(req, state, token)
   end
 
-  defp json_handle(["subscribe", arg], req, state) do
-    Api.subscribe(arg) |> reply_json(req, state)
+  defp json_handle(["subscribe", arg | token], req, state) do
+    Api.subscribe(arg) |> reply_json(req, state, token)
   end
 
-  defp json_handle(["unsubscribe", arg], req, state) do
-    Api.unsubscribe(arg) |> reply_json(req, state)
+  defp json_handle(["unsubscribe", arg | token], req, state) do
+    Api.unsubscribe(arg) |> reply_json(req, state, token)
   end
 
   defp json_handle(data, req, state) do
     reply_json(%{"data" => data}, req, state)
   end
 
-  defp reply_json(data, req, state) do
+  defp reply_json(data, req, state, token \\ [])
+  defp reply_json(data, req, state, []) do
     {:reply, {:text, encode_json(data)}, req, state}
+  end
+
+  defp reply_json(data, req, state, token) do
+    {:reply, {:text, encode_json([data | token])}, req, state}
   end
 
   defp encode_json(data) do
