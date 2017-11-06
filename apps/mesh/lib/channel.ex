@@ -37,6 +37,10 @@ defmodule Mesh.Channel do
     GenServer.cast(channel, {:send, message})
   end
 
+  def send_lazy({__MODULE__, channel}, fun) do
+    GenServer.cast(channel, {:send_lazy, fun})
+  end
+
   def handle_call({:subscribe, pid, token}, _from, subscribers) do
     Logger.debug fn ->
       "subscribing pid #{inspect(pid)} to channel #{inspect(self())}"
@@ -56,6 +60,13 @@ defmodule Mesh.Channel do
     subscribers |> Enum.map(fn(target) -> dispatch(target, message) end)
 
     {:noreply, subscribers}
+  end
+
+  def handle_cast({:send_lazy, fun}, subscribers) do
+    case subscribers == %{} do
+      true -> {:noreply, subscribers}
+      false -> handle_cast({:send, fun.()}, subscribers)
+    end
   end
 
   def handle_cast({:unsubscribe, pid}, subscribers) do

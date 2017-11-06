@@ -51,6 +51,10 @@ defmodule Mesh do
     GenServer.call(target, :contract)
   end
 
+  def subscribe_contract(target) do
+    GenServer.call(target, :subscribe_contract)
+  end
+
   @doc """
   Checks if the given (concrete) argument match the contract.
   """

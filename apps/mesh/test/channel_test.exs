@@ -25,6 +25,32 @@ defmodule Mesh.ChannelTest do
     assert_receive({:foo, 42})
   end
 
+  test "can use channel to send a message lazily" do
+    {:ok, ch} = Channel.start_link()
+
+    :ok = Channel.subscribe(ch, self(), :foo)
+
+    spawn(fn() -> Channel.send_lazy(ch, fn -> 42 end) end)
+
+    assert_receive({:foo, 42})
+  end
+
+  test "lazy send doesn't evaluate function when no subscribers" do
+    {:ok, ch} = Channel.start_link()
+
+    target = self()
+    f = fn ->
+      send(target, :evaluated)
+      42
+    end
+
+    spawn(fn() -> Channel.send_lazy(ch, f) end)
+
+    :timer.sleep(50)
+
+    refute_received(_)
+  end
+
   test "can unsubscribe from channel" do
     {:ok, ch} = Channel.start_link()
 

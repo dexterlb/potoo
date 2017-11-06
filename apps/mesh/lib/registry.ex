@@ -6,22 +6,32 @@ defmodule Mesh.Registry do
   end
 
   def init(static_data) do
-    {:ok, {static_data, %{}}}
+    case Mesh.Channel.start_link() do
+      {:ok, chan} ->
+        {:ok, {static_data, %{}, chan}}
+      err -> err
+    end
   end
 
   def handle_call(:contract, _from, state) do
     {:reply, contract(state), state}
   end
 
-  def handle_call({"register", %{"name" => name, "delegate" => delegate}}, _from, {static_data, services}) do
-    {:reply, :ok, {static_data, register(services, name, delegate)}}
+  def handle_call(:subscribe_contract, _from, state = {_, _, contract_channel}) do
+    {:reply, contract_channel, state}
+  end
+
+  def handle_call({"register", %{"name" => name, "delegate" => delegate}}, _from, {static_data, services, contract_channel}) do
+    new_state = {static_data, register(services, name, delegate), contract_channel}
+    Mesh.Channel.send_lazy(contract_channel, fn -> contract(new_state) end)
+    {:reply, :ok, new_state}
   end
 
   defp register(services, name, delegate) do
     Map.put(services, name, delegate)
   end
 
-  defp contract({static_data, services}) do
+  defp contract({static_data, services, _}) do
     Map.merge(
       static_data,
       %{
