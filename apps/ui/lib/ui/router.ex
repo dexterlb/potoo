@@ -20,6 +20,8 @@ defmodule Ui.Router do
     conn |> reply_json(Api.call(conn.body_params))
   end
 
+  forward "/", to: ReverseProxy, upstream: ["localhost:8000"]
+
   match _ do
     conn |> send_resp(404, "404\n")
   end

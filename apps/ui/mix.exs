@@ -31,6 +31,8 @@ defmodule Ui.Mixfile do
       {:cowboy, "~> 1.1"},
       {:poison, "~> 3.1"},
 
+      {:reverse_proxy, "~> 0.3"},
+
       {:mesh, in_umbrella: true}
 
       # {:dep_from_hexpm, "~> 0.3.0"},
