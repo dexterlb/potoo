@@ -1,7 +1,7 @@
 module Contracts exposing (..)
 import Dict exposing (Dict)
 
-import Json.Decode exposing (decodeString, string)
+import Json.Decode exposing (Decoder, decodeString, string, int, float, oneOf)
 import Result
 
 type alias Data = Dict String String
@@ -28,4 +28,20 @@ type Contract
   | ListContract (List Contract)
 
 parseContract : String -> Result String Contract
-parseContract s = Result.map StringValue (decodeString string s)
+parseContract s = decodeString contractDecoder s
+
+contractDecoder : Decoder Contract
+contractDecoder = oneOf [
+    stringValueDecoder,
+    intValueDecoder,
+    floatValueDecoder
+  ]
+
+stringValueDecoder : Decoder Contract
+stringValueDecoder = Json.Decode.map StringValue string
+
+intValueDecoder : Decoder Contract
+intValueDecoder = Json.Decode.map IntValue int
+
+floatValueDecoder : Decoder Contract
+floatValueDecoder = Json.Decode.map FloatValue float
