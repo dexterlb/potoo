@@ -1,4 +1,8 @@
 module Contracts exposing (..)
+import Dict exposing (Dict)
+
+import Json.Decode exposing (decodeString, string)
+import Result
 
 type alias Data = Dict String String
 
@@ -22,3 +26,6 @@ type Contract
   }
   | MapContract (Dict String Contract)
   | ListContract (List Contract)
+
+parseContract : String -> Result String Contract
+parseContract s = Result.map StringValue (decodeString string s)

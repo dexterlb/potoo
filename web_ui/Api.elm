@@ -1,7 +1,6 @@
 module Api exposing (..)
 
 import WebSocket
-import Dict exposing (Dict)
 import Json.Encode exposing (encode, string, object, int, list)
 
 import Contracts exposing (..)
