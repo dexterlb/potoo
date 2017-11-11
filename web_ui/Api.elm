@@ -4,26 +4,7 @@ import WebSocket
 import Dict exposing (Dict)
 import Json.Encode exposing (encode, string, object, int, list)
 
-type alias Data = Dict String String
-
-type Type
-  = TInt Int
-  | TFloat Float
-
-type Contract
-  = StringValue String
-  | Delegate {
-    destination : Int,
-    data: Data
-  }
-  | Function {
-    argument: Type,
-    name: String,
-    retval: Type,
-    data: Data
-  }
-  | MapContract (Dict String Contract)
-  | ListContract (List Contract)
+import Contracts exposing (..)
 
 ws : String
 ws = "ws://localhost:4040/ws"
