@@ -26,7 +26,6 @@ suite =
       \f -> Expect.equal 
         (parseContract (Json.Encode.encode 4 (Json.Encode.float (f + 0.42))))
         (Ok (FloatValue (f + 0.42)))
-    , todo "parse list contracts"
     , test "can parse a delegate object" <|
       \_ -> Expect.equal
         (parseContract """
@@ -84,5 +83,25 @@ suite =
                 ("qux", StringValue "bim")
               ]))
             ])
+          ))
+      , test "can parse a nested list contract" <|
+        \_ -> Expect.equal
+          (parseContract """
+            [
+              42,
+              [
+                1337,
+                "bim"
+              ]
+            ]
+          """)
+          (Ok (
+            ListContract [
+              IntValue 42,
+              ListContract [
+                IntValue 1337,
+                StringValue "bim"
+              ]
+            ]
           ))
     ]

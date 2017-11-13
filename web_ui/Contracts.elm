@@ -36,7 +36,9 @@ contractDecoder = oneOf [
     stringValueDecoder,
     intValueDecoder,
     floatValueDecoder,
-    objectDecoder
+    objectDecoder,
+    mapDecoder,
+    listDecoder
   ]
 
 stringValueDecoder : Decoder Contract
@@ -66,6 +68,14 @@ functionDecoder = Json.Decode.map4 makeFunction
   (field "name" string)
   (field "retval" typeDecoder)
   (field "data" dataDecoder)
+
+mapDecoder : Decoder Contract
+mapDecoder = Json.Decode.map MapContract <|
+  dict (Json.Decode.lazy (\_ -> contractDecoder))
+
+listDecoder : Decoder Contract
+listDecoder = Json.Decode.map ListContract <|
+  Json.Decode.list (Json.Decode.lazy (\_ -> contractDecoder))
 
 dataDecoder : Decoder Data
 dataDecoder = dict string
