@@ -7,7 +7,8 @@ import Result
 type alias Data = Dict String String
 
 type Type
-  = TInt Int
+  = TNil
+  | TInt Int
   | TFloat Float
 
 type Contract

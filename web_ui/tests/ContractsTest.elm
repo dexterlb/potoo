@@ -44,5 +44,25 @@ suite =
             ]
           }
         ))
-    , todo "parse function contracts"
+    , test "can parse a function object" <|
+      \_ -> Expect.equal
+        (parseContract """
+          {
+            "__type__": "function",
+            "argument": null,
+            "name": "foo",
+            "retval": null,
+            "data": {"foo": "bar"}
+          }
+        """)
+        (Ok (
+          Function {
+            argument = TNil,
+            name = "foo",
+            retval = TNil,
+            data = Dict.fromList [
+              ("foo", "bar")
+            ]
+          }
+        ))
     ]
