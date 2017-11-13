@@ -1,7 +1,7 @@
 module Contracts exposing (..)
 import Dict exposing (Dict)
 
-import Json.Decode exposing (Decoder, decodeString, string, int, float, oneOf)
+import Json.Decode exposing (Decoder, decodeString, string, int, float, oneOf, andThen, field, fail)
 import Result
 
 type alias Data = Dict String String
@@ -34,7 +34,8 @@ contractDecoder : Decoder Contract
 contractDecoder = oneOf [
     stringValueDecoder,
     intValueDecoder,
-    floatValueDecoder
+    floatValueDecoder,
+    objectDecoder
   ]
 
 stringValueDecoder : Decoder Contract
@@ -45,3 +46,16 @@ intValueDecoder = Json.Decode.map IntValue int
 
 floatValueDecoder : Decoder Contract
 floatValueDecoder = Json.Decode.map FloatValue float
+
+objectDecoder : Decoder Contract
+objectDecoder = field "__type__" string
+  |> andThen (\t -> case t of
+    "delegate" -> delegateDecoder
+    "function" -> functionDecoder
+    _ -> fail <| "object type `" ++ t ++ "' is unknown")
+
+delegateDecoder : Decoder Contract
+delegateDecoder = fail "not implemented"
+
+functionDecoder : Decoder Contract
+functionDecoder = fail "not implemented"
