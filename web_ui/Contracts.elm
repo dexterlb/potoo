@@ -1,7 +1,7 @@
 module Contracts exposing (..)
 import Dict exposing (Dict)
 
-import Json.Decode exposing (Decoder, decodeString, string, int, float, oneOf, andThen, field, fail, dict)
+import Json.Decode exposing (Decoder, decodeString, string, int, float, oneOf, andThen, field, fail, dict, null)
 import Result
 
 type alias Data = Dict String String
@@ -61,7 +61,11 @@ delegateDecoder = Json.Decode.map2 makeDelegate
   (field "data" dataDecoder)
 
 functionDecoder : Decoder Contract
-functionDecoder = fail "not implemented"
+functionDecoder = Json.Decode.map4 makeFunction
+  (field "argument" typeDecoder)
+  (field "name" string)
+  (field "retval" typeDecoder)
+  (field "data" dataDecoder)
 
 dataDecoder : Decoder Data
 dataDecoder = dict string
@@ -71,3 +75,14 @@ makeDelegate destination data = Delegate {
     destination = destination,
     data = data
   }
+
+makeFunction : Type -> String -> Type -> Data -> Contract
+makeFunction argument name retval data = Function {
+    argument = argument,
+    name = name,
+    retval = retval,
+    data = data
+  }
+
+typeDecoder : Decoder Type
+typeDecoder = (null TNil)
