@@ -37,8 +37,8 @@ contractDecoder = oneOf [
     intValueDecoder,
     floatValueDecoder,
     objectDecoder,
-    mapDecoder,
-    listDecoder
+    Json.Decode.lazy (\_ -> mapDecoder),
+    Json.Decode.lazy (\_ -> listDecoder)
   ]
 
 stringValueDecoder : Decoder Contract
