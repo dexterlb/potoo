@@ -48,7 +48,7 @@ update msg {input, messages} =
       (Model input (str :: messages), Cmd.none)
     
     Begin ->
-      (Model "" messages, Api.getContract)
+      (Model "" messages, Api.getContract 0)
 
 
 -- SUBSCRIPTIONS
