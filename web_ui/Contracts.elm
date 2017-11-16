@@ -10,6 +10,7 @@ type Type
   = TNil
   | TInt Int
   | TFloat Float
+  | TUnknown String
 
 type Contract
   = StringValue String
@@ -30,6 +31,9 @@ type Contract
 
 parseContract : String -> Result String Contract
 parseContract s = decodeString contractDecoder s
+
+parseType : String -> Result String Type
+parseType s = decodeString typeDecoder s
 
 contractDecoder : Decoder Contract
 contractDecoder = oneOf [
