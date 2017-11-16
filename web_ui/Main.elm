@@ -4,6 +4,9 @@ import Html.Events exposing (..)
 
 import Api exposing (..)
 
+import Dict exposing (Dict)
+import Contracts exposing (..)
+
 main =
   Html.program
     { init = init
@@ -18,12 +21,13 @@ main =
 type alias Model =
   { input : String
   , messages : List String
+  , contracts: Dict Int Contract
   }
 
 
 init : (Model, Cmd Msg)
 init =
-  (Model "" [], Cmd.none)
+  (Model "" [] Dict.empty, Cmd.none)
 
 
 -- UPDATE
@@ -36,20 +40,30 @@ type Msg
 
 
 update : Msg -> Model -> (Model, Cmd Msg)
-update msg {input, messages} =
-  case msg of
-    Input newInput ->
-      (Model newInput messages, Cmd.none)
+update msg model =
+  let {input, messages, contracts} = model in
+    case msg of
+      Input newInput ->
+        (Model newInput messages contracts, Cmd.none)
 
-    Send ->
-      (Model "" messages, Api.sendRaw input)
+      Send ->
+        (Model "" messages contracts, Api.sendRaw input)
 
-    SocketMessage str ->
-      (Model input (str :: messages), Cmd.none)
-    
-    Begin ->
-      (Model "" messages, Api.getContract 0)
+      SocketMessage str ->
+        case parseResponse str of
+          Ok resp -> handleResponse model resp
+          Err err -> (Model input (err :: messages) contracts, Cmd.none)
+        
+      
+      Begin ->
+        (Model "" messages contracts, Api.getContract 0)
 
+handleResponse : Model -> Response -> (Model, Cmd Msg)
+handleResponse m (GotContract pid contract)  =
+  checkMissing {m | contracts = Dict.insert pid contract m.contracts }
+
+checkMissing : Model -> (Model, Cmd Msg)
+checkMissing m = (m, Cmd.none) -- todo: implement this
 
 -- SUBSCRIPTIONS
 
