@@ -108,8 +108,28 @@ suite =
         ]
       , describe "Parse types"
         [ test "can parse nil type" <|
-          \_ -> Expect.equal
-            (parseType "null")
-            (Ok TNil)
+            \_ -> Expect.equal
+              (parseType "null")
+              (Ok TNil),
+          test "can parse int type" <|
+            \_ -> Expect.equal
+              (parseType "\"int\"")
+              (Ok TInt),
+          test "can parse float type" <|
+            \_ -> Expect.equal
+              (parseType "\"float\"")
+              (Ok TFloat),
+          test "can parse bool type" <|
+            \_ -> Expect.equal
+              (parseType "\"bool\"")
+              (Ok TBool),
+          test "can parse atom type" <|
+            \_ -> Expect.equal
+              (parseType "\"atom\"")
+              (Ok TAtom),
+          test "can parse string type" <|
+            \_ -> Expect.equal
+              (parseType "\"string\"")
+              (Ok TString)
         ]
     ]

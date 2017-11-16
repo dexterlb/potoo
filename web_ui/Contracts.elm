@@ -1,15 +1,20 @@
 module Contracts exposing (..)
 import Dict exposing (Dict)
 
-import Json.Decode exposing (Decoder, decodeString, string, int, float, oneOf, andThen, field, fail, dict, null)
+import Json.Decode exposing (Decoder, decodeString, string, int, float, oneOf, andThen, field, fail, dict, null, succeed)
+import Json.Encode
+
 import Result
 
 type alias Data = Dict String String
 
 type Type
   = TNil
-  | TInt Int
-  | TFloat Float
+  | TInt
+  | TFloat
+  | TAtom
+  | TString
+  | TBool
   | TUnknown String
 
 type Contract
@@ -99,4 +104,26 @@ makeFunction argument name retval data = Function {
   }
 
 typeDecoder : Decoder Type
-typeDecoder = (null TNil)
+typeDecoder = oneOf [
+    tNilDecoder,
+    tSimpleDecoder,
+    tUnknownDecoder
+  ]
+
+tNilDecoder : Decoder Type
+tNilDecoder = (null TNil)
+
+tSimpleDecoder : Decoder Type
+tSimpleDecoder = string
+  |> andThen (\t -> case t of
+    "int" -> succeed TInt
+    "bool" -> succeed TBool
+    "float" -> succeed TFloat
+    "string" -> succeed TString
+    "atom" -> succeed TAtom
+    _ -> fail <| "type `" ++ t ++ "' is not simple")
+
+tUnknownDecoder : Decoder Type
+tUnknownDecoder = Json.Decode.map 
+  (\v -> TUnknown <| Json.Encode.encode 4 v)
+  Json.Decode.value
