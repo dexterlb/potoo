@@ -41,22 +41,20 @@ type Msg
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
-  let {input, messages, contracts} = model in
-    case msg of
-      Input newInput ->
-        (Model newInput messages contracts, Cmd.none)
+  case msg of
+    Input newInput ->
+      ({model | input = newInput}, Cmd.none)
 
-      Send ->
-        (Model "" messages contracts, Api.sendRaw input)
+    Send ->
+      ({model | input = ""}, Api.sendRaw model.input)
 
-      SocketMessage str ->
-        case parseResponse str of
-          Ok resp -> handleResponse model resp
-          Err err -> (Model input (err :: messages) contracts, Cmd.none)
-        
+    SocketMessage str ->
+      case parseResponse str of
+        Ok resp -> handleResponse model resp
+        Err err -> ({model | messages = err :: model.messages}, Cmd.none)
       
-      Begin ->
-        (Model "" messages contracts, Api.getContract 0)
+    Begin ->
+      (model, Api.getContract 0)
 
 handleResponse : Model -> Response -> (Model, Cmd Msg)
 handleResponse m (GotContract pid contract)  =
