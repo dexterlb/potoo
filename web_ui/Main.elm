@@ -5,6 +5,7 @@ import Html.Events exposing (..)
 import Api exposing (..)
 
 import Dict exposing (Dict)
+import Set exposing (Set)
 import Contracts exposing (..)
 
 main =
@@ -22,12 +23,13 @@ type alias Model =
   { input : String
   , messages : List String
   , contracts: Dict Int Contract
+  , fetchingContracts: Set Int
   }
 
 
 init : (Model, Cmd Msg)
 init =
-  (Model "" [] Dict.empty, Cmd.none)
+  (Model "" [] Dict.empty Set.empty, Cmd.none)
 
 
 -- UPDATE
@@ -57,11 +59,30 @@ update msg model =
       (model, Api.getContract 0)
 
 handleResponse : Model -> Response -> (Model, Cmd Msg)
-handleResponse m (GotContract pid contract)  =
-  checkMissing {m | contracts = Dict.insert pid contract m.contracts }
+handleResponse m resp = case resp of
+  (GotContract pid contract)
+    -> checkMissing contract {m | 
+        contracts = Dict.insert pid contract m.contracts,
+        fetchingContracts = Set.remove pid m.fetchingContracts
+      }
 
-checkMissing : Model -> (Model, Cmd Msg)
-checkMissing m = (m, Cmd.none) -- todo: implement this
+checkMissing : Contract -> Model -> (Model, Cmd Msg)
+checkMissing c m = let
+    missing = Set.diff (delegatePids c |> Set.fromList) m.fetchingContracts
+    newModel = {m | fetchingContracts = Set.union m.fetchingContracts missing}
+    command = missing |> Set.toList |> List.map Api.getContract |> Cmd.batch
+  in (newModel, command)
+
+delegatePids : Contract -> List Int
+delegatePids contract = case contract of
+  (MapContract d)
+    -> Dict.values d
+    |> List.concatMap delegatePids
+  (ListContract l)
+    -> l |> List.concatMap delegatePids
+  (Delegate {destination})
+    -> [destination]
+  _ -> []
 
 -- SUBSCRIPTIONS
 
