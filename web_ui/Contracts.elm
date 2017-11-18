@@ -34,6 +34,29 @@ type Contract
   | MapContract (Dict String Contract)
   | ListContract (List Contract)
 
+type VisualContract
+  = VStringValue String
+  | VIntValue Int
+  | VFloatValue Float
+  | VConnectedDelegate {
+    contract: VisualContract,
+    destination: Int,
+    data: Data
+  }
+  | VBrokenDelegate {
+    destination: Int,
+    data: Data
+  }
+  | VFunction {
+    argument: Type,
+    name: String,
+    retval: Type,
+    data: Data,
+    pid: Int
+  }
+  | VMapContract (Dict String VisualContract)
+  | VListContract (List VisualContract)
+
 parseContract : String -> Result String Contract
 parseContract s = decodeString contractDecoder s
 
@@ -127,3 +150,42 @@ tUnknownDecoder : Decoder Type
 tUnknownDecoder = Json.Decode.map 
   (\v -> TUnknown <| Json.Encode.encode 4 v)
   Json.Decode.value
+
+toVisual : Int -> Dict Int Contract -> VisualContract
+toVisual pid contracts = case Dict.get pid contracts of
+  (Just contract) -> toVisual_ contract pid contracts
+  Nothing -> VBrokenDelegate {
+      destination = pid,
+      data = Dict.fromList []
+    }
+
+toVisual_ : Contract -> Int -> Dict Int Contract -> VisualContract
+toVisual_ c pid contracts = case c of 
+  StringValue s -> VStringValue s
+  IntValue i -> VIntValue i
+  FloatValue f -> VFloatValue f
+  Function {argument, name, retval, data}
+    -> VFunction {
+        argument = argument,
+        name = name,
+        retval = retval,
+        data = data,
+        pid = pid
+      }
+  Delegate {destination, data}
+    -> case Dict.get destination contracts of
+      (Just contract) -> VConnectedDelegate {
+        contract = toVisual_ contract destination contracts,
+        data = data,
+        destination = destination
+      }
+      Nothing -> VBrokenDelegate {
+        data = data,
+        destination = destination
+      }
+  MapContract d
+    -> Dict.map (\_ contract -> toVisual_ contract pid contracts) d
+      |> VMapContract
+  ListContract l
+    -> List.map (\contract -> toVisual_ contract pid contracts) l
+      |> VListContract
