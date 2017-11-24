@@ -189,3 +189,6 @@ toVisual_ c pid contracts = case c of
   ListContract l
     -> List.map (\contract -> toVisual_ contract pid contracts) l
       |> VListContract
+
+inspectType : Type -> String
+inspectType t = toString t
