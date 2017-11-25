@@ -1,17 +1,22 @@
-import Html exposing (..)
-import Html.Attributes exposing (..)
-import Html.Events exposing (..)
+import Css exposing (..)
+import Html
+import Html.Styled exposing (..)
+import Html.Styled.Attributes exposing (css, href, src, styled, class, title)
+import Html.Styled.Events exposing (onClick, onInput)
 
 import Api exposing (..)
 
 import Dict exposing (Dict)
 import Set exposing (Set)
+
+
 import Contracts exposing (..)
+import Styles
 
 main =
   Html.program
     { init = init
-    , view = view
+    , view = view >> toUnstyled
     , update = update
     , subscriptions = subscriptions
     }
@@ -94,49 +99,51 @@ subscriptions model =
 -- VIEW
 
 renderContract : VisualContract -> Html Msg
-renderContract vc = case vc of
-  VStringValue s -> div [class "string_value"] 
+renderContract vc = div [ Styles.contract ] [ renderContractContent vc ]
+
+renderContractContent : VisualContract -> Html Msg
+renderContractContent vc = case vc of
+  VStringValue s -> div [ Styles.stringValue ] 
     [text s]
-  VIntValue i -> div [class "int_value"]
+  VIntValue i -> div [ Styles.intValue ]
     [text <| toString i]
-  VFloatValue f -> div [class "float_value"]
+  VFloatValue f -> div [ Styles.floatValue ]
     [text <| toString f]
-  VFunction {argument, name, retval, data, pid} -> div [class "function", title ("name: " ++ name ++ ", pid: " ++ (toString pid))]
-    [ div [class "argument_type"]
+  VFunction {argument, name, retval, data, pid} -> div [Styles.function, title ("name: " ++ name ++ ", pid: " ++ (toString pid))]
+    [ div [ Styles.functionArgumentType ]
         [ text <| inspectType argument ]
-    , div [class "retval_type"]
+    , div [ Styles.functionRetvalType ]
         [ text <| inspectType retval]
     , renderData data
     ]
-  VConnectedDelegate {contract, data, destination} -> div [class "connected_delegate"]
-    [ div [class "descriptor", title ("destination: " ++ (toString destination))]
+  VConnectedDelegate {contract, data, destination} -> div [ Styles.connectedDelegate ]
+    [ div [ Styles.delegateDescriptor, title ("destination: " ++ (toString destination))]
         [ renderData data ]
-    , div [class "subcontract"]
+    , div [ Styles.delegateSubContract ]
         [ renderContract contract]
     ]
-  VBrokenDelegate {data, destination} -> div [class "broken_delegate"]
-    [ div [class "descriptor", title ("destination: " ++ (toString destination))]
+  VBrokenDelegate {data, destination} -> div [ Styles.brokenDelegate ]
+    [ div [ Styles.delegateDescriptor, title ("destination: " ++ (toString destination))]
         [ renderData data ]
     ]
-  VMapContract d -> div [class "map_contract"] (
+  VMapContract d -> div [ Styles.mapContract ] (
     Dict.toList d |> List.map (
-      \(name, contract) -> div [class "item"]
-        [ div [class "name"] [ text name ]
-        , div [class "contract"] [ renderContract contract ]
+      \(name, contract) -> div [ Styles.mapContractItem ]
+        [ div [Styles.mapContractName] [ text name ]
+        , renderContractContent contract
         ]
     ))
-  VListContract l -> div [class "list_contract"] (
+  VListContract l -> div [ Styles.listContract ] (
     l |> List.map (
-      \contract -> div [class "contract"]
-        [ renderContract contract ]
+      \contract -> renderContractContent contract
     ))
 
 renderData : Data -> Html Msg
-renderData d = div [class "data"] (
+renderData d = div [ Styles.dataBlock ] (
     Dict.toList d |> List.map (
-      \(name, value) -> div [class "data_item"]
-        [ div [class "name"] [ text name ]
-        , div [class "value"] [ text value ]
+      \(name, value) -> div [ Styles.dataItem ]
+        [ div [ Styles.dataName ] [ text name ]
+        , div [ Styles.dataValue ] [ text value ]
         ]
     ))
 
@@ -149,9 +156,7 @@ view model =
         , input [onInput Input] []
         , button [onClick Send] [text "Send"]
         ]
-    , div [class "contract"]
-      [ renderContract <| toVisual 0 model.contracts
-      ]
+    , renderContract <| toVisual 0 model.contracts
     ]
 
 
