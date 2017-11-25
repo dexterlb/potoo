@@ -110,26 +110,103 @@ suite =
         [ test "can parse nil type" <|
             \_ -> Expect.equal
               (parseType "null")
-              (Ok TNil),
-          test "can parse int type" <|
+              (Ok TNil)
+        , test "can parse int type" <|
             \_ -> Expect.equal
               (parseType "\"int\"")
-              (Ok TInt),
-          test "can parse float type" <|
+              (Ok TInt)
+        , test "can parse float type" <|
             \_ -> Expect.equal
               (parseType "\"float\"")
-              (Ok TFloat),
-          test "can parse bool type" <|
+              (Ok TFloat)
+        , test "can parse bool type" <|
             \_ -> Expect.equal
               (parseType "\"bool\"")
-              (Ok TBool),
-          test "can parse atom type" <|
+              (Ok TBool)
+        , test "can parse atom type" <|
             \_ -> Expect.equal
               (parseType "\"atom\"")
-              (Ok TAtom),
-          test "can parse string type" <|
+              (Ok TAtom)
+        , test "can parse string type" <|
             \_ -> Expect.equal
               (parseType "\"string\"")
               (Ok TString)
+        , test "can parse string literal type" <|
+            \_ -> Expect.equal
+              (parseType """
+                ["literal", "foo"]
+              """)
+              (Ok <| TLiteral "\"foo\"")
+        , test "can parse JSON literal type" <|
+            -- need something more elaborate here, but cba
+            \_ -> Expect.equal
+              (parseType """
+                ["literal", {"foo": 42, "bar": "baz"}]
+              """)
+              (Ok <| TLiteral "{\"foo\": 42, \"bar\": \"baz\"}")
+        , test "can parse delegate type" <|
+            \_ -> Expect.equal
+              (parseType "\"delegate\"")
+              (Ok TDelegate)
+        , test "can parse tagged type" <|
+            \_ -> Expect.equal
+              (parseType """
+                ["type", "int", {"foo": "bar"}]
+              """)
+              (Ok <| TType TInt <| Dict.fromList [("foo", "bar")])
+        , test "can parse channel of ints" <|
+            \_ -> Expect.equal
+              (parseType """
+                ["channel", "int"]
+              """)
+              (Ok <| TChannel TInt)
+        , test "can parse union of simple types" <|
+            \_ -> Expect.equal
+              (parseType """
+                ["union", "int", "float"]
+              """)
+              (Ok <| TUnion TInt TFloat)
+        , test "can parse nested union" <|
+            \_ -> Expect.equal
+              (parseType """
+                ["union", ["union", "int", "string"], "float"]
+              """)
+              (Ok <| TUnion (TUnion TInt TString) TFloat)
+        , test "can parse list of strings" <|
+            \_ -> Expect.equal
+              (parseType """
+                ["list", "string"]
+              """)
+              (Ok <| TList TString)
+        , test "can parse nested list" <|
+            \_ -> Expect.equal
+              (parseType """
+                ["list", ["list" "int"]]
+              """)
+              (Ok <| TList (TList TInt))
+        , test "can parse map string -> int" <|
+            \_ -> Expect.equal
+              (parseType """
+                ["map", "string", "int"]
+              """)
+              (Ok <| TMap TString TInt)
+        , test "can parse nested map" <|
+            \_ -> Expect.equal
+              (parseType """
+                ["map", "string", ["map" "string" "int"]]
+              """)
+              (Ok <| TMap TString (TMap TString TInt))
+        , test "can parse tuple" <|
+            \_ -> Expect.equal
+              (parseType """
+                ["struct", ["int", "string"]]
+              """)
+              (Ok <| TTuple [TInt, TString])
+        , test "can parse struct" <|
+            \_ -> Expect.equal
+              (parseType """
+                ["struct", {"foo": "int", "bar": "string"}]
+              """)
+              (Ok <| TStruct <| Dict.fromList [("foo", TInt), ("bar", TString)])
         ]
     ]

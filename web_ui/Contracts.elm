@@ -15,6 +15,15 @@ type Type
   | TAtom
   | TString
   | TBool
+  | TLiteral String
+  | TType Type Data
+  | TDelegate
+  | TChannel Type
+  | TUnion Type Type
+  | TList Type
+  | TMap Type Type
+  | TTuple (List Type)
+  | TStruct (Dict String Type)
   | TUnknown String
 
 type Contract
