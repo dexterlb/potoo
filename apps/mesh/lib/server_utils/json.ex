@@ -10,6 +10,7 @@ defmodule Mesh.ServerUtils.Json do
       "data" => data
     }
   end
+  def jsonify(nil, _), do: nil
   def jsonify(%Mesh.Contract.Delegate{destination: destination, data: data}, pc) do
     %{
       "__type__" => "delegate",
