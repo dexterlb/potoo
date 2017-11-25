@@ -181,7 +181,7 @@ suite =
         , test "can parse nested list" <|
             \_ -> Expect.equal
               (parseType """
-                ["list", ["list" "int"]]
+                ["list", ["list", "int"]]
               """)
               (Ok <| TList (TList TInt))
         , test "can parse map string -> int" <|
@@ -193,7 +193,7 @@ suite =
         , test "can parse nested map" <|
             \_ -> Expect.equal
               (parseType """
-                ["map", "string", ["map" "string" "int"]]
+                ["map", "string", ["map", "string", "int"]]
               """)
               (Ok <| TMap TString (TMap TString TInt))
         , test "can parse tuple" <|

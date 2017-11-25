@@ -137,9 +137,15 @@ makeFunction argument name retval data = Function {
 
 typeDecoder : Decoder Type
 typeDecoder = oneOf [
+    recursiveTypeDecoder,
+    tUnknownDecoder
+  ]
+
+recursiveTypeDecoder : Decoder Type
+recursiveTypeDecoder = Json.Decode.lazy <| \_ -> oneOf [
     tNilDecoder,
     tSimpleDecoder,
-    tUnknownDecoder
+    Json.Decode.lazy <| \_ -> tComplexDecoder
   ]
 
 tNilDecoder : Decoder Type
@@ -153,7 +159,37 @@ tSimpleDecoder = string
     "float" -> succeed TFloat
     "string" -> succeed TString
     "atom" -> succeed TAtom
-    _ -> fail <| "type `" ++ t ++ "' is not simple")
+    "delegate" -> succeed TDelegate
+    _ -> fail <| "type '" ++ t ++ "' is not simple")
+
+tComplexDecoder : Decoder Type
+tComplexDecoder = Json.Decode.index 0 string
+  |> andThen (\t -> case t of
+    "struct"  -> oneOf [tStructDecoder, tTupleDecoder]
+    "map"     -> tBinaryDecoder TMap
+    "list"    -> tUnaryDecoder  TList
+    "union"   -> tBinaryDecoder TUnion
+    "channel" -> tUnaryDecoder  TChannel
+    _ -> fail <| "complex type '" ++ t ++ "' is unknown"
+  )
+
+tStructDecoder : Decoder Type
+tStructDecoder = Json.Decode.index 1 <| Json.Decode.map TStruct <|
+  Json.Decode.dict recursiveTypeDecoder
+
+tTupleDecoder : Decoder Type
+tTupleDecoder = Json.Decode.index 1 <| Json.Decode.map TTuple <|
+  Json.Decode.list recursiveTypeDecoder
+
+tUnaryDecoder : (Type -> Type) -> Decoder Type
+tUnaryDecoder f = Json.Decode.map f
+  (Json.Decode.index 1 recursiveTypeDecoder)
+
+tBinaryDecoder : (Type -> Type -> Type) -> Decoder Type
+tBinaryDecoder f = Json.Decode.map2 f
+  (Json.Decode.index 1 recursiveTypeDecoder)
+  (Json.Decode.index 2 recursiveTypeDecoder)
+
 
 tUnknownDecoder : Decoder Type
 tUnknownDecoder = Json.Decode.map 
