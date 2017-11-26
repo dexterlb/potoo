@@ -1,5 +1,6 @@
 defmodule Mesh.Registry do
   use GenServer
+  require Logger
 
   def start_link(static_data, opts \\ []) do
     GenServer.start_link(__MODULE__, static_data, opts)
@@ -24,12 +25,20 @@ defmodule Mesh.Registry do
   def handle_call({"register", %{"name" => name, "delegate" => delegate}}, _from, {static_data, services, contract_channel}) do
     remote_monitor(delegate.destination, name)
 
+    Logger.debug fn ->
+      "registering #{name} (#{inspect(delegate.destination)}) to registry #{inspect(self())}"
+    end
+
     new_state = {static_data, register(services, name, delegate), contract_channel}
     Mesh.Channel.send_lazy(contract_channel, fn -> contract(new_state) end)
     {:reply, :ok, new_state}
   end
 
   def handle_call({"deregister", %{"name" => name}}, _from, {static_data, services, contract_channel}) do
+    Logger.debug fn ->
+      "unregistering #{name} from registry #{inspect(self())}"
+    end
+
     new_state = {static_data, deregister(services, name), contract_channel}
     Mesh.Channel.send_lazy(contract_channel, fn -> contract(new_state) end)
     {:reply, :ok, new_state}

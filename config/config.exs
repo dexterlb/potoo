@@ -17,4 +17,8 @@ import_config "../apps/*/config/config.exs"
 #       metadata: [:user_id]
 
 config :ui,
-  root_target: {:global, :global_registry}
+  root_target: {:global_registry, :reg@localhost}
+
+config :fidget,
+  registry_node: :reg@localhost,
+  registry: {:global_registry, :reg@localhost}
