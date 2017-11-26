@@ -170,6 +170,8 @@ tComplexDecoder = Json.Decode.index 0 string
     "list"    -> tUnaryDecoder  TList
     "union"   -> tBinaryDecoder TUnion
     "channel" -> tUnaryDecoder  TChannel
+    "type"    -> tTaggedTypeDecoder
+    "literal" -> tLiteralDecoder
     _ -> fail <| "complex type '" ++ t ++ "' is unknown"
   )
 
@@ -189,6 +191,17 @@ tBinaryDecoder : (Type -> Type -> Type) -> Decoder Type
 tBinaryDecoder f = Json.Decode.map2 f
   (Json.Decode.index 1 recursiveTypeDecoder)
   (Json.Decode.index 2 recursiveTypeDecoder)
+
+tTaggedTypeDecoder : Decoder Type
+tTaggedTypeDecoder = Json.Decode.map2 TType
+  (Json.Decode.index 1 recursiveTypeDecoder)
+  (Json.Decode.index 2 dataDecoder)
+
+tLiteralDecoder : Decoder Type
+tLiteralDecoder = Json.Decode.map TLiteral
+  (Json.Decode.index 1 <|
+    Json.Decode.map (\v -> Json.Encode.encode 0 v) Json.Decode.value
+  )
 
 
 tUnknownDecoder : Decoder Type

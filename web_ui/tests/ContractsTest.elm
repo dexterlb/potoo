@@ -143,7 +143,7 @@ suite =
               (parseType """
                 ["literal", {"foo": 42, "bar": "baz"}]
               """)
-              (Ok <| TLiteral "{\"foo\": 42, \"bar\": \"baz\"}")
+              (Ok <| TLiteral "{\"foo\":42,\"bar\":\"baz\"}")
         , test "can parse delegate type" <|
             \_ -> Expect.equal
               (parseType "\"delegate\"")
