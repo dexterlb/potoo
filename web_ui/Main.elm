@@ -8,6 +8,8 @@ import Api exposing (..)
 
 import Dict exposing (Dict)
 import Set exposing (Set)
+import Json.Encode
+import Json.Decode
 
 
 import Contracts exposing (..)
@@ -29,12 +31,15 @@ type alias Model =
   , messages : List String
   , contracts: Dict Int Contract
   , fetchingContracts: Set Int
+  , toCall : Maybe VisualContract
+  , callToken : Maybe String
+  , callArgument : Maybe Json.Encode.Value
   }
 
 
 init : (Model, Cmd Msg)
 init =
-  (Model "" [] Dict.empty Set.empty, Cmd.none)
+  (Model "" [] Dict.empty Set.empty Nothing Nothing Nothing, Cmd.none)
 
 
 -- UPDATE
@@ -44,6 +49,10 @@ type Msg
   | Send
   | SocketMessage String
   | Begin
+  | AskCall VisualContract
+  | CallArgumentInput String
+  | PerformCall { pid: Int, name: String, argument: Json.Encode.Value }
+  | CancelCall
 
 
 update : Msg -> Model -> (Model, Cmd Msg)
@@ -59,7 +68,19 @@ update msg model =
       case parseResponse str of
         Ok resp -> handleResponse model resp
         Err err -> ({model | messages = err :: model.messages}, Cmd.none)
-      
+    
+    AskCall f -> ({model | toCall = Just f}, Cmd.none)
+
+    CallArgumentInput input -> ({model | callArgument = checkCallInput input}, Cmd.none)
+
+    PerformCall _ -> ({model | callToken = Just "foo"}, Cmd.none)
+
+    CancelCall -> ({ model |
+        toCall = Nothing,
+        callToken = Nothing,
+        callArgument = Nothing
+      }, Cmd.none)
+
     Begin ->
       (model, Api.getContract 0)
 
@@ -89,6 +110,12 @@ delegatePids contract = case contract of
     -> [destination]
   _ -> []
 
+checkCallInput : String -> Maybe Json.Encode.Value
+checkCallInput s = case Json.Decode.decodeString Json.Decode.value s of
+  Ok v -> Just v
+  _    -> Nothing
+
+
 -- SUBSCRIPTIONS
 
 subscriptions : Model -> Sub Msg
@@ -114,6 +141,7 @@ renderContractContent vc = case vc of
         [ text <| inspectType argument ]
     , div [ Styles.functionRetvalType ]
         [ text <| inspectType retval]
+    , button [ Styles.functionCallButton, onClick (AskCall vc) ] [ text "call" ]
     , renderData data
     ]
   VConnectedDelegate {contract, data, destination} -> div [ Styles.connectedDelegate ]
@@ -147,6 +175,31 @@ renderData d = div [ Styles.dataBlock ] (
         ]
     ))
 
+renderAskCallWindow : Maybe VisualContract -> Maybe Json.Encode.Value -> Maybe String -> Html Msg
+renderAskCallWindow mf callArgument callToken = case mf of
+  Just (VFunction {argument, name, retval, data, pid}) ->
+    div [Styles.callWindow]
+      [ button [onClick CancelCall, Styles.callCancel] [text "cancel"]
+      , div [Styles.callFunctionName]         [text name]
+      , div [Styles.callFunctionArgumentType] [text <| inspectType argument]
+      , div [Styles.callFunctionRetvalType]   [text <| inspectType retval]
+      , case callArgument of
+          Nothing -> div [Styles.callFunctionEntry]
+            [ input [onInput CallArgumentInput] []
+            ]
+          Just jsonArg -> case callToken of
+            Nothing -> div [Styles.callFunctionEntry]
+              [ input [onInput CallArgumentInput] []
+              , button [onClick (PerformCall {pid = pid, name = name, argument = jsonArg})] [text "call"]
+              ]
+            Just _ -> div []
+              [ div [Styles.callFunctionInput] [text <| Json.Encode.encode 0 jsonArg]
+              ]
+      ]
+
+  _ -> div [] []
+
+
 view : Model -> Html Msg
 view model =
   div []
@@ -157,6 +210,7 @@ view model =
         , button [onClick Send] [text "Send"]
         ]
     , renderContract <| toVisual 0 model.contracts
+    , renderAskCallWindow model.toCall model.callArgument model.callToken
     ]
 
 

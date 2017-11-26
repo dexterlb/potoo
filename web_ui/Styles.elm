@@ -39,6 +39,10 @@ functionRetvalType = css
   [ display inline
   ]
 
+functionCallButton = css
+  [
+  ]
+
 connectedDelegate = css
   [
   ]
@@ -81,4 +85,32 @@ dataName = css
 
 dataValue = css
   [ display inline
+  ]
+
+callWindow = css
+  [
+  ]
+
+callFunctionName = css
+  [
+  ]
+
+callFunctionArgumentType = css
+  [
+  ]
+
+callFunctionRetvalType = css
+  [
+  ]
+
+callFunctionEntry = css
+  [
+  ]
+
+callFunctionInput = css
+  [
+  ]
+
+callCancel = css
+  [
   ]
