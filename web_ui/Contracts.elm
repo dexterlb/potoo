@@ -249,4 +249,37 @@ toVisual_ c pid contracts = case c of
       |> VListContract
 
 inspectType : Type -> String
-inspectType t = toString t
+inspectType t = case t of
+  TStruct d -> d 
+    |> Dict.toList 
+    |> List.map (\(k, v) -> k ++ ": " ++ (inspectType v))
+    |> String.join ", "
+    |> (\s -> "{ " ++ s ++ " }")
+  TTuple l -> l
+    |> List.map inspectType
+    |> String.join(", ")
+    |> (\s -> "( " ++ s ++ " )")
+
+  TUnion a b -> "(" ++ (inspectType a) ++ " | " ++ (inspectType b) ++ ")"
+  TType t d -> (inspectType t) ++ inspectData d
+  TLiteral json -> json
+  TChannel t -> "channel[" ++ (inspectType t) ++ "]"
+  TList t -> "list[" ++ (inspectType t) ++ "]"
+  TMap k v -> "map[" ++ (inspectType k) ++ " → " ++ (inspectType v) ++ "]"
+
+  TInt -> "int"
+  TFloat -> "float"
+  TString -> "string"
+  TBool -> "bool"
+  TAtom -> "atom"
+  TDelegate -> "delegate"
+  TNil -> "nil"
+
+  _ -> toString t
+
+inspectData : Data -> String
+inspectData d = d
+  |> Dict.toList
+  |> List.map (\(k, v) -> k ++ ": " ++ v)
+  |> String.join ", "
+  |> (\s -> "<" ++ s ++ ">")
