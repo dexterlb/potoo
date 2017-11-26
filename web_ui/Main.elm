@@ -51,6 +51,7 @@ init =
 type Msg
   = SocketMessage String
   | AskCall VisualContract
+  | AskInstantCall VisualContract
   | CallArgumentInput String
   | PerformCall { pid: Int, name: String, argument: Json.Encode.Value }
   | PerformCallWithToken { pid: Int, name: String, argument: Json.Encode.Value } String
@@ -67,13 +68,12 @@ update msg model =
     
     AskCall f -> ({model | toCall = Just f, callToken = Nothing, callArgument = Nothing, callResult = Nothing}, Cmd.none)
 
+    AskInstantCall f -> ({model | toCall = Just f, callArgument = Just Json.Encode.null}, instantCall f)
+
     CallArgumentInput input -> ({model | callArgument = checkCallInput input}, Cmd.none)
 
-    PerformCall data -> (model, 
-        Random.generate 
-          (PerformCallWithToken data)
-          (Random.String.string 64 Random.Char.english)
-      )
+    PerformCall data -> (model, performCall data)
+
     PerformCallWithToken data token -> ({model | callToken = Just token}, Api.unsafeCall data token)
 
     CancelCall -> ({ model |
@@ -82,6 +82,17 @@ update msg model =
         callArgument = Nothing,
         callResult = Nothing
       }, Cmd.none)
+
+instantCall : VisualContract -> Cmd Msg
+instantCall vc = case vc of
+  (VFunction {argument, name, retval, data, pid}) ->
+    performCall {pid = pid, name = name, argument = Json.Encode.null}
+  _ -> Cmd.none
+
+performCall : {pid: Int, name: String, argument: Json.Encode.Value} -> Cmd Msg
+performCall data = Random.generate 
+  (PerformCallWithToken data)
+  (Random.String.string 64 Random.Char.english)
 
 handleResponse : Model -> Response -> (Model, Cmd Msg)
 handleResponse m resp = case resp of
@@ -145,7 +156,9 @@ renderContractContent vc = case vc of
         [ text <| inspectType argument ]
     , div [ Styles.functionRetvalType ]
         [ text <| inspectType retval]
-    , button [ Styles.functionCallButton, onClick (AskCall vc) ] [ text "call" ]
+    , case argument of
+        TNil -> button [ Styles.instantCallButton, onClick (AskInstantCall vc) ] [ text "instant call" ]
+        _ -> button [ Styles.functionCallButton, onClick (AskCall vc) ] [ text "call" ]
     , renderData data
     ]
   VConnectedDelegate {contract, data, destination} -> div [ Styles.connectedDelegate ]

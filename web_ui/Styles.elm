@@ -43,6 +43,10 @@ functionCallButton = css
   [
   ]
 
+instantCallButton = css
+  [
+  ]
+
 connectedDelegate = css
   [
   ]
