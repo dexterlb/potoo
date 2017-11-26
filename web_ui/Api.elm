@@ -25,6 +25,20 @@ getContract n =
     ]
   ))
 
+unsafeCall : { pid: Int, name: String, argument: Json.Encode.Value } -> String -> Cmd msg
+unsafeCall {pid, name, argument} tokenString =
+  sendRaw (encode 4 (
+    list [
+      string "unsafe_call",
+      object [
+          ("pid", int pid),
+          ("function_name", string name),
+          ("argument", argument)
+        ],
+      object [("msg", string "unsafe_call_result"), ("token_string", string tokenString)]
+    ]
+  ))
+
 parseResponse : String -> Result String Response
 parseResponse s = JD.decodeString responseDecoder s
 
@@ -33,18 +47,22 @@ responseDecoder = JD.index 1 tokenDecoder
   |> JD.andThen (responseByTokenDecoder >> JD.index 0)
 
 responseByTokenDecoder : Token -> Decoder Response
-responseByTokenDecoder (GotContractToken pid)
-  = JD.map (GotContract pid) contractDecoder
+responseByTokenDecoder t = case t of
+  GotContractToken pid -> JD.map (GotContract pid) contractDecoder
+  UnsafeCallResultToken tokenString -> JD.map (UnsafeCallResult tokenString) JD.value
 
 tokenDecoder : Decoder Token
 tokenDecoder = JD.field "msg" JD.string
   |> JD.andThen (\m -> case m of
     "got_contract" -> JD.map GotContractToken <| JD.field "pid" JD.int
+    "unsafe_call_result" -> JD.map UnsafeCallResultToken <| JD.field "token_string" JD.string
     other -> JD.fail <| "unknown token: " ++ other
   )
 
 type Token
   = GotContractToken Int
+  | UnsafeCallResultToken String
 
 type Response
   = GotContract Int Contract
+  | UnsafeCallResult String Json.Encode.Value

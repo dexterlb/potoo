@@ -10,6 +10,9 @@ import Dict exposing (Dict)
 import Set exposing (Set)
 import Json.Encode
 import Json.Decode
+import Random
+import Random.String
+import Random.Char
 
 
 import Contracts exposing (..)
@@ -34,12 +37,13 @@ type alias Model =
   , toCall : Maybe VisualContract
   , callToken : Maybe String
   , callArgument : Maybe Json.Encode.Value
+  , callResult : Maybe Json.Encode.Value
   }
 
 
 init : (Model, Cmd Msg)
 init =
-  (Model "" [] Dict.empty Set.empty Nothing Nothing Nothing, Cmd.none)
+  (Model "" [] Dict.empty Set.empty Nothing Nothing Nothing Nothing, Cmd.none)
 
 
 -- UPDATE
@@ -52,6 +56,7 @@ type Msg
   | AskCall VisualContract
   | CallArgumentInput String
   | PerformCall { pid: Int, name: String, argument: Json.Encode.Value }
+  | PerformCallWithToken { pid: Int, name: String, argument: Json.Encode.Value } String
   | CancelCall
 
 
@@ -69,16 +74,22 @@ update msg model =
         Ok resp -> handleResponse model resp
         Err err -> ({model | messages = err :: model.messages}, Cmd.none)
     
-    AskCall f -> ({model | toCall = Just f}, Cmd.none)
+    AskCall f -> ({model | toCall = Just f, callToken = Nothing, callArgument = Nothing, callResult = Nothing}, Cmd.none)
 
     CallArgumentInput input -> ({model | callArgument = checkCallInput input}, Cmd.none)
 
-    PerformCall _ -> ({model | callToken = Just "foo"}, Cmd.none)
+    PerformCall data -> (model, 
+        Random.generate 
+          (PerformCallWithToken data)
+          (Random.String.string 64 Random.Char.english)
+      )
+    PerformCallWithToken data token -> ({model | callToken = Just token}, Api.unsafeCall data token)
 
     CancelCall -> ({ model |
         toCall = Nothing,
         callToken = Nothing,
-        callArgument = Nothing
+        callArgument = Nothing,
+        callResult = Nothing
       }, Cmd.none)
 
     Begin ->
@@ -86,11 +97,16 @@ update msg model =
 
 handleResponse : Model -> Response -> (Model, Cmd Msg)
 handleResponse m resp = case resp of
-  (GotContract pid contract)
+  GotContract pid contract
     -> checkMissing contract {m | 
         contracts = Dict.insert pid contract m.contracts,
         fetchingContracts = Set.remove pid m.fetchingContracts
       }
+  UnsafeCallResult token value
+    -> case m.callToken of
+      Just actualToken -> case token of
+        actualToken -> ({m | callResult = Just value}, Cmd.none)
+      _ -> (m, Cmd.none)
 
 checkMissing : Contract -> Model -> (Model, Cmd Msg)
 checkMissing c m = let
@@ -175,8 +191,8 @@ renderData d = div [ Styles.dataBlock ] (
         ]
     ))
 
-renderAskCallWindow : Maybe VisualContract -> Maybe Json.Encode.Value -> Maybe String -> Html Msg
-renderAskCallWindow mf callArgument callToken = case mf of
+renderAskCallWindow : Maybe VisualContract -> Maybe Json.Encode.Value -> Maybe String -> Maybe Json.Encode.Value -> Html Msg
+renderAskCallWindow mf callArgument callToken callResult = case mf of
   Just (VFunction {argument, name, retval, data, pid}) ->
     div [Styles.callWindow]
       [ button [onClick CancelCall, Styles.callCancel] [text "cancel"]
@@ -190,10 +206,15 @@ renderAskCallWindow mf callArgument callToken = case mf of
           Just jsonArg -> case callToken of
             Nothing -> div [Styles.callFunctionEntry]
               [ input [onInput CallArgumentInput] []
-              , button [onClick (PerformCall {pid = pid, name = name, argument = jsonArg})] [text "call"]
+              , button
+                  [ onClick (PerformCall {pid = pid, name = name, argument = jsonArg})
+                  ] [text "call"]
               ]
             Just _ -> div []
               [ div [Styles.callFunctionInput] [text <| Json.Encode.encode 0 jsonArg]
+              , case callResult of
+                  Nothing -> div [Styles.callFunctionOutputWaiting] []
+                  Just data -> div [Styles.callFunctionOutput] [text <| Json.Encode.encode 0 data]
               ]
       ]
 
@@ -210,7 +231,7 @@ view model =
         , button [onClick Send] [text "Send"]
         ]
     , renderContract <| toVisual 0 model.contracts
-    , renderAskCallWindow model.toCall model.callArgument model.callToken
+    , renderAskCallWindow model.toCall model.callArgument model.callToken model.callResult
     ]
 
 

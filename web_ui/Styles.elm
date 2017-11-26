@@ -114,3 +114,11 @@ callFunctionInput = css
 callCancel = css
   [
   ]
+
+callFunctionOutputWaiting = css
+  [
+  ]
+
+callFunctionOutput = css
+  [
+  ]
