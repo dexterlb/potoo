@@ -45,6 +45,20 @@ defmodule Ui.Api do
     end
   end
 
+  def subscribe_contract(empty) when empty == %{} do
+    subscribe_contract(%{"pid" => 0})
+  end
+
+  def subscribe_contract(%{"pid" => pid_id}) when is_integer(pid_id) do
+    case PidCache.get(PidCache, {:delegate, pid_id}) do
+      nil -> %{"error" => "no such pid: #{pid_id}"}
+      pid -> pid
+        |> Mesh.subscribe_contract
+        |> jsonify
+    end
+  end
+
+
   def jsonify(data) do
     Json.jsonify(data, PidCache)
   end
