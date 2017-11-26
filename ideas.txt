@@ -46,6 +46,5 @@ end
 
 - todo:
     - unit tests for server_utils
-    - persistent register, which monitors the state of the registry and re-registers if needed (or sends a message when it goes down)
     - tcp client api
     - function cache, so API clients can execute functions with casts

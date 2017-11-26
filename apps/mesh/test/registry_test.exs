@@ -27,6 +27,14 @@ defmodule RegistryTest do
       {:reply, @contract, state}
     end
 
+    def handle_call(:die, _from, state) do
+      {:stop, :normal, state}
+    end
+
+    def handle_call(:crash, _from, state) do
+      {:reply, "Stare into the abyss: #{1/(fn -> 0 end).()}", state}
+    end
+
     def handle_call({"methods.hello", %{"item" => item}}, _, state) do
       {:reply, "Hello, #{item}!", state}
     end
@@ -124,5 +132,72 @@ defmodule RegistryTest do
         ["services", "hello_service", "methods", "hello"],
         %{"item" => "bar"}
       ) == "Hello, bar!"
+  end
+
+  test "can deregister" do
+    {:ok, registry} = Mesh.Registry.start_link(%{})
+
+    {:ok, hello} = GenServer.start_link(RegistryTest.Hello, nil)
+
+    :ok = Mesh.direct_call(registry, ["register"], %{
+        "name" => "hello_service", 
+        "delegate" => %Mesh.Contract.Delegate{destination: hello}
+    })
+
+    :ok = Mesh.direct_call(registry, ["deregister"], %{
+        "name" => "hello_service",
+    })
+
+    registry_contract = Mesh.get_contract(registry)
+
+    assert registry_contract != nil
+
+    hello_contract = Kernel.get_in(registry_contract, ["services", "hello_service"])
+
+    assert hello_contract == nil
+  end
+
+  test "service gets deregistered when it stops" do
+    {:ok, registry} = Mesh.Registry.start_link(%{})
+
+    {:ok, hello} = GenServer.start(RegistryTest.Hello, nil)
+
+    :ok = Mesh.direct_call(registry, ["register"], %{
+        "name" => "hello_service", 
+        "delegate" => %Mesh.Contract.Delegate{destination: hello}
+    })
+
+    assert catch_exit(GenServer.call(hello, :die)) != nil
+    :timer.sleep(20)
+
+    registry_contract = Mesh.get_contract(registry)
+
+    assert registry_contract != nil
+
+    hello_contract = Kernel.get_in(registry_contract, ["services", "hello_service"])
+
+    assert hello_contract == nil
+  end
+
+  test "service gets deregistered when it crashes" do
+    {:ok, registry} = Mesh.Registry.start_link(%{})
+
+    {:ok, hello} = GenServer.start(RegistryTest.Hello, nil)
+
+    :ok = Mesh.direct_call(registry, ["register"], %{
+        "name" => "hello_service", 
+        "delegate" => %Mesh.Contract.Delegate{destination: hello}
+    })
+
+    assert catch_exit(GenServer.call(hello, :crash)) != nil
+    :timer.sleep(20)
+
+    registry_contract = Mesh.get_contract(registry)
+
+    assert registry_contract != nil
+
+    hello_contract = Kernel.get_in(registry_contract, ["services", "hello_service"])
+
+    assert hello_contract == nil
   end
 end

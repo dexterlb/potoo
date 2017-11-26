@@ -22,13 +22,45 @@ defmodule Mesh.Registry do
   end
 
   def handle_call({"register", %{"name" => name, "delegate" => delegate}}, _from, {static_data, services, contract_channel}) do
+    remote_monitor(delegate.destination, name)
+
     new_state = {static_data, register(services, name, delegate), contract_channel}
+    Mesh.Channel.send_lazy(contract_channel, fn -> contract(new_state) end)
+    {:reply, :ok, new_state}
+  end
+
+  def handle_call({"deregister", %{"name" => name}}, _from, {static_data, services, contract_channel}) do
+    new_state = {static_data, deregister(services, name), contract_channel}
     Mesh.Channel.send_lazy(contract_channel, fn -> contract(new_state) end)
     {:reply, :ok, new_state}
   end
 
   defp register(services, name, delegate) do
     Map.put(services, name, delegate)
+  end
+
+  defp deregister(services, name) do
+    Map.delete(services, name)
+  end
+
+  defp remote_monitor(target, name) do
+    from = self()
+
+    spawn_link(
+      fn() ->
+        Process.monitor(target)
+        receive_downs(from, name)
+      end
+    )
+  end
+
+  defp receive_downs(from, name) do
+    receive do
+      {:DOWN, _, :process, _, _} -> 
+        GenServer.call(from, {"deregister", %{"name" => name}})
+      _ ->
+        receive_downs(from, name)
+    end
   end
 
   defp contract({static_data, services, _}) do
@@ -50,6 +82,22 @@ defmodule Mesh.Registry do
           },
           data: %{
             "description" => "Registers a new service into the registry"
+          }
+        },
+        "deregister" => %Mesh.Contract.Function{
+          name: "deregister",
+          argument: {:struct, %{
+            "name" => {:type,
+              :string,
+              %{"description" => "Unique name of the service to be deregistered"}
+            }
+          }},
+          retval: {:union, 
+            {:literal, :ok}, 
+            {:struct, {{:literal, :fail}, :string}}
+          },
+          data: %{
+            "description" => "Deregisters a service from the registry"
           }
         },
         "services" => services
