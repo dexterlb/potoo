@@ -43,16 +43,13 @@ type alias Model =
 
 init : (Model, Cmd Msg)
 init =
-  (Model "" [] Dict.empty Set.empty Nothing Nothing Nothing Nothing, Cmd.none)
+  (Model "" [] Dict.empty Set.empty Nothing Nothing Nothing Nothing, Api.getContract 0)
 
 
 -- UPDATE
 
 type Msg
-  = Input String
-  | Send
-  | SocketMessage String
-  | Begin
+  = SocketMessage String
   | AskCall VisualContract
   | CallArgumentInput String
   | PerformCall { pid: Int, name: String, argument: Json.Encode.Value }
@@ -63,12 +60,6 @@ type Msg
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
   case msg of
-    Input newInput ->
-      ({model | input = newInput}, Cmd.none)
-
-    Send ->
-      ({model | input = ""}, Api.sendRaw model.input)
-
     SocketMessage str ->
       case parseResponse str of
         Ok resp -> handleResponse model resp
@@ -91,9 +82,6 @@ update msg model =
         callArgument = Nothing,
         callResult = Nothing
       }, Cmd.none)
-
-    Begin ->
-      (model, Api.getContract 0)
 
 handleResponse : Model -> Response -> (Model, Cmd Msg)
 handleResponse m resp = case resp of
@@ -224,13 +212,7 @@ renderAskCallWindow mf callArgument callToken callResult = case mf of
 view : Model -> Html Msg
 view model =
   div []
-    [ button [onClick Begin] [text "Woo"]
-    , div []
-        [ div [] (List.map viewMessage model.messages)
-        , input [onInput Input] []
-        , button [onClick Send] [text "Send"]
-        ]
-    , renderContract <| toVisual 0 model.contracts
+    [ renderContract <| toVisual 0 model.contracts
     , renderAskCallWindow model.toCall model.callArgument model.callToken model.callResult
     ]
 
