@@ -24,4 +24,9 @@ defmodule FidgetService.Fidget do
   def handle_call(:contract, _from, state) do
     {:reply, @contract, state}
   end
+
+  def handle_call(:subscribe_contract, _from, state) do
+    {:ok, chan} = Mesh.Channel.start_link()
+    {:reply, chan, state}
+  end
 end

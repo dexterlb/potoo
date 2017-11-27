@@ -26,9 +26,9 @@ defmodule Ui.SocketHandler do
   end
 
   def websocket_info({{:subscription, token}, message}, req, state) do
-    ["message", token, message] 
+    message 
       |> Api.jsonify
-      |> reply_json(req, state)
+      |> reply_json(req, state, [token])
   end
   
   # Format and forward elixir messages to client
@@ -43,6 +43,14 @@ defmodule Ui.SocketHandler do
 
   defp json_handle(["get_contract", arg | token], req, state) do
     Api.get_contract(arg) |> reply_json(req, state, token)
+  end
+
+  defp json_handle(["subscribe_contract", arg | token], req, state) do
+    Api.subscribe_contract(arg) |> reply_json(req, state, token)
+  end
+
+  defp json_handle(["get_and_subscribe_contract", arg | token], req, state) do
+    Api.get_and_subscribe_contract(arg) |> reply_json(req, state, token)
   end
 
   defp json_handle(["call", arg | token], req, state) do

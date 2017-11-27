@@ -3,6 +3,8 @@ defmodule Ui.Api do
   alias Mesh.ServerUtils.PidCache
   alias Mesh.ServerUtils.Json
 
+  require Logger
+
   def call(%{"pid" => pid, "path" => path, "argument" => argument}) when is_integer(pid) do
     PidCache
       |> PidCache.get({:delegate, pid})
@@ -55,6 +57,23 @@ defmodule Ui.Api do
       pid -> pid
         |> Mesh.subscribe_contract
         |> jsonify
+    end
+  end
+
+  def get_and_subscribe_contract(%{"pid" => pid_id, "token" => token}) do
+    case PidCache.get(PidCache, {:delegate, pid_id}) do
+      nil -> %{"error" => "no such pid: #{pid_id}"}
+      pid ->
+        contract = Mesh.get_contract(pid)
+
+        case Mesh.subscribe_contract(pid) do
+          {Mesh.Channel, _} = channel -> 
+            :ok = Mesh.Channel.subscribe(channel, self(), {:subscription, token})
+
+            contract
+
+          err -> err
+        end |> jsonify
     end
   end
 

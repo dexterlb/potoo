@@ -19,8 +19,11 @@ getContract : Int -> Cmd msg
 getContract n =
   sendRaw (encode 4 (
     list [
-      string "get_contract", 
-      object [("pid", int n)],
+      string "get_and_subscribe_contract", 
+      object [
+        ("pid", int n),
+        ("token", object [("msg", string "got_contract"), ("pid", int n)])
+      ],
       object [("msg", string "got_contract"), ("pid", int n)]
     ]
   ))

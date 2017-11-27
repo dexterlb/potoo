@@ -39,6 +39,11 @@ defmodule GlobalRegistry.Hello do
     {:reply, @contract, state}
   end
 
+  def handle_call(:subscribe_contract, _from, state) do
+    {:ok, chan} = Mesh.Channel.start_link()
+    {:reply, chan, state}
+  end
+
   def handle_call({"methods.hello", %{"item" => item}}, _, state) do
     {:reply, "Hello, #{item}!", state}
   end

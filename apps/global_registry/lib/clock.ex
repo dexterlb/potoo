@@ -41,6 +41,11 @@ defmodule GlobalRegistry.Clock do
     {:reply, @contract, state}
   end
 
+  def handle_call(:subscribe_contract, _from, state) do
+    {:ok, chan} = Mesh.Channel.start_link()
+    {:reply, chan, state}
+  end
+
   def handle_call({"time.get", nil}, _, state) do
     {:reply, time(), state}
   end
