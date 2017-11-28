@@ -31,7 +31,7 @@ type Contract
   | IntValue Int
   | FloatValue Float
   | Delegate {
-    destination : Int,
+    destination : Pid,
     data: Data
   }
   | Function {
@@ -42,6 +42,16 @@ type Contract
   }
   | MapContract (Dict String Contract)
   | ListContract (List Contract)
+  | Property PropertyID Contract
+
+type alias Pid = Int
+type alias PropertyID = Int
+type alias ContractProperties = Dict PropertyID PropertyValue
+type alias Properties = Dict Pid ContractProperties
+
+type PropertyValue
+  = IntProperty Int
+  | UnknownProperty Json.Encode.Value 
 
 type VisualContract
   = VStringValue String
@@ -247,6 +257,7 @@ toVisual_ c pid contracts = case c of
   ListContract l
     -> List.map (\contract -> toVisual_ contract pid contracts) l
       |> VListContract
+  _ -> Debug.crash "rendering contract not implemented"
 
 inspectType : Type -> String
 inspectType t = case t of
@@ -283,3 +294,53 @@ inspectData d = d
   |> List.map (\(k, v) -> k ++ ": " ++ v)
   |> String.join ", "
   |> (\s -> "<" ++ s ++ ">")
+
+propertify : Contract -> (Contract, ContractProperties)
+propertify contract = 
+  let (newContract, (properties, _)) 
+    = propertify1 contract ((Dict.fromList []), 1)
+  in (newContract, properties)
+
+propertify1 : Contract -> (ContractProperties, Int) -> (Contract, (ContractProperties, Int))
+propertify1 contract data = case contract of
+  -- MapContract d -> ble
+  ListContract l -> 
+    let (subcontracts, newData) = propertifyList l data in
+      (ListContract subcontracts, newData)
+  MapContract d ->
+    let 
+      (subcontractList, newData1) = propertifyMap (Dict.toList d) data
+      subcontract = MapContract <| Dict.fromList subcontractList
+    in
+      case checkProperty d of
+        Just prop ->
+          let 
+            (properties, lastProp) = newData1
+            newLastProp = lastProp + 1
+            newProperties = Dict.insert newLastProp prop properties
+          in
+            (Property newLastProp subcontract, (newProperties, newLastProp))
+
+        Nothing ->
+          (subcontract, newData1)
+
+  _ -> (contract, data)
+
+checkProperty : Dict String Contract -> Maybe PropertyValue
+checkProperty _ = Debug.crash "not implemented"
+
+propertifyList : List Contract -> (ContractProperties, Int) -> (List Contract, (ContractProperties, Int))
+propertifyList l data = case l of
+  [] -> ([], data)
+  h::t ->
+    let (newTail, newData1) = propertifyList t data in 
+      let (contract, newData2) = propertify1 h newData1 in
+        (contract :: newTail, newData2)
+
+propertifyMap : List (String, Contract) -> (ContractProperties, Int) -> (List (String, Contract), (ContractProperties, Int))
+propertifyMap l data = case l of
+  [] -> ([], data)
+  (hk, hv)::t ->
+    let (newTail, newData1) = propertifyMap t data in 
+      let (contract, newData2) = propertify1 hv newData1 in
+        ((hk, contract) :: newTail, newData2)
