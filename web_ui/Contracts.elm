@@ -42,16 +42,16 @@ type Contract
   }
   | MapContract (Dict String Contract)
   | ListContract (List Contract)
-  | Property PropertyID Contract
+  | PropertyKey PropertyID Contract
 
 type alias Pid = Int
 type alias PropertyID = Int
-type alias ContractProperties = Dict PropertyID PropertyValue
+type alias ContractProperties = Dict PropertyID Property
 type alias Properties = Dict Pid ContractProperties
 
-type PropertyValue
-  = IntProperty Int
-  | UnknownProperty Json.Encode.Value 
+type Property
+  = IntProperty (Maybe Int)
+  | UnknownProperty (Maybe Json.Encode.Value)
 
 type VisualContract
   = VStringValue String
@@ -75,6 +75,12 @@ type VisualContract
   }
   | VMapContract (Dict String VisualContract)
   | VListContract (List VisualContract)
+  | VProperty {
+    pid: Int,
+    propertyID: Int,
+    value: Property,
+    contract: VisualContract
+  }
 
 parseContract : String -> Result String Contract
 parseContract s = decodeString contractDecoder s
@@ -219,16 +225,16 @@ tUnknownDecoder = Json.Decode.map
   (\v -> TUnknown <| Json.Encode.encode 4 v)
   Json.Decode.value
 
-toVisual : Int -> Dict Int Contract -> VisualContract
-toVisual pid contracts = case Dict.get pid contracts of
-  (Just contract) -> toVisual_ contract pid contracts
+toVisual : Int -> Dict Int Contract -> Properties -> VisualContract
+toVisual pid contracts properties  = case Dict.get pid contracts of
+  (Just contract) -> toVisual_ contract pid contracts properties
   Nothing -> VBrokenDelegate {
       destination = pid,
       data = Dict.fromList []
     }
 
-toVisual_ : Contract -> Int -> Dict Int Contract -> VisualContract
-toVisual_ c pid contracts = case c of 
+toVisual_ : Contract -> Int -> Dict Int Contract -> Properties -> VisualContract
+toVisual_ c pid contracts properties = case c of 
   StringValue s -> VStringValue s
   IntValue i -> VIntValue i
   FloatValue f -> VFloatValue f
@@ -243,7 +249,7 @@ toVisual_ c pid contracts = case c of
   Delegate {destination, data}
     -> case Dict.get destination contracts of
       (Just contract) -> VConnectedDelegate {
-        contract = toVisual_ contract destination contracts,
+        contract = toVisual_ contract destination contracts properties,
         data = data,
         destination = destination
       }
@@ -252,12 +258,19 @@ toVisual_ c pid contracts = case c of
         destination = destination
       }
   MapContract d
-    -> Dict.map (\_ contract -> toVisual_ contract pid contracts) d
+    -> Dict.map (\_ contract -> toVisual_ contract pid contracts properties) d
       |> VMapContract
   ListContract l
-    -> List.map (\contract -> toVisual_ contract pid contracts) l
+    -> List.map (\contract -> toVisual_ contract pid contracts properties) l
       |> VListContract
-  _ -> Debug.crash "rendering contract not implemented"
+  PropertyKey propertyID contract
+    -> properties |> fetch pid |> fetch propertyID |> \property ->
+      VProperty {
+        pid = pid,
+        propertyID = propertyID,
+        value = property,
+        contract = toVisual_ contract pid contracts properties
+      }
 
 inspectType : Type -> String
 inspectType t = case t of
@@ -298,11 +311,11 @@ inspectData d = d
 propertify : Contract -> (Contract, ContractProperties)
 propertify contract = 
   let (newContract, (properties, _)) 
-    = propertify1 contract ((Dict.fromList []), 1)
+    = propertify_ contract ((Dict.fromList []), 1)
   in (newContract, properties)
 
-propertify1 : Contract -> (ContractProperties, Int) -> (Contract, (ContractProperties, Int))
-propertify1 contract data = case contract of
+propertify_ : Contract -> (ContractProperties, Int) -> (Contract, (ContractProperties, Int))
+propertify_ contract data = case contract of
   -- MapContract d -> ble
   ListContract l -> 
     let (subcontracts, newData) = propertifyList l data in
@@ -319,14 +332,14 @@ propertify1 contract data = case contract of
             newLastProp = lastProp + 1
             newProperties = Dict.insert newLastProp prop properties
           in
-            (Property newLastProp subcontract, (newProperties, newLastProp))
+            (PropertyKey newLastProp subcontract, (newProperties, newLastProp))
 
         Nothing ->
           (subcontract, newData1)
 
   _ -> (contract, data)
 
-checkProperty : Dict String Contract -> Maybe PropertyValue
+checkProperty : Dict String Contract -> Maybe Property
 checkProperty _ = Debug.crash "not implemented"
 
 propertifyList : List Contract -> (ContractProperties, Int) -> (List Contract, (ContractProperties, Int))
@@ -334,7 +347,7 @@ propertifyList l data = case l of
   [] -> ([], data)
   h::t ->
     let (newTail, newData1) = propertifyList t data in 
-      let (contract, newData2) = propertify1 h newData1 in
+      let (contract, newData2) = propertify_ h newData1 in
         (contract :: newTail, newData2)
 
 propertifyMap : List (String, Contract) -> (ContractProperties, Int) -> (List (String, Contract), (ContractProperties, Int))
@@ -342,5 +355,13 @@ propertifyMap l data = case l of
   [] -> ([], data)
   (hk, hv)::t ->
     let (newTail, newData1) = propertifyMap t data in 
-      let (contract, newData2) = propertify1 hv newData1 in
+      let (contract, newData2) = propertify_ hv newData1 in
         ((hk, contract) :: newTail, newData2)
+
+
+-- utils
+
+fetch : comparable -> Dict comparable v -> v
+fetch k d = case Dict.get k d of
+  Just v -> v
+  Nothing -> Debug.crash "the author of this page is a moron"
