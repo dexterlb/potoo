@@ -340,7 +340,7 @@ propertify_ contract data = case contract of
   _ -> (contract, data)
 
 checkProperty : Dict String Contract -> Maybe Property
-checkProperty _ = Debug.crash "not implemented"
+checkProperty _ = Nothing
 
 propertifyList : List Contract -> (ContractProperties, Int) -> (List Contract, (ContractProperties, Int))
 propertifyList l data = case l of

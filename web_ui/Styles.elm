@@ -126,3 +126,11 @@ callFunctionOutputWaiting = css
 callFunctionOutput = css
   [
   ]
+
+propertyBlock = css
+  [
+  ]
+
+propertySubContract = css
+  [
+  ]

@@ -33,6 +33,7 @@ type alias Model =
   { input : String
   , messages : List String
   , contracts: Dict Int Contract
+  , allProperties : Properties
   , fetchingContracts: Set Int
   , toCall : Maybe VisualContract
   , callToken : Maybe String
@@ -43,7 +44,8 @@ type alias Model =
 
 init : (Model, Cmd Msg)
 init =
-  (Model "" [] Dict.empty Set.empty Nothing Nothing Nothing Nothing, Api.getContract 0)
+  (Model "" [] Dict.empty Dict.empty Set.empty Nothing Nothing Nothing Nothing, Api.getContract 0)
+
 
 
 -- UPDATE
@@ -97,10 +99,13 @@ performCall data = Random.generate
 handleResponse : Model -> Response -> (Model, Cmd Msg)
 handleResponse m resp = case resp of
   GotContract pid contract
-    -> checkMissing contract {m | 
-        contracts = Dict.insert pid contract m.contracts,
-        fetchingContracts = Set.remove pid m.fetchingContracts
-      }
+    -> 
+      let (newContract, properties) = propertify contract in
+        checkMissing newContract {m |
+          allProperties = Dict.insert pid properties m.allProperties,
+          contracts = Dict.insert pid newContract m.contracts,
+          fetchingContracts = Set.remove pid m.fetchingContracts
+        }
   UnsafeCallResult token value
     -> case m.callToken of
       Just actualToken -> case token of
@@ -182,6 +187,10 @@ renderContractContent vc = case vc of
     l |> List.map (
       \contract -> renderContractContent contract
     ))
+  VProperty {pid, propertyID, value, contract} -> div [ Styles.propertyBlock ]
+    [ renderProperty value
+    , div [ Styles.propertySubContract ] [ renderContractContent contract ]
+    ]
 
 renderData : Data -> Html Msg
 renderData d = div [ Styles.dataBlock ] (
@@ -221,11 +230,14 @@ renderAskCallWindow mf callArgument callToken callResult = case mf of
 
   _ -> div [] []
 
+renderProperty : Property -> Html msg
+renderProperty _ = div [] [ text "<prop>" ]
+
 
 view : Model -> Html Msg
 view model =
   div []
-    [ renderContract <| toVisual 0 model.contracts
+    [ renderContract <| toVisual 0 model.contracts model.allProperties
     , renderAskCallWindow model.toCall model.callArgument model.callToken model.callResult
     ]
 
