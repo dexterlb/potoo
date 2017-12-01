@@ -30,28 +30,41 @@ type Contract
   = StringValue String
   | IntValue Int
   | FloatValue Float
-  | Delegate {
-    destination : Pid,
-    data: Data
-  }
-  | Function {
+  | Delegate DelegateStruct
+  | Function FunctionStruct
+  | MapContract (Dict String Contract)
+  | ListContract (List Contract)
+  | PropertyKey PropertyID Contract
+
+-- need better names for those
+type alias FunctionStruct = {
     argument: Type,
     name: String,
     retval: Type,
     data: Data
   }
-  | MapContract (Dict String Contract)
-  | ListContract (List Contract)
-  | PropertyKey PropertyID Contract
+
+type alias DelegateStruct = {
+    destination : Pid,
+    data: Data
+  }
 
 type alias Pid = Int
 type alias PropertyID = Int
 type alias ContractProperties = Dict PropertyID Property
 type alias Properties = Dict Pid ContractProperties
 
-type Property
-  = IntProperty (Maybe Int)
-  | UnknownProperty (Maybe Json.Encode.Value)
+type alias Property = {
+    getter:         Maybe FunctionStruct,
+    setter:         Maybe FunctionStruct,
+    subscriber:     Maybe FunctionStruct,
+    propertyType:   Type,
+    value:          Maybe PropertyValue
+  }
+
+type PropertyValue
+  = IntProperty Int
+  | UnknownProperty Json.Encode.Value
 
 type VisualContract
   = VStringValue String
@@ -81,6 +94,9 @@ type VisualContract
     value: Property,
     contract: VisualContract
   }
+
+equivTypes : Type -> Type -> Bool
+equivTypes a b = a == b
 
 parseContract : String -> Result String Contract
 parseContract s = decodeString contractDecoder s
@@ -316,7 +332,6 @@ propertify contract =
 
 propertify_ : Contract -> (ContractProperties, Int) -> (Contract, (ContractProperties, Int))
 propertify_ contract data = case contract of
-  -- MapContract d -> ble
   ListContract l -> 
     let (subcontracts, newData) = propertifyList l data in
       (ListContract subcontracts, newData)
@@ -340,7 +355,48 @@ propertify_ contract data = case contract of
   _ -> (contract, data)
 
 checkProperty : Dict String Contract -> Maybe Property
-checkProperty _ = Nothing
+checkProperty fields = let
+    getter      = Dict.get "get"       fields |> Maybe.andThen getFunction 
+    setter      = Dict.get "set"       fields |> Maybe.andThen getFunction
+    subscriber  = Dict.get "subscribe" fields |> Maybe.andThen getFunction
+  in case getter of
+    Nothing -> Nothing
+    Just { retval } -> checkPropertyConsistency <| {
+      getter        = getter,
+      setter        = setter,
+      subscriber    = subscriber,
+      propertyType  = retval,
+      value         = Nothing
+    }
+
+checkPropertyConsistency : Property -> Maybe Property
+checkPropertyConsistency prop = let
+    getterType = Maybe.map (\f -> f.retval) prop.getter
+    setterType = Maybe.map (\f -> f.argument) prop.setter
+    subscriberType = Maybe.andThen (\f -> unChannel f.retval) prop.subscriber
+
+    equiv = (maybeEquivTypes getterType setterType) && (maybeEquivTypes getterType subscriberType)
+  in
+    case equiv of
+      True -> Just prop
+      False -> Nothing
+
+getFunction : Contract -> Maybe FunctionStruct
+getFunction c = case c of
+  Function f -> Just f
+  _          -> Nothing
+
+maybeEquivTypes : Maybe Type -> Maybe Type -> Bool
+maybeEquivTypes t1 t2 = case (t1, t2) of
+  (Nothing, _) -> True
+  (_, Nothing) -> True
+  (Just t1, Just t2) -> equivTypes t1 t2
+
+unChannel : Type -> Maybe Type
+unChannel t = case t of
+  -- this needs to be smarter
+  TChannel t2 -> Just t2
+  _           -> Nothing
 
 propertifyList : List Contract -> (ContractProperties, Int) -> (List Contract, (ContractProperties, Int))
 propertifyList l data = case l of
