@@ -1,4 +1,3 @@
-import Css exposing (..)
 import Html
 import Html.Styled exposing (..)
 import Html.Styled.Attributes exposing (css, href, src, styled, class, title)
@@ -58,6 +57,7 @@ type Msg
   | PerformCall { pid: Int, name: String, argument: Json.Encode.Value }
   | PerformCallWithToken { pid: Int, name: String, argument: Json.Encode.Value } String
   | CancelCall
+  | CallGetter (Pid, PropertyID) FunctionStruct
 
 
 update : Msg -> Model -> (Model, Cmd Msg)
@@ -84,6 +84,13 @@ update msg model =
         callArgument = Nothing,
         callResult = Nothing
       }, Cmd.none)
+    
+    CallGetter (pid, id) { name } -> (
+        model, 
+        Api.getterCall 
+          {pid = pid, name = name, argument = Json.Encode.null}
+          (pid, id)
+      )
 
 instantCall : VisualContract -> Cmd Msg
 instantCall vc = case vc of
@@ -111,6 +118,20 @@ handleResponse m resp = case resp of
       Just actualToken -> case token of
         actualToken -> ({m | callResult = Just value}, Cmd.none)
       _ -> (m, Cmd.none)
+  GetterCallResult (pid, propertyID) value
+    -> (
+      { m | allProperties = m.allProperties |>
+        Dict.update pid (Maybe.map <|
+          Dict.update propertyID (Maybe.map <|
+            setPropertyValue value
+          )
+        )
+      },
+      Cmd.none
+    )
+
+setPropertyValue : Json.Encode.Value -> Property -> Property
+setPropertyValue v prop = { prop | value = Just (UnknownProperty v) }
 
 checkMissing : Contract -> Model -> (Model, Cmd Msg)
 checkMissing c m = let
@@ -188,7 +209,7 @@ renderContractContent vc = case vc of
       \contract -> renderContractContent contract
     ))
   VProperty {pid, propertyID, value, contract} -> div [ Styles.propertyBlock ]
-    [ renderProperty value
+    [ renderProperty pid propertyID value
     , div [ Styles.propertySubContract ] [ renderContractContent contract ]
     ]
 
@@ -230,9 +251,32 @@ renderAskCallWindow mf callArgument callToken callResult = case mf of
 
   _ -> div [] []
 
-renderProperty : Property -> Html msg
-renderProperty _ = div [] [ text "<prop>" ]
+renderProperty : Pid -> PropertyID -> Property -> Html Msg
+renderProperty pid propID prop = div [] <| justs
+  [ Maybe.map renderPropertyValue prop.value
+  , renderPropertyGetButton pid propID prop
+  ]
 
+renderPropertyValue : PropertyValue -> Html Msg
+renderPropertyValue v = (case v of
+    IntProperty i -> [ text (toString i) ]
+    UnknownProperty v -> [ text <| Json.Encode.encode 0 v]
+  ) |> div [Styles.propertyValue]
+
+renderPropertyGetButton : Pid -> PropertyID -> Property -> Maybe (Html Msg)
+renderPropertyGetButton pid propID prop = case prop.getter of
+  Nothing -> Nothing
+  Just getter -> 
+    Just <| button 
+      [ onClick (CallGetter (pid, propID) getter), Styles.propertyGet ]
+      [ text "↺" ]
+    
+
+justs : List (Maybe a) -> List a
+justs l = case l of
+  [] -> []
+  (Just h)::t -> h :: (justs t)
+  Nothing::t -> justs t
 
 view : Model -> Html Msg
 view model =

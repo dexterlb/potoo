@@ -134,3 +134,11 @@ propertyBlock = css
 propertySubContract = css
   [
   ]
+
+propertyGet = css
+  [
+  ]
+
+propertyValue = css
+  [
+  ]

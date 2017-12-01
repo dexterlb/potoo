@@ -29,7 +29,22 @@ getContract n =
   ))
 
 unsafeCall : { pid: Int, name: String, argument: Json.Encode.Value } -> String -> Cmd msg
-unsafeCall {pid, name, argument} tokenString =
+unsafeCall data tokenString =
+  rawUnsafeCall data <|
+      object [("msg", string "unsafe_call_result"), ("token_string", string tokenString)]
+
+getterCall : { pid: Int, name: String, argument: Json.Encode.Value } -> (Int, Int) -> Cmd msg
+getterCall data (propertyPid, propertyID) =
+  rawUnsafeCall data <|
+      object [
+          ("msg", string "getter_call_result"),
+          ("pid", int propertyPid),
+          ("id",  int propertyID)
+        ]
+
+
+rawUnsafeCall : { pid: Int, name: String, argument: Json.Encode.Value } -> Json.Encode.Value -> Cmd msg
+rawUnsafeCall {pid, name, argument} token =
   sendRaw (encode 4 (
     list [
       string "unsafe_call",
@@ -38,7 +53,7 @@ unsafeCall {pid, name, argument} tokenString =
           ("function_name", string name),
           ("argument", argument)
         ],
-      object [("msg", string "unsafe_call_result"), ("token_string", string tokenString)]
+      token
     ]
   ))
 
@@ -52,6 +67,7 @@ responseDecoder = JD.index 1 tokenDecoder
 responseByTokenDecoder : Token -> Decoder Response
 responseByTokenDecoder t = case t of
   GotContractToken pid -> JD.map (GotContract pid) contractDecoder
+  GetterCallResultToken pid_id -> JD.map (GetterCallResult pid_id) JD.value
   UnsafeCallResultToken tokenString -> JD.map (UnsafeCallResult tokenString) JD.value
 
 tokenDecoder : Decoder Token
@@ -59,13 +75,18 @@ tokenDecoder = JD.field "msg" JD.string
   |> JD.andThen (\m -> case m of
     "got_contract" -> JD.map GotContractToken <| JD.field "pid" JD.int
     "unsafe_call_result" -> JD.map UnsafeCallResultToken <| JD.field "token_string" JD.string
+    "getter_call_result" -> JD.map2 (\pid id -> GetterCallResultToken (pid, id))
+      (JD.field "pid" JD.int)
+      (JD.field "id" JD.int)
     other -> JD.fail <| "unknown token: " ++ other
   )
 
 type Token
   = GotContractToken Int
+  | GetterCallResultToken (Int, Int)
   | UnsafeCallResultToken String
 
 type Response
   = GotContract Int Contract
+  | GetterCallResult (Int, Int) Json.Encode.Value
   | UnsafeCallResult String Json.Encode.Value
