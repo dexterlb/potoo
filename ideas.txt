@@ -49,3 +49,4 @@ end
     - tcp client api
     - function cache, so API clients can execute functions with casts
     - notify channel subscribers when channel dies
+    - replace bare pids with delagetes in all apis
