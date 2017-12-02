@@ -12,6 +12,8 @@ import Json.Decode
 import Random
 import Random.String
 import Random.Char
+import Delay
+import Time
 
 
 import Contracts exposing (..)
@@ -43,8 +45,13 @@ type alias Model =
 
 init : (Model, Cmd Msg)
 init =
-  (Model "" [] Dict.empty Dict.empty Set.empty Nothing Nothing Nothing Nothing, Api.getContract 0)
+  (Model "" [] Dict.empty Dict.empty Set.empty Nothing Nothing Nothing Nothing, startCommand)
 
+startCommand : Cmd Msg
+startCommand = Cmd.batch
+  [ nextPing
+  , Api.getContract 0
+  ]
 
 
 -- UPDATE
@@ -58,6 +65,7 @@ type Msg
   | PerformCallWithToken { pid: Int, name: String, argument: Json.Encode.Value } String
   | CancelCall
   | CallGetter (Pid, PropertyID) FunctionStruct
+  | SendPing
 
 
 update : Msg -> Model -> (Model, Cmd Msg)
@@ -91,6 +99,11 @@ update msg model =
           {pid = pid, name = name, argument = Json.Encode.null}
           (pid, id)
       )
+    
+    SendPing -> (model, sendPing)
+
+nextPing : Cmd Msg
+nextPing = Delay.after 5 Time.second SendPing
 
 instantCall : VisualContract -> Cmd Msg
 instantCall vc = case vc of
@@ -138,6 +151,8 @@ handleResponse m resp = case resp of
     -> (m, subscribe chan token)
   SubscribedChannel token
     -> (Debug.log (Json.Encode.encode 0 token) m, Cmd.none)
+  
+  Pong -> (m, nextPing)
 
 subscribeProperties : Pid -> ContractProperties -> Cmd Msg
 subscribeProperties pid properties

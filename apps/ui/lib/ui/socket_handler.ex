@@ -1,5 +1,6 @@
 defmodule Ui.SocketHandler do
   alias Ui.Api
+  require Logger
 
   @behaviour :cowboy_websocket_handler
 
@@ -7,11 +8,14 @@ defmodule Ui.SocketHandler do
     {:upgrade, :protocol, :cowboy_websocket}
   end
 
-  @timeout 60000 # terminate if no activity for one minute
+  @timeout 10000 # terminate if no activity for one minute
 
   #Called on websocket connection initialization.
   def websocket_init(_type, req, _opts) do
     state = %{}
+
+    Logger.debug(fn -> ["new ws client: ", inspect(req)] end)
+
     {:ok, req, state, @timeout}
   end
 
@@ -22,7 +26,11 @@ defmodule Ui.SocketHandler do
   
   # Handle other messages from the browser - don't reply
   def websocket_handle({:text, json_data}, req, state) do
-    json_data |> Poison.decode! |> json_handle(req, state)
+    data = json_data |> Poison.decode!
+
+    Logger.debug(fn -> ["ws -> ", inspect(data)] end)
+
+    data |> json_handle(req, state)
   end
 
   def websocket_info({{:subscription, token}, message}, req, state) do
@@ -37,8 +45,13 @@ defmodule Ui.SocketHandler do
   end
 
   # No matter why we terminate, remove all of this pids subscriptions
-  def websocket_terminate(_reason, _req, _state) do
+  def websocket_terminate(_reason, req, _state) do
+    Logger.debug(fn -> ["ws conn died: ", inspect(req)] end)
     :ok
+  end
+
+  defp json_handle("ping", req, state) do
+    reply_json("pong", req, state)
   end
 
   defp json_handle(["get_contract", arg | token], req, state) do
@@ -75,10 +88,12 @@ defmodule Ui.SocketHandler do
 
   defp reply_json(data, req, state, token \\ [])
   defp reply_json(data, req, state, []) do
+    Logger.debug(fn -> ["ws <- ", inspect(data)] end)
     {:reply, {:text, encode_json(data)}, req, state}
   end
 
   defp reply_json(data, req, state, token) do
+    Logger.debug(fn -> ["ws <- ", inspect([data | token])] end)
     {:reply, {:text, encode_json([data | token])}, req, state}
   end
 

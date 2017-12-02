@@ -10,10 +10,18 @@ ws : String
 ws = "ws://localhost:4040/ws"
 
 listenRaw : (String -> msg) -> Sub msg
-listenRaw = WebSocket.listen ws
+listenRaw f = Sub.batch
+  [ WebSocket.listen ws f
+  , WebSocket.keepAlive ws
+  ]
 
 sendRaw : String -> Cmd msg
 sendRaw = WebSocket.send ws
+
+sendPing : Cmd msg
+sendPing = sendRaw (encode 4
+    (string "ping")
+  )
 
 getContract : Int -> Cmd msg
 getContract n =
@@ -88,8 +96,18 @@ parseResponse : String -> Result String Response
 parseResponse s = JD.decodeString responseDecoder s
 
 responseDecoder : Decoder Response
-responseDecoder = JD.index 1 tokenDecoder
-  |> JD.andThen (responseByTokenDecoder >> JD.index 0)
+responseDecoder = JD.oneOf
+  [ pongDecoder,
+    JD.index 1 tokenDecoder
+      |> JD.andThen (responseByTokenDecoder >> JD.index 0)
+  ]
+
+pongDecoder : Decoder Response
+pongDecoder = JD.string
+  |> JD.andThen (\s -> case s of
+    "pong" -> JD.succeed Pong
+    _ -> JD.fail "not a pong message"
+  )
 
 responseByTokenDecoder : Token -> Decoder Response
 responseByTokenDecoder t = case t of
@@ -125,3 +143,4 @@ type Response
   | UnsafeCallResult String Json.Encode.Value
   | ChannelResult Json.Encode.Value Channel
   | SubscribedChannel Json.Encode.Value
+  | Pong
