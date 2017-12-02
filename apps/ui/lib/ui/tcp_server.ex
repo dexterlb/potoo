@@ -6,7 +6,7 @@ defmodule Ui.TcpServer do
       :ranch_tcp, 
       opts, 
       Ui.TcpServer.Listener,
-      []
+      [packet: :line]
     )
   end
 end
