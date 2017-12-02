@@ -107,18 +107,23 @@ handleResponse : Model -> Response -> (Model, Cmd Msg)
 handleResponse m resp = case resp of
   GotContract pid contract
     -> 
-      let (newContract, properties) = propertify contract in
-        checkMissing newContract {m |
+      let 
+        (newContract, properties) = propertify contract
+        (newModel, newCommand) = checkMissing newContract {m |
           allProperties = Dict.insert pid properties m.allProperties,
           contracts = Dict.insert pid newContract m.contracts,
           fetchingContracts = Set.remove pid m.fetchingContracts
         }
+      in
+        (newModel, Cmd.batch [ subscribeProperties pid properties,
+                               newCommand ])
+
   UnsafeCallResult token value
     -> case m.callToken of
       Just actualToken -> case token of
         actualToken -> ({m | callResult = Just value}, Cmd.none)
       _ -> (m, Cmd.none)
-  GetterCallResult (pid, propertyID) value
+  PropertyValueResult (pid, propertyID) value
     -> (
       { m | allProperties = m.allProperties |>
         Dict.update pid (Maybe.map <|
@@ -129,6 +134,30 @@ handleResponse m resp = case resp of
       },
       Cmd.none
     )
+  ChannelResult token chan
+    -> (m, subscribe chan token)
+  SubscribedChannel token
+    -> (Debug.log (Json.Encode.encode 0 token) m, Cmd.none)
+
+subscribeProperties : Pid -> ContractProperties -> Cmd Msg
+subscribeProperties pid properties
+   = Dict.toList properties
+  |> List.map (foo pid)
+  |> Cmd.batch
+
+foo : Pid -> (PropertyID, Property) -> Cmd Msg
+foo pid (id, prop) = case prop.subscriber of
+  Nothing -> Cmd.none
+  Just { name } -> Cmd.batch
+    [ subscriberCall 
+        { pid = pid, name = name, argument = Json.Encode.null } 
+        (pid, id)
+    , case prop.getter of
+        Nothing -> Cmd.none
+        Just { name } -> getterCall 
+          { pid = pid, name = name, argument = Json.Encode.null } 
+          (pid, id)
+    ]
 
 setPropertyValue : Json.Encode.Value -> Property -> Property
 setPropertyValue v prop = { prop | value = Just (UnknownProperty v) }

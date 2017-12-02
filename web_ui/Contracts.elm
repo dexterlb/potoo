@@ -49,6 +49,8 @@ type alias DelegateStruct = {
     data: Data
   }
 
+type alias Channel = Int
+
 type alias Pid = Int
 type alias PropertyID = Int
 type alias ContractProperties = Dict PropertyID Property
@@ -166,6 +168,13 @@ makeFunction argument name retval data = Function {
     retval = retval,
     data = data
   }
+
+channelDecoder : Decoder Channel
+channelDecoder = field "__type__" string
+  |> andThen (\t -> case t of
+    "channel" -> field "id" int
+    _         -> fail "not a channel"
+  )
 
 typeDecoder : Decoder Type
 typeDecoder = oneOf [

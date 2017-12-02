@@ -29,18 +29,45 @@ getContract n =
   ))
 
 unsafeCall : { pid: Int, name: String, argument: Json.Encode.Value } -> String -> Cmd msg
-unsafeCall data tokenString =
-  rawUnsafeCall data <|
+unsafeCall func tokenString =
+  rawUnsafeCall func <|
       object [("msg", string "unsafe_call_result"), ("token_string", string tokenString)]
 
 getterCall : { pid: Int, name: String, argument: Json.Encode.Value } -> (Int, Int) -> Cmd msg
-getterCall data (propertyPid, propertyID) =
-  rawUnsafeCall data <|
+getterCall func (propertyPid, propertyID) =
+  rawUnsafeCall func <|
+    object [
+        ("msg", string "property_value"),
+        ("pid", int propertyPid),
+        ("id",  int propertyID)
+      ]
+
+subscriberCall : { pid: Int, name: String, argument: Json.Encode.Value } -> (Int, Int) -> Cmd msg
+subscriberCall func (propertyPid, propertyID) =
+  rawUnsafeCall func <|
+    object [
+      ("msg", string "channel_result"),
+      ("token",
+        object [
+            ("msg", string "property_value"),
+            ("pid", int propertyPid),
+            ("id",  int propertyID)
+          ]
+      )
+    ]
+
+subscribe : Channel -> Json.Encode.Value -> Cmd msg
+subscribe chan token =
+  sendRaw (encode 4 (
+    list [
+      string "subscribe", 
       object [
-          ("msg", string "getter_call_result"),
-          ("pid", int propertyPid),
-          ("id",  int propertyID)
-        ]
+        ("channel", int chan),
+        ("token", token)
+      ],
+      object [("msg", string "subscribed_channel"), ("token", token)]
+    ]
+  ))
 
 
 rawUnsafeCall : { pid: Int, name: String, argument: Json.Encode.Value } -> Json.Encode.Value -> Cmd msg
@@ -67,7 +94,9 @@ responseDecoder = JD.index 1 tokenDecoder
 responseByTokenDecoder : Token -> Decoder Response
 responseByTokenDecoder t = case t of
   GotContractToken pid -> JD.map (GotContract pid) contractDecoder
-  GetterCallResultToken pid_id -> JD.map (GetterCallResult pid_id) JD.value
+  PropertyValueResultToken pid_id -> JD.map (PropertyValueResult pid_id) JD.value
+  ChannelResultToken token -> JD.map (ChannelResult token) channelDecoder
+  SubscribedChannelToken token -> JD.succeed <| SubscribedChannel token
   UnsafeCallResultToken tokenString -> JD.map (UnsafeCallResult tokenString) JD.value
 
 tokenDecoder : Decoder Token
@@ -75,7 +104,9 @@ tokenDecoder = JD.field "msg" JD.string
   |> JD.andThen (\m -> case m of
     "got_contract" -> JD.map GotContractToken <| JD.field "pid" JD.int
     "unsafe_call_result" -> JD.map UnsafeCallResultToken <| JD.field "token_string" JD.string
-    "getter_call_result" -> JD.map2 (\pid id -> GetterCallResultToken (pid, id))
+    "channel_result" -> JD.map ChannelResultToken <| JD.field "token" JD.value
+    "subscribed_channel" -> JD.map ChannelResultToken <| JD.field "token" JD.value
+    "property_value" -> JD.map2 (\pid id -> PropertyValueResultToken (pid, id))
       (JD.field "pid" JD.int)
       (JD.field "id" JD.int)
     other -> JD.fail <| "unknown token: " ++ other
@@ -83,10 +114,14 @@ tokenDecoder = JD.field "msg" JD.string
 
 type Token
   = GotContractToken Int
-  | GetterCallResultToken (Int, Int)
+  | PropertyValueResultToken (Int, Int)
   | UnsafeCallResultToken String
+  | ChannelResultToken Json.Encode.Value
+  | SubscribedChannelToken Json.Encode.Value
 
 type Response
   = GotContract Int Contract
-  | GetterCallResult (Int, Int) Json.Encode.Value
+  | PropertyValueResult (Int, Int) Json.Encode.Value
   | UnsafeCallResult String Json.Encode.Value
+  | ChannelResult Json.Encode.Value Channel
+  | SubscribedChannel Json.Encode.Value
