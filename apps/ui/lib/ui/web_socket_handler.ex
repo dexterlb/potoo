@@ -1,4 +1,4 @@
-defmodule Ui.SocketHandler do
+defmodule Ui.WebSocketHandler do
   alias Ui.Api
   require Logger
 

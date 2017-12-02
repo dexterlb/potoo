@@ -7,8 +7,8 @@ defmodule FidgetService.Fidget do
 
   def init(registry) do
     result = Mesh.direct_call(registry, ["register"], %{
-        "name" => "fidget_service", 
-        "delegate" => %Mesh.Contract.Delegate{destination: self()}
+      "name" => "fidget_service", 
+      "delegate" => %Mesh.Contract.Delegate{destination: self()}
     })
 
     case result do

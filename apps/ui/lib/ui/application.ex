@@ -19,6 +19,10 @@ defmodule Ui.Application do
         [{:delegate, Application.fetch_env!(:ui, :root_target), 0}],
         [name: PidCache]
       ]),
+      worker(Ui.TcpServer, [
+        [port: 4444],
+      ]),
+
 
       {
         Plug.Adapters.Cowboy, 
