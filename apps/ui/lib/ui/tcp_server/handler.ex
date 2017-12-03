@@ -3,6 +3,7 @@ defmodule Ui.TcpServer.Handler do
   # todo:
   # keep contract in the endpoint, allow setting from tcp
   # allow make_channel
+  # remove all bare pids and replace them with channels and delegates
 
   def init(_opts) do
     {:ok, %{

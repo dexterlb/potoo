@@ -11,6 +11,7 @@ defmodule Mesh.ServerUtils.Json do
     }
   end
   def jsonify(nil, _), do: nil
+  def jsonify(b, _) when is_boolean(b), do: b
   def jsonify(%Mesh.Contract.Delegate{destination: destination, data: data}, pc) do
     %{
       "__type__" => "delegate",
@@ -26,7 +27,7 @@ defmodule Mesh.ServerUtils.Json do
   end
   def jsonify(contract = %{}, pc) do
     # todo: fix the case when there's a __key__ in the map
-    contract |> Enum.map(fn({k, v}) -> {k, jsonify(v, pc)} end) |> Map.new
+    contract |> Enum.map(fn({k, v}) -> {jsonify(k, pc), jsonify(v, pc)} end) |> Map.new
   end
   def jsonify(t, pc) when is_tuple(t) do
     t |> Tuple.to_list |> jsonify(pc)
