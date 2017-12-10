@@ -19,6 +19,52 @@ defmodule JsonTest do
     assert jsonify(true, pc)    == true
   end
 
+  test "can unjsonify bare values", %{pc: pc} do
+    assert unjsonify(42, pc)      == 42
+    assert unjsonify(42.5, pc)    == 42.5
+    assert unjsonify(nil, pc)     == nil
+    assert unjsonify("foo", pc)   == "foo"
+    assert unjsonify(true, pc)    == true
+  end
+
+  test "can jsonify types", %{pc: pc} do
+    assert(
+      Enum.map(type_jsons(), 
+        fn({type, _}) 
+          -> {type, jsonify(type, pc)} 
+        end
+      )
+      == type_jsons()
+    )
+  end
+
+  test "can unjsonify types", %{pc: pc} do
+    assert(
+      Enum.map(type_jsons(), 
+        fn({_, json}) 
+          -> {unjsonify_type!(json, pc), json} 
+        end
+      )
+      == type_jsons()
+    )
+  end
+
+  defp type_jsons do
+    [
+      {nil, nil},
+      {:bool, "bool"},
+      {:atom, "atom"},
+      {:string, "string"},
+      {:integer, "integer"},
+      {:float, "float"},
+      {:delegate, "delegate"},
+
+      {{:channel, :integer}, ["channel", "integer"]},
+      {{:literal, 42}, ["literal", 42]},
+      {{:type, :string}, ["type", "string"]}
+    ]
+  end
+
   test "can jsonify map with string keys", %{pc: pc} do
     assert jsonify(%{"foo" => 42, "bar" => true}, pc) == %{"foo" => 42, "bar" => true}
   end

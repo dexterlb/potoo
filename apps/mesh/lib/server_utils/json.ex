@@ -39,4 +39,19 @@ defmodule Mesh.ServerUtils.Json do
     Atom.to_string(a)
   end
   def jsonify(x, _), do: x
+
+  def unjsonify(x, _), do: x
+
+  def unjsonify_type!(x, pc) do
+    {:ok, t} = unjsonify_type(x, pc)
+    t
+  end
+
+  def unjsonify_type(nil, _),        do:  {:ok, nil}
+  def unjsonify_type("bool", _),     do: {:ok, :bool}
+  def unjsonify_type("atom", _),     do: {:ok, :atom}
+  def unjsonify_type("string", _),   do: {:ok, :string}
+  def unjsonify_type("integer", _),  do: {:ok, :integer}
+  def unjsonify_type("float", _),    do: {:ok, :float}
+  def unjsonify_type("delegate", _), do: {:ok, :delegate}
 end
