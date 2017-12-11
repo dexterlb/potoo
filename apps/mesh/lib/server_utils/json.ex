@@ -1,5 +1,7 @@
 defmodule Mesh.ServerUtils.Json do
   alias Mesh.ServerUtils.PidCache
+  require OK
+  import OK, only: ["~>>": 2]
 
   def jsonify(%Mesh.Contract.Function{name: name, argument: argument, retval: retval, data: data}, pc) do
     %{
@@ -54,4 +56,81 @@ defmodule Mesh.ServerUtils.Json do
   def unjsonify_type("integer", _),  do: {:ok, :integer}
   def unjsonify_type("float", _),    do: {:ok, :float}
   def unjsonify_type("delegate", _), do: {:ok, :delegate}
+  def unjsonify_type(["channel", j], pc) do
+    OK.for do
+      t <- unjsonify_type(j, pc)
+    after
+      {:channel, t}
+    end
+  end
+  def unjsonify_type(["literal", value], _) do
+    {:ok, {:literal, value}}
+  end
+  def unjsonify_type(["type", j], pc) do
+    OK.for do
+      t <- unjsonify_type(j, pc)
+    after
+      {:type, t}
+    end
+  end
+  def unjsonify_type(["list", j], pc) do
+    OK.for do
+      t <- unjsonify_type(j, pc)
+    after
+      {:list, t}
+    end
+  end
+  def unjsonify_type(["union", j1, j2], pc) do
+    OK.for do
+      t1 <- unjsonify_type(j1, pc)
+      t2 <- unjsonify_type(j2, pc)
+    after
+      {:union, t1, t2}
+    end
+  end
+  def unjsonify_type(["map", j1, j2], pc) do
+    OK.for do
+      t1 <- unjsonify_type(j1, pc)
+      t2 <- unjsonify_type(j2, pc)
+    after
+      {:map, t1, t2}
+    end
+  end
+  def unjsonify_type(["struct", fields = %{}], pc) do
+    fields
+      |> Enum.map(fn({name, j}) ->
+          OK.for do
+            t <- unjsonify_type(j, pc)
+          after
+            {name, t}
+          end
+        end)
+      |> squeeze_errors
+      ~>> make_map_struct  # todo: maybe implement an 'fmap' operator in the OK library
+  end
+  def unjsonify_type(["struct", fields], pc) when is_list(fields) do
+    fields
+      |> Enum.map(fn(j) ->
+          OK.for do
+            t <- unjsonify_type(j, pc)
+          after
+            t
+          end
+        end)
+      |> squeeze_errors
+      ~>> make_tuple_struct  # todo: maybe implement an 'fmap' operator in the OK library
+  end
+
+  defp squeeze_errors(l) do
+    case l |> Enum.filter(&is_error/1) do
+      [] -> {:ok, Enum.map(l, fn({:ok, x}) -> x end)}
+      errors -> {:error, "errors while decoding items: #{inspect(errors)}"}
+    end
+  end
+
+  defp is_error({:ok, _}), do: false
+  defp is_error({:error, _}), do: true
+
+  defp make_map_struct(l), do: {:ok, {:struct, Map.new(l)}}
+  defp make_tuple_struct(l), do: {:ok, {:struct, List.to_tuple(l)}}
 end

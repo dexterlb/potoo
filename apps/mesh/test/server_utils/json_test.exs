@@ -61,7 +61,27 @@ defmodule JsonTest do
 
       {{:channel, :integer}, ["channel", "integer"]},
       {{:literal, 42}, ["literal", 42]},
-      {{:type, :string}, ["type", "string"]}
+      {{:type, :string}, ["type", "string"]},
+      {
+        {:union, :string, :integer},
+        ["union", "string", "integer"]
+      },
+      {
+        {:list, :string},
+        ["list", "string"]
+      },
+      {
+        {:map, :string, :integer},
+        ["map", "string", "integer"]
+      },
+      {
+        {:struct, %{"foo" => :string, "bar" => :integer}},
+        ["struct", %{"foo" => "string", "bar" => "integer"}]
+      },
+      {
+        {:struct, {:string, :integer}},
+        ["struct", ["string", "integer"]]
+      }
     ]
   end
 
