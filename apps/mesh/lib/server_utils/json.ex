@@ -42,10 +42,14 @@ defmodule Mesh.ServerUtils.Json do
   end
   def jsonify(x, _), do: x
 
-  def unjsonify(x, _), do: x
+  def unjsonify!(j, pc) do
+    {:ok, x} = unjsonify(j, pc)
+    x
+  end
+  def unjsonify(x, _), do: {:ok, x}
 
-  def unjsonify_type!(x, pc) do
-    {:ok, t} = unjsonify_type(x, pc)
+  def unjsonify_type!(j, pc) do
+    {:ok, t} = unjsonify_type(j, pc)
     t
   end
 
