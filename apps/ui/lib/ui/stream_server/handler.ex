@@ -1,15 +1,21 @@
 defmodule Ui.StreamServer.Handler do
   alias Ui.Api
+  alias Ui.StreamServer.ReverseEndpoint
+  require OK
   # todo:
   # keep contract in the endpoint, allow setting from tcp
   # allow make_channel
   # remove all bare pids and replace them with channels and delegates
 
   def init(_opts) do
-    {:ok, %{
-      endpoint: Api.start_endpoint(),
-      active_calls: %{},
-    }}
+    OK.for do
+      endpoint <- ReverseEndpoint.start_link(self())
+    after
+      %{
+        endpoint: endpoint,
+        active_calls: %{},
+      }
+    end
   end
 
   def socket_handle({:text, text}, state) do

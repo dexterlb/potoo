@@ -1,26 +1,9 @@
 defmodule Ui.Api do
 
-  defmodule Ui.Api.Endpoint do
-    use GenServer
-    
-    def handle_call(call, from, parent) do
-      send(parent, {:incoming_call, from, call})
-      {:noreply, parent}
-    end
-  end
-
   alias Mesh.ServerUtils.PidCache
   alias Mesh.ServerUtils.Json
 
   require Logger
-
-  def start_endpoint() do
-    {:ok, endpoint_pid} = GenServer.start_link(
-        Ui.Api.Endpoint,
-        self()
-      )
-    endpoint_pid
-  end
 
   def call(%{"pid" => pid, "path" => path, "argument" => argument}) when is_integer(pid) do
     PidCache
