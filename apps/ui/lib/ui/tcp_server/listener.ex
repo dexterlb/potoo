@@ -1,5 +1,6 @@
 defmodule Ui.TcpServer.Listener do
   use GenServer
+  alias Ui.TcpServer.Handler
   require Logger
 
   @behaviour :ranch_protocol
@@ -14,14 +15,14 @@ defmodule Ui.TcpServer.Listener do
 
     :ok = :ranch.accept_ack(ref)
     :ok = transport.setopts(socket, [{:active, true}])
-    {:ok, handler_state} = Ui.TcpServer.Handler.init(opts)
+    {:ok, handler_state} = Handler.init(opts)
     :gen_server.enter_loop(__MODULE__, opts, %{socket: socket, transport: transport, handler_state: handler_state})
   end
 
   def handle_info({:tcp, socket, data}, state = %{socket: socket, handler_state: handler_state}) do
-    Logger.debug(fn -> ["tcp [", inspect(socket), "] -> ", inspect(data)] end)
+    Logger.debug(fn -> ["tcp [", inspect(socket), "] -> ", data] end)
 
-    Ui.TcpServer.Handler.socket_handle({:text, data}, handler_state)
+    Handler.socket_handle({:text, data}, handler_state)
       |> handler_reply(state)
   end
   def handle_info({:tcp_closed, socket}, state = %{socket: socket, transport: transport}) do
@@ -31,14 +32,14 @@ defmodule Ui.TcpServer.Listener do
     {:stop, :normal, state}
   end
   def handle_info(info, state = %{handler_state: handler_state}) do
-    Ui.TcpServer.Handler.socket_info(info, handler_state)
+    Handler.socket_info(info, handler_state)
       |> handler_reply(state)
   end
 
   defp handler_reply(reply, state = %{socket: socket, transport: transport}) do
     new_state = case reply do
       {:reply, reply, new_state} ->
-        Logger.debug(fn -> ["tcp [", inspect(socket), "] <- ", inspect(reply)] end)
+        Logger.debug(fn -> ["tcp [", inspect(socket), "] <- ", reply] end)
         transport.send(socket, reply)
         new_state
       {:noreply, new_state} -> new_state
