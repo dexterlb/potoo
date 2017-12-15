@@ -16,6 +16,13 @@ defmodule Mesh.ServerUtils.PidCache do
     GenServer.start_link(__MODULE__, {last_id, pid_to_id, id_to_pid}, opts)
   end
 
+  def fetch(cache_pid, target) do
+    case get(cache_pid, target) do
+      nil   -> {:error, :not_present}
+      item  -> {:ok, item}
+    end
+  end
+
   def get(cache_pid, target = {_, pid_or_id}) when is_pid(pid_or_id) or is_integer(pid_or_id) do
     GenServer.call(cache_pid, {:get, target})
   end

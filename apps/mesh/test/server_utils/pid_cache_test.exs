@@ -18,10 +18,30 @@ defmodule PidCacheTest do
     assert is_integer(id)
   end
 
+  test "can put and fetch a pid" do
+    {:ok, pc} = PidCache.start_link()
+
+    proc = spawn_link(&dummy/0)
+
+    {:ok, id} = PidCache.fetch(pc, {:my_pids, proc})
+
+    {:ok, proc2} = PidCache.fetch(pc, {:my_pids, id})
+
+    assert is_pid(proc2)
+    assert proc == proc2
+    assert is_integer(id)
+  end
+
   test "getting non-existant id yields nil" do
     {:ok, pc} = PidCache.start_link()
 
     assert PidCache.get(pc, {:my_pids, 42}) == nil
+  end
+
+  test "fetching non-existant id yields error" do
+    {:ok, pc} = PidCache.start_link()
+
+    assert {:error, _} = PidCache.fetch(pc, {:my_pids, 42})
   end
 
   test "putting the same pid twice yields the same id" do

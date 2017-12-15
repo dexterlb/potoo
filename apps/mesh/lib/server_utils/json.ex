@@ -46,6 +46,63 @@ defmodule Mesh.ServerUtils.Json do
     {:ok, x} = unjsonify(j, pc)
     x
   end
+  def unjsonify(
+    %{
+      "__type__" => "channel",
+      "id" => id
+    },
+    pc) do
+
+    case PidCache.get(pc, {:channel, id}) do
+      nil -> {:error, "no such channel pid"}
+      pid -> {:ok, {Mesh.Channel, pid}}
+    end
+  end
+  def unjsonify(
+      %{
+        "__type__" => "function",
+        "name" => name,
+        "argument" => argument,
+        "retval" => retval,
+        "data" => data
+      },
+      pc
+    ) do
+  
+    OK.for do
+      actual_argument <- unjsonify_type(argument, pc)
+      actual_retval   <- unjsonify_type(retval, pc)
+      actual_data     <- unjsonify(data, pc)
+    after
+      %Mesh.Contract.Function{
+        name: name,
+        argument: actual_argument,
+        retval: actual_retval,
+        data: actual_data
+      }
+    end
+  end
+  def unjsonify(
+      %{
+        "__type__" => "delegate",
+        "destination" => destination,
+        "data" => data
+      },
+      pc
+    ) do
+        
+    OK.for do
+      actual_data     <- unjsonify(data, pc)
+      actual_destination <- PidCache.fetch(pc, {:delegate, destination})
+    after
+      %Mesh.Contract.Delegate{
+        destination: actual_destination,
+        data: actual_data
+      }
+    end
+  end
+
+
   def unjsonify(x, _), do: {:ok, x}
 
   def unjsonify_type!(j, pc) do
