@@ -1,5 +1,5 @@
-defmodule Ui.WebSocketHandler do
-  alias Ui.TcpServer.Handler
+defmodule Ui.StreamServer.WebSocketListener do
+  alias Ui.StreamServer.Handler
   require Logger
 
   @behaviour :cowboy_websocket_handler

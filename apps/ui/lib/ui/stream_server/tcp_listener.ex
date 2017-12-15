@@ -1,6 +1,6 @@
-defmodule Ui.TcpServer.Listener do
+defmodule Ui.StreamServer.TcpListener do
   use GenServer
-  alias Ui.TcpServer.Handler
+  alias Ui.StreamServer.Handler
   require Logger
 
   @behaviour :ranch_protocol

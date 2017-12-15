@@ -1,4 +1,4 @@
-defmodule Ui.TcpServer.Handler do
+defmodule Ui.StreamServer.Handler do
   alias Ui.Api
   # todo:
   # keep contract in the endpoint, allow setting from tcp
@@ -48,7 +48,7 @@ defmodule Ui.TcpServer.Handler do
     {:noreply, state}
   end
 
-  defp line_handle("ping", state = %{endpoint: endpoint}) do
+  defp line_handle("ping", state) do
     {:reply, "pong", state}
   end
 

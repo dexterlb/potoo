@@ -2,7 +2,7 @@ defmodule Ui.Dispatcher do
   def dispatch do
     [
       {:_, [
-        {"/ws", Ui.WebSocketHandler, []},
+        {"/ws", Ui.StreamServer.WebSocketListener, []},
         {:_, Plug.Adapters.Cowboy.Handler, {Ui.Router, []}}
       ]}
     ]
