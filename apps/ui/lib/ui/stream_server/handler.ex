@@ -2,12 +2,13 @@ defmodule Ui.StreamServer.Handler do
   alias Ui.Api
   alias Ui.StreamServer.ReverseEndpoint
   require OK
+  require Logger
   # todo:
   # keep contract in the endpoint, allow setting from tcp
   # allow make_channel
   # remove all bare pids and replace them with channels and delegates
 
-  def init(_opts) do
+  def init(_opts \\ []) do
     OK.for do
       endpoint <- ReverseEndpoint.start_link(self())
     after
@@ -62,11 +63,6 @@ defmodule Ui.StreamServer.Handler do
     json_data |> Poison.decode! |> json_handle(state)
   end
 
-
-  defp json_handle(["my_pid" | token], state = %{endpoint: endpoint}) do
-    Api.my_pid(endpoint) |> reply_json(state, token)
-  end
-
   defp json_handle(["return", %{"to" => ref, "value" => retval} | token], state = %{active_calls: active_calls}) do
     case Map.get(active_calls, ref) do
       nil -> %{"error" => "call has expired", "ref" => ref}
@@ -76,6 +72,21 @@ defmodule Ui.StreamServer.Handler do
       end
 
     end |> reply_json(state, token)
+  end
+
+  defp json_handle(["set_contract", contract_json | token], state = %{endpoint: endpoint}) do
+    case Api.unjsonify(contract_json) do
+      {:ok, contract} -> 
+        :ok = GenServer.call(endpoint, {:set_contract, contract})
+        reply_json("ok", state, token)
+      {:error, err} -> 
+        Api.jsonify(%{"error" => "cannot set contract", "data" => err})
+        |> reply_json(state, token)
+    end
+  end
+
+  defp json_handle(["my_pid" | token], state = %{endpoint: endpoint}) do
+    Api.my_pid(endpoint) |> reply_json(state, token)
   end
 
   defp json_handle("ping", state) do

@@ -1,26 +1,40 @@
 defmodule Ui.StreamServer.ReverseEndpoint do
   use GenServer
+  require OK
   
   def init(parent) do
-    {:ok, {parent, nil}}
+    OK.for do
+      chan <- Mesh.Channel.start_link()
+    after
+      {parent, nil, chan}
+    end
   end
 
-  def handle_call(call, from = {sender, _}, state = {parent, _}) do
+  def handle_call(call, from = {sender, _}, state = {parent, _, _}) do
     case sender == parent do
       false -> handle_regular_call(call, from, state)
       true  -> handle_parent_call(call, from, state)
     end
   end
 
-  def handle_parent_call({:set_contract, new_contract}, _from, state = {parent, contract}) do
-    {:reply, :ok, {parent, new_contract}}
+  def handle_parent_call({:set_contract, new_contract}, _from, {parent, _, chan}) do
+    Mesh.Channel.send(chan, new_contract)
+    {:reply, :ok, {parent, new_contract, chan}}
   end
 
-  def handle_parent_call(call, from, state) do
+  def handle_parent_call(_call, _from, _state) do
     raise "did you try calling yourself?"
   end
 
-  def handle_regular_call(call, from, state = {parent, _contract}) do
+  def handle_regular_call(:contract, _from, state = {_, contract, _}) do
+    {:reply, contract, state}
+  end
+
+  def handle_regular_call(:subscribe_contract, _from, state = {_, _, chan}) do
+    {:reply, chan, state}
+  end
+
+  def handle_regular_call(call, from, state = {parent, _, _}) do
     send(parent, {:incoming_call, from, call})
     {:noreply, state}
   end
