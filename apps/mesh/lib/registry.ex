@@ -67,7 +67,10 @@ defmodule Mesh.Registry do
     receive do
       {:DOWN, _, :process, _, _} -> 
         GenServer.call(from, {"deregister", %{"name" => name}})
-      _ ->
+      msg ->
+        Logger.debug(fn ->
+          "unknown monitor message: #{inspect(msg)}"
+        end)
         receive_downs(from, name)
     end
   end

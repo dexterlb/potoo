@@ -101,7 +101,26 @@ defmodule Mesh.ServerUtils.Json do
       }
     end
   end
-
+  def unjsonify(m = %{}, pc) do
+    # todo: fix the case when there's a __key__ in the map
+    OK.for do
+      map <- m |> Enum.map(
+        fn({k, v}) ->
+          OK.for do
+            key <- unjsonify(k, pc)
+            value <- unjsonify(v, pc)
+          after
+            {key, value}
+          end
+        end)
+        |> squeeze_errors
+    after
+      Map.new(map)
+    end
+  end
+  def unjsonify(l, pc) when is_list(l) do
+    l |> Enum.map(fn(x) -> unjsonify(x, pc) end) |> squeeze_errors
+  end
 
   def unjsonify(x, _), do: {:ok, x}
 

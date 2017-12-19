@@ -7,11 +7,15 @@ defmodule Ui.Api do
   require OK
 
   def call(%{"pid" => pid, "path" => path, "argument" => argument}) when is_integer(pid) do
-    PidCache
-      |> PidCache.get({:delegate, pid})
-      |> Mesh.direct_call(String.split(path, "/"), argument, true)
-      |> check_fail
-      |> jsonify
+    case unjsonify(argument) do
+      {:ok, arg} ->
+        PidCache
+          |> PidCache.get({:delegate, pid})
+          |> Mesh.direct_call(String.split(path, "/"), arg, true)
+          |> check_fail
+          |> jsonify
+      {:error, err} -> %{"error" => jsonify(err)}
+    end
   end
 
   def call(%{"path" => _, "argument" => _} = handle) do
@@ -29,10 +33,14 @@ defmodule Ui.Api do
   end
 
   def unsafe_call(%{"pid" => pid, "function_name" => name, "argument" => argument}) when is_integer(pid) do
-    PidCache
-      |> PidCache.get({:delegate, pid})
-      |> Mesh.unsafe_call(name, argument)
-      |> jsonify
+    case unjsonify(argument) do
+      {:ok, arg} ->
+        PidCache
+          |> PidCache.get({:delegate, pid})
+          |> Mesh.unsafe_call(name, arg)
+          |> jsonify
+      {:error, err} -> %{"error" => jsonify(err)}
+    end
   end
 
   def get_contract(empty) when empty == %{} do

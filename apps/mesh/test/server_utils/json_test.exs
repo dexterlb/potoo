@@ -165,7 +165,24 @@ defmodule JsonTest do
       "destination" => PidCache.get(pc, {:delegate, self()}),
       "data" => %{"foo" => "bar"}
     }
+    assert unjsonify(json, pc) == {:ok, del}
+  end
 
+  test "can unjsonify delegate in map", %{pc: pc} do
+    del = %{
+      "delly" => %Mesh.Contract.Delegate{
+        destination: self(),
+        data: %{"foo" => "bar"}
+      }
+    }
+
+    json = %{
+      "delly" => %{
+        "__type__" => "delegate",
+        "destination" => PidCache.get(pc, {:delegate, self()}),
+        "data" => %{"foo" => "bar"}
+      }
+    }
     assert unjsonify(json, pc) == {:ok, del}
   end
 

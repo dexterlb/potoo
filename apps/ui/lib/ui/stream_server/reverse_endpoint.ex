@@ -3,6 +3,8 @@ defmodule Ui.StreamServer.ReverseEndpoint do
   require OK
   
   def init(parent) do
+    Process.link(parent)
+    Process.flag(:trap_exit, true)
     OK.for do
       chan <- Mesh.Channel.start_link()
     after
@@ -37,6 +39,10 @@ defmodule Ui.StreamServer.ReverseEndpoint do
   def handle_regular_call(call, from, state = {parent, _, _}) do
     send(parent, {:incoming_call, from, call})
     {:noreply, state}
+  end
+
+  def handle_info({:EXIT, _, _}, _) do
+    {:stop, :link_exited}
   end
 
   def start_link(parent) do
