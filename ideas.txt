@@ -45,10 +45,10 @@ defcontract do
 end
 
 - todo:
-    - unit tests for server_utils
-    - tcp client api
-    - function cache, so API clients can execute functions with casts
     - notify channel subscribers when channel dies
-    - replace bare pids with delagetes in all apis
     - a unified cache which allows calling by path, keeps contracts
       in state and automatically drops items
+    - fix json api:
+        - call unjsonify in all calls before performing the api call
+        - (side effect of ^) use channels instead of direct channel pids
+        * hold off for now, since this will break clients
