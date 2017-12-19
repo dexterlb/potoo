@@ -3,10 +3,6 @@ defmodule Ui.StreamServer.Handler do
   alias Ui.StreamServer.ReverseEndpoint
   require OK
   require Logger
-  # todo:
-  # keep contract in the endpoint, allow setting from tcp
-  # allow make_channel
-  # remove all bare pids and replace them with channels and delegates
 
   def init(_opts \\ []) do
     OK.for do
@@ -87,6 +83,14 @@ defmodule Ui.StreamServer.Handler do
 
   defp json_handle(["my_pid" | token], state = %{endpoint: endpoint}) do
     Api.my_pid(endpoint) |> reply_json(state, token)
+  end
+
+  defp json_handle(["make_channel" | token], state) do
+    Api.make_channel |> reply_json(state, token)
+  end
+
+  defp json_handle(["send_on", %{"channel" => chan, "message" => msg} | token], state) do
+    Api.send_on(chan, msg) |> reply_json(state, token)
   end
 
   defp json_handle("ping", state) do

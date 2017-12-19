@@ -4,6 +4,7 @@ defmodule Ui.Api do
   alias Mesh.ServerUtils.Json
 
   require Logger
+  require OK
 
   def call(%{"pid" => pid, "path" => path, "argument" => argument}) when is_integer(pid) do
     PidCache
@@ -79,6 +80,22 @@ defmodule Ui.Api do
 
   def my_pid(endpoint) do
     PidCache.get(PidCache, {:delegate, endpoint})
+  end
+
+  def make_channel() do
+    {:ok, chan} = Mesh.Channel.start_link()
+    chan |> jsonify
+  end
+
+  def send_on(channel, message) do
+    {:ok, status} = OK.for do
+      chan <- unjsonify(channel)
+      msg  <- unjsonify(message)  # ugly code! all rubyists cringe!
+    after
+      Mesh.Channel.send(chan, msg) |> jsonify
+    end
+
+    status
   end
 
 
