@@ -52,3 +52,4 @@ end
         - call unjsonify in all calls before performing the api call
         - (side effect of ^) use channels instead of direct channel pids
         * hold off for now, since this will break clients
+    - make channels die when their parent exits normally
