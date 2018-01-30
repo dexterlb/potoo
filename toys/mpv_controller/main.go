@@ -17,15 +17,44 @@ const contract = `
 	"description": "Video player",
 	"controls": {
 		"playpause": {
-            "retval": null,
-            "name": "controls.playpause",
-            "data": {},
-            "argument": null,
-            "__type__": "function"
-        }
+			"retval": null,
+			"name": "controls.playpause",
+			"data": {},
+			"argument": null,
+			"__type__": "function"
+		},
+		"volume": {
+			"min_value": 0,
+			"max_value": 100,
+			"get": {
+				"name": "volume.get",
+				"data": {},
+				"argument": null,
+				"retval": "float",
+				"__type__": "function"
+			},
+			"set": {
+				"name": "volume.set",
+				"data": {},
+				"argument": "float",
+				"retval": null,
+				"__type__": "function"
+			},
+			"subscribe": {
+				"name": "volume.subscribe",
+				"data": {},
+				"argument": null,
+				"retval": ["channel", "float"],
+				"__type__": "function"
+			}
+		}
 	}
 }
 `
+
+const (
+	VOLUME_ID = 1
+)
 
 func main() {
 	meshConn := mesh.NewConnection("localhost:4444")
@@ -86,11 +115,6 @@ func main() {
 		stop <- struct{}{}
 	}()
 
-	_, err = mpvConn.Call("observe_property", 42, "volume")
-	if err != nil {
-		fmt.Print(err)
-	}
-
 	meshConn.SetHandler("controls.playpause", func(arg interface{}) interface{} {
 		if arg != nil {
 			panic("argument given to playpause")
@@ -103,13 +127,60 @@ func main() {
 		return nil
 	})
 
-	listenMpvEvents(events)
-}
+	_, err = mpvConn.Call("observe_property", VOLUME_ID, "volume")
+	if err != nil {
+		fmt.Print(err)
+	}
 
-func listenMpvEvents(events chan *mpvipc.Event) {
+	volumeChan, err := meshConn.Call("make_channel")
+	if err != nil {
+		log.Fatal("cannot make volume channel: %s", err)
+	}
+
+	meshConn.SetHandler("volume.get", func(arg interface{}) interface{} {
+		if arg != nil {
+			panic("argument given to volume.get")
+		}
+
+		data, err := mpvConn.Call("get_property", "volume")
+		if err != nil {
+			log.Fatal("unable to get volume: %s", err)
+		}
+
+		return data.(float64)
+	})
+
+	meshConn.SetHandler("volume.set", func(arg interface{}) interface{} {
+		volume := arg.(float64)
+
+		_, err := mpvConn.Call("set_property", "volume", volume)
+		if err != nil {
+			log.Fatal("unable to set volume: %s", err)
+		}
+
+		return nil
+	})
+
+	meshConn.SetHandler("volume.subscribe", func(arg interface{}) interface{} {
+		if arg != nil {
+			panic("argument given to volume.subscribe")
+		}
+
+		return volumeChan
+	})
+
 	for event := range events {
-		if event.ID == 42 {
-			log.Printf("volume now is %f", event.Data.(float64))
+		if event.ID == VOLUME_ID {
+			volume := event.Data.(float64)
+			log.Printf("volume now is %f", volume)
+			err := meshConn.OkCall("send_on", map[string]interface{}{
+				"channel": volumeChan,
+				"message": volume,
+			})
+
+			if err != nil {
+				log.Fatal("cannot send volume: %s", err)
+			}
 		} else {
 			log.Printf("received event: %s", event.Name)
 		}

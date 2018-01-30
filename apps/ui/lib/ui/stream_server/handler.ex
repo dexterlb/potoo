@@ -33,7 +33,7 @@ defmodule Ui.StreamServer.Handler do
   end
 
   def socket_info({:incoming_call, from, {function, argument}}, state = %{active_calls: active_calls}) do
-    call_ref = :rand.uniform(9223372036854775808)
+    call_ref = random_string(64)
 
     new_active_calls = Map.put(active_calls, call_ref, from)
     Process.send_after(self(), {:drop_call, call_ref}, 10000)
@@ -141,5 +141,13 @@ defmodule Ui.StreamServer.Handler do
 
   defp encode_json(data) do
     Poison.encode!(data, pretty: Application.get_env(:ui, :json_pretty, false))
+  end
+
+  @random_string_chars "0123456789abcdefghijklmnopqrstuvwxyz" |> String.split("")
+
+  defp random_string(length) do
+    Enum.reduce((1..length), [], fn (_i, acc) ->
+      [Enum.random(@random_string_chars) | acc]
+    end) |> Enum.join("")
   end
 end

@@ -288,14 +288,17 @@ func (c *Connection) checkResult(data []byte) {
 }
 
 func (c *Connection) processIncomingCall(data map[string]interface{}) {
-	from := uint64(data["from"].(float64) + 0.5)
+	from := data["from"].(string)
 	function := data["function"].(string)
 	argument := data["argument"]
 
 	c.lock.Lock()
-	handler := c.handlers[function]
+	handler, ok := c.handlers[function]
 	c.lock.Unlock()
 
+	if !ok {
+		log.Fatalf("no such handler: %s", function)
+	}
 	result := handler(argument)
 
 	message := []interface{}{
