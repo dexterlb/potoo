@@ -61,7 +61,13 @@ type alias Property = {
     setter:         Maybe FunctionStruct,
     subscriber:     Maybe FunctionStruct,
     propertyType:   Type,
+    meta:           PropertyMeta,
     value:          Maybe PropertyValue
+  }
+
+type alias PropertyMeta = {
+    min: Maybe Float,
+    max: Maybe Float
   }
 
 type PropertyValue
@@ -133,7 +139,7 @@ objectDecoder = field "__type__" string
     _ -> fail <| "object type `" ++ t ++ "' is unknown")
 
 delegateDecoder : Decoder Contract
-delegateDecoder = Json.Decode.map2 makeDelegate 
+delegateDecoder = Json.Decode.map2 makeDelegate
   (field "destination" int)
   (field "data" dataDecoder)
 
@@ -246,7 +252,7 @@ tLiteralDecoder = Json.Decode.map TLiteral
 
 
 tUnknownDecoder : Decoder Type
-tUnknownDecoder = Json.Decode.map 
+tUnknownDecoder = Json.Decode.map
   (\v -> TUnknown <| Json.Encode.encode 4 v)
   Json.Decode.value
 
@@ -259,7 +265,7 @@ toVisual pid contracts properties  = case Dict.get pid contracts of
     }
 
 toVisual_ : Contract -> Int -> Dict Int Contract -> Properties -> VisualContract
-toVisual_ c pid contracts properties = case c of 
+toVisual_ c pid contracts properties = case c of
   StringValue s -> VStringValue s
   IntValue i -> VIntValue i
   FloatValue f -> VFloatValue f
@@ -299,8 +305,8 @@ toVisual_ c pid contracts properties = case c of
 
 inspectType : Type -> String
 inspectType t = case t of
-  TStruct d -> d 
-    |> Dict.toList 
+  TStruct d -> d
+    |> Dict.toList
     |> List.map (\(k, v) -> k ++ ": " ++ (inspectType v))
     |> String.join ", "
     |> (\s -> "{ " ++ s ++ " }")
@@ -334,24 +340,24 @@ inspectData d = d
   |> (\s -> "<" ++ s ++ ">")
 
 propertify : Contract -> (Contract, ContractProperties)
-propertify contract = 
-  let (newContract, (properties, _)) 
+propertify contract =
+  let (newContract, (properties, _))
     = propertify_ contract ((Dict.fromList []), 1)
   in (newContract, properties)
 
 propertify_ : Contract -> (ContractProperties, Int) -> (Contract, (ContractProperties, Int))
 propertify_ contract data = case contract of
-  ListContract l -> 
+  ListContract l ->
     let (subcontracts, newData) = propertifyList l data in
       (ListContract subcontracts, newData)
   MapContract d ->
-    let 
+    let
       (subcontractList, newData1) = propertifyMap (Dict.toList d) data
       subcontract = MapContract <| Dict.fromList subcontractList
     in
       case checkProperty d of
         Just prop ->
-          let 
+          let
             (properties, lastProp) = newData1
             newLastProp = lastProp + 1
             newProperties = Dict.insert newLastProp prop properties
@@ -365,7 +371,7 @@ propertify_ contract data = case contract of
 
 checkProperty : Dict String Contract -> Maybe Property
 checkProperty fields = let
-    getter      = Dict.get "get"       fields |> Maybe.andThen getFunction 
+    getter      = Dict.get "get"       fields |> Maybe.andThen getFunction
     setter      = Dict.get "set"       fields |> Maybe.andThen getFunction
     subscriber  = Dict.get "subscribe" fields |> Maybe.andThen getFunction
   in case getter of
@@ -375,7 +381,8 @@ checkProperty fields = let
       setter        = setter,
       subscriber    = subscriber,
       propertyType  = retval,
-      value         = Nothing
+      value         = Nothing,
+      meta          = getPropertyMeta fields
     }
 
 checkPropertyConsistency : Property -> Maybe Property
@@ -389,6 +396,18 @@ checkPropertyConsistency prop = let
     case equiv of
       True -> Just prop
       False -> Nothing
+
+getPropertyMeta : Dict String Contract -> PropertyMeta
+getPropertyMeta fields =
+  { min = Dict.get "min_value" fields |> numericValue,
+    max = Dict.get "max_value" fields |> numericValue }
+
+numericValue : Maybe Contract -> Maybe Float
+numericValue mc = mc |> Maybe.andThen (\c -> case c of
+  FloatValue f -> Just f
+  IntValue i   -> Just <| toFloat i
+  _            -> Nothing)
+
 
 getFunction : Contract -> Maybe FunctionStruct
 getFunction c = case c of
@@ -411,7 +430,7 @@ propertifyList : List Contract -> (ContractProperties, Int) -> (List Contract, (
 propertifyList l data = case l of
   [] -> ([], data)
   h::t ->
-    let (newTail, newData1) = propertifyList t data in 
+    let (newTail, newData1) = propertifyList t data in
       let (contract, newData2) = propertify_ h newData1 in
         (contract :: newTail, newData2)
 
@@ -419,7 +438,7 @@ propertifyMap : List (String, Contract) -> (ContractProperties, Int) -> (List (S
 propertifyMap l data = case l of
   [] -> ([], data)
   (hk, hv)::t ->
-    let (newTail, newData1) = propertifyMap t data in 
+    let (newTail, newData1) = propertifyMap t data in
       let (contract, newData2) = propertify_ hv newData1 in
         ((hk, contract) :: newTail, newData2)
 

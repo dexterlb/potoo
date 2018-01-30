@@ -62,7 +62,6 @@ end
         - docs everywhere
 
 - roadmap:
-    - make mpv toy work for play/pause and volume
     - some sort of ui for a slider property (demo with volume)
     - construct unified cache, remove unsafe calls from everywhere
     - api refactoring
