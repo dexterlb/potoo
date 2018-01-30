@@ -16,10 +16,10 @@ defmodule Ui.StreamServer.Handler do
   end
 
   def socket_handle({:text, text}, state) do
-    line = text 
+    line = text
       |> String.replace("\r", "")
       |> String.replace("\n", "")
-    
+
     case line_handle(line, state) do
       {:reply, text, state} -> {:reply, [text, "\n"], state}
       other -> other
@@ -27,18 +27,18 @@ defmodule Ui.StreamServer.Handler do
   end
 
   def socket_info({{:subscription, token}, message}, state) do
-    message 
+    message
       |> Api.jsonify
       |> reply_json(state, [token])
   end
 
-  def socket_info({:incoming_call, from, call}, state = %{active_calls: active_calls}) do
+  def socket_info({:incoming_call, from, {function, argument}}, state = %{active_calls: active_calls}) do
     call_ref = :rand.uniform(9223372036854775808)
-    
+
     new_active_calls = Map.put(active_calls, call_ref, from)
     Process.send_after(self(), {:drop_call, call_ref}, 10000)
 
-    ["call", %{"from" => call_ref, "argument" => call}]
+    ["call", %{"from" => call_ref, "function" => function, "argument" => argument}]
       |> Api.jsonify
       |> reply_json(%{state | active_calls: new_active_calls})
   end
@@ -72,10 +72,10 @@ defmodule Ui.StreamServer.Handler do
 
   defp json_handle(["set_contract", contract_json | token], state = %{endpoint: endpoint}) do
     case Api.unjsonify(contract_json) do
-      {:ok, contract} -> 
+      {:ok, contract} ->
         :ok = GenServer.call(endpoint, {:set_contract, contract})
         reply_json("ok", state, token)
-      {:error, err} -> 
+      {:error, err} ->
         Api.jsonify(%{"error" => "cannot set contract", "data" => err})
         |> reply_json(state, token)
     end
@@ -96,7 +96,7 @@ defmodule Ui.StreamServer.Handler do
   defp json_handle("ping", state) do
     reply_json("pong", state)
   end
-  
+
   defp json_handle(["get_contract", arg | token], state) do
     Api.get_contract(arg) |> reply_json(state, token)
   end

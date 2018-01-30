@@ -91,6 +91,18 @@ func main() {
 		fmt.Print(err)
 	}
 
+	meshConn.SetHandler("controls.playpause", func(arg interface{}) interface{} {
+		if arg != nil {
+			panic("argument given to playpause")
+		}
+		_, err := mpvConn.Call("cycle", "pause")
+		if err != nil {
+			log.Printf("cannot playpause: %s", err)
+		}
+
+		return nil
+	})
+
 	listenMpvEvents(events)
 }
 

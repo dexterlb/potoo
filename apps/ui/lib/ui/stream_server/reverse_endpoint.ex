@@ -1,7 +1,7 @@
 defmodule Ui.StreamServer.ReverseEndpoint do
   use GenServer
   require OK
-  
+
   def init(parent) do
     Process.link(parent)
     Process.flag(:trap_exit, true)
@@ -36,7 +36,7 @@ defmodule Ui.StreamServer.ReverseEndpoint do
     {:reply, chan, state}
   end
 
-  def handle_regular_call(call, from, state = {parent, _, _}) do
+  def handle_regular_call(call = {_, _}, from, state = {parent, _, _}) do
     send(parent, {:incoming_call, from, call})
     {:noreply, state}
   end

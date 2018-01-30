@@ -27,8 +27,12 @@ type Connection struct {
 	lastCloseWaiter uint
 	closeWaiters    map[uint]chan struct{}
 
+	handlers map[string]Handler
+
 	lock *sync.Mutex
 }
+
+type Handler func(interface{}) interface{}
 
 // NewConnection returns a Connection associated with the given address
 func NewConnection(address string) *Connection {
@@ -38,7 +42,14 @@ func NewConnection(address string) *Connection {
 		waitingRequests: make(map[uint]chan *commandResult),
 		// eventListeners:  make(map[uint]chan<- *Event),
 		closeWaiters: make(map[uint]chan struct{}),
+		handlers:     make(map[string]Handler),
 	}
+}
+
+func (c *Connection) SetHandler(name string, function Handler) {
+	c.lock.Lock()
+	c.handlers[name] = function
+	c.lock.Unlock()
 }
 
 // Open connects to the socket. Returns an error if already connected.
@@ -195,6 +206,10 @@ func (c *Connection) sendCommand(id uint, arguments ...interface{}) error {
 	}
 	message = append(message, id)
 
+	return c.sendMessage(message)
+}
+
+func (c *Connection) sendMessage(message interface{}) error {
 	data, err := json.Marshal(&message)
 	if err != nil {
 		return fmt.Errorf("can't encode command: %s", err)
@@ -207,7 +222,7 @@ func (c *Connection) sendCommand(id uint, arguments ...interface{}) error {
 	if err != nil {
 		return fmt.Errorf("can't terminate command: %s", err)
 	}
-	return err
+	return nil
 }
 
 type commandResult struct {
@@ -227,6 +242,13 @@ func (c *Connection) checkResult(data []byte) {
 		log.Printf("wrong length")
 		return
 	}
+
+	if str, ok := resultArray[0].(string); ok && str == "call" {
+		arg := resultArray[1].(map[string]interface{})
+		c.processIncomingCall(arg)
+		return
+	}
+
 	switch id := resultArray[1].(type) {
 	case uint32:
 		result.ID = uint(id)
@@ -262,6 +284,31 @@ func (c *Connection) checkResult(data []byte) {
 	c.lock.Unlock()
 	if ok {
 		request <- result
+	}
+}
+
+func (c *Connection) processIncomingCall(data map[string]interface{}) {
+	from := uint64(data["from"].(float64) + 0.5)
+	function := data["function"].(string)
+	argument := data["argument"]
+
+	c.lock.Lock()
+	handler := c.handlers[function]
+	c.lock.Unlock()
+
+	result := handler(argument)
+
+	message := []interface{}{
+		"return",
+		map[string]interface{}{
+			"to":    from,
+			"value": result,
+		},
+	}
+
+	err := c.sendMessage(message)
+	if err != nil {
+		panic(err)
 	}
 }
 
