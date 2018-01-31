@@ -72,6 +72,7 @@ type alias PropertyMeta = {
 
 type PropertyValue
   = IntProperty Int
+  | FloatProperty Float
   | UnknownProperty Json.Encode.Value
 
 type VisualContract
@@ -399,8 +400,9 @@ checkPropertyConsistency prop = let
 
 getPropertyMeta : Dict String Contract -> PropertyMeta
 getPropertyMeta fields =
-  { min = Dict.get "min_value" fields |> numericValue,
-    max = Dict.get "max_value" fields |> numericValue }
+  { min = Dict.get "min_value" fields |> numericValue
+  , max = Dict.get "max_value" fields |> numericValue
+  }
 
 numericValue : Maybe Contract -> Maybe Float
 numericValue mc = mc |> Maybe.andThen (\c -> case c of

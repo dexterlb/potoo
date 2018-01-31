@@ -6,7 +6,7 @@ import Html.Styled exposing (..)
 import Html.Styled.Attributes exposing (css, href, src, styled)
 
 contract = css
-  [ 
+  [
   ]
 
 mapContract = indentedContract
@@ -78,7 +78,7 @@ dataBlock = css
   ]
 
 dataItem = css
-  [  
+  [
   ]
 
 
@@ -140,5 +140,9 @@ propertyGet = css
   ]
 
 propertyValue = css
+  [
+  ]
+
+propertyFloatSlider = css
   [
   ]

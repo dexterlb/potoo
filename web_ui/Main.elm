@@ -1,6 +1,7 @@
 import Html
 import Html.Styled exposing (..)
 import Html.Styled.Attributes exposing (css, href, src, styled, class, title)
+import Html.Styled.Attributes as Attrs
 import Html.Styled.Events exposing (onClick, onInput)
 
 import Api exposing (..)
@@ -65,6 +66,7 @@ type Msg
   | PerformCallWithToken { pid: Int, name: String, argument: Json.Encode.Value } String
   | CancelCall
   | CallGetter (Pid, PropertyID) FunctionStruct
+  | CallSetter (Pid, PropertyID) FunctionStruct Json.Encode.Value
   | SendPing
 
 
@@ -75,7 +77,7 @@ update msg model =
       case parseResponse str of
         Ok resp -> handleResponse model resp
         Err err -> ({model | messages = err :: model.messages}, Cmd.none)
-    
+
     AskCall f -> ({model | toCall = Just f, callToken = Nothing, callArgument = Nothing, callResult = Nothing}, Cmd.none)
 
     AskInstantCall f -> ({model | toCall = Just f, callArgument = Just Json.Encode.null}, instantCall f)
@@ -92,14 +94,21 @@ update msg model =
         callArgument = Nothing,
         callResult = Nothing
       }, Cmd.none)
-    
+
     CallGetter (pid, id) { name } -> (
-        model, 
-        Api.getterCall 
+        model,
+        Api.getterCall
           {pid = pid, name = name, argument = Json.Encode.null}
           (pid, id)
       )
-    
+
+    CallSetter (pid, id) { name } value -> (
+        model,
+        Api.setterCall
+          {pid = pid, name = name, argument = value}
+          (pid, id)
+      )
+
     SendPing -> (model, sendPing)
 
 nextPing : Cmd Msg
@@ -112,15 +121,15 @@ instantCall vc = case vc of
   _ -> Cmd.none
 
 performCall : {pid: Int, name: String, argument: Json.Encode.Value} -> Cmd Msg
-performCall data = Random.generate 
+performCall data = Random.generate
   (PerformCallWithToken data)
   (Random.String.string 64 Random.Char.english)
 
 handleResponse : Model -> Response -> (Model, Cmd Msg)
 handleResponse m resp = case resp of
   GotContract pid contract
-    -> 
-      let 
+    ->
+      let
         (newContract, properties) = propertify contract
         (newModel, newCommand) = checkMissing newContract {m |
           allProperties = Dict.insert pid properties m.allProperties,
@@ -151,7 +160,7 @@ handleResponse m resp = case resp of
     -> (m, subscribe chan token)
   SubscribedChannel token
     -> (Debug.log (Json.Encode.encode 0 token) m, Cmd.none)
-  
+
   Pong -> (m, nextPing)
 
 subscribeProperties : Pid -> ContractProperties -> Cmd Msg
@@ -164,18 +173,29 @@ foo : Pid -> (PropertyID, Property) -> Cmd Msg
 foo pid (id, prop) = case prop.subscriber of
   Nothing -> Cmd.none
   Just { name } -> Cmd.batch
-    [ subscriberCall 
-        { pid = pid, name = name, argument = Json.Encode.null } 
+    [ subscriberCall
+        { pid = pid, name = name, argument = Json.Encode.null }
         (pid, id)
     , case prop.getter of
         Nothing -> Cmd.none
-        Just { name } -> getterCall 
-          { pid = pid, name = name, argument = Json.Encode.null } 
+        Just { name } -> getterCall
+          { pid = pid, name = name, argument = Json.Encode.null }
           (pid, id)
     ]
 
 setPropertyValue : Json.Encode.Value -> Property -> Property
-setPropertyValue v prop = { prop | value = Just (UnknownProperty v) }
+setPropertyValue v prop = case decodePropertyValue v prop of
+  Ok value -> { prop | value = Just value }
+  Err _    -> { prop | value = Just <| UnknownProperty v }
+
+decodePropertyValue : Json.Encode.Value -> Property -> Result String PropertyValue
+decodePropertyValue v prop = case prop.propertyType of
+    TFloat -> Json.Decode.decodeValue (Json.Decode.float
+           |> Json.Decode.map FloatProperty) v
+    TInt   -> Json.Decode.decodeValue (Json.Decode.int
+           |> Json.Decode.map IntProperty) v
+    _      -> Err "unknown property type"
+
 
 checkMissing : Contract -> Model -> (Model, Cmd Msg)
 checkMissing c m = let
@@ -215,7 +235,7 @@ renderContract vc = div [ Styles.contract ] [ renderContractContent vc ]
 
 renderContractContent : VisualContract -> Html Msg
 renderContractContent vc = case vc of
-  VStringValue s -> div [ Styles.stringValue ] 
+  VStringValue s -> div [ Styles.stringValue ]
     [text s]
   VIntValue i -> div [ Styles.intValue ]
     [text <| toString i]
@@ -298,23 +318,59 @@ renderAskCallWindow mf callArgument callToken callResult = case mf of
 renderProperty : Pid -> PropertyID -> Property -> Html Msg
 renderProperty pid propID prop = div [] <| justs
   [ Maybe.map renderPropertyValue prop.value
+  , renderPropertyControl pid propID prop
   , renderPropertyGetButton pid propID prop
   ]
 
 renderPropertyValue : PropertyValue -> Html Msg
 renderPropertyValue v = (case v of
     IntProperty i -> [ text (toString i) ]
+    FloatProperty f -> [ text (toString f) ]
     UnknownProperty v -> [ text <| Json.Encode.encode 0 v]
   ) |> div [Styles.propertyValue]
 
 renderPropertyGetButton : Pid -> PropertyID -> Property -> Maybe (Html Msg)
 renderPropertyGetButton pid propID prop = case prop.getter of
   Nothing -> Nothing
-  Just getter -> 
-    Just <| button 
+  Just getter ->
+    Just <| button
       [ onClick (CallGetter (pid, propID) getter), Styles.propertyGet ]
       [ text "↺" ]
-    
+
+renderPropertyControl : Pid -> PropertyID -> Property -> Maybe (Html Msg)
+renderPropertyControl pid propID prop = case prop.setter of
+  Nothing -> Nothing
+  Just setter ->
+    case prop.value of
+      Just (FloatProperty value) ->
+        case getMinMax prop of
+          Just minmax -> Just <| renderFloatSliderControl pid propID minmax setter value
+          Nothing -> Nothing
+      _ -> Nothing
+
+getMinMax : Property -> Maybe (Float, Float)
+getMinMax prop = case prop.meta.min of
+  Nothing -> Nothing
+  Just min ->
+    case prop.meta.max of
+      Nothing -> Nothing
+      Just max -> Just (min, max)
+
+renderFloatSliderControl : Pid -> PropertyID -> (Float, Float) -> FunctionStruct -> Float -> Html Msg
+renderFloatSliderControl pid propID (min, max) setter value = input
+  [ Attrs.type_ "range"
+  , Attrs.min (min |> toString)
+  , Attrs.max (max |> toString)
+  , Attrs.value <| toString value
+  , onInput (\s -> s
+      |> String.toFloat
+      |> Result.withDefault -1
+      |> Json.Encode.float
+      |> (CallSetter (pid, propID) setter)
+    )
+  , Styles.propertyFloatSlider
+  ] []
+
 
 justs : List (Maybe a) -> List a
 justs l = case l of

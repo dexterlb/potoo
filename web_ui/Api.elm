@@ -27,7 +27,7 @@ getContract : Int -> Cmd msg
 getContract n =
   sendRaw (encode 4 (
     list [
-      string "get_and_subscribe_contract", 
+      string "get_and_subscribe_contract",
       object [
         ("pid", int n),
         ("token", object [("msg", string "got_contract"), ("pid", int n)])
@@ -50,6 +50,15 @@ getterCall func (propertyPid, propertyID) =
         ("id",  int propertyID)
       ]
 
+setterCall : { pid: Int, name: String, argument: Json.Encode.Value } -> (Int, Int) -> Cmd msg
+setterCall func (propertyPid, propertyID) =
+  rawUnsafeCall func <|
+    object [
+        ("msg", string "property_setter_status"),
+        ("pid", int propertyPid),
+        ("id",  int propertyID)
+      ]
+
 subscriberCall : { pid: Int, name: String, argument: Json.Encode.Value } -> (Int, Int) -> Cmd msg
 subscriberCall func (propertyPid, propertyID) =
   rawUnsafeCall func <|
@@ -68,7 +77,7 @@ subscribe : Channel -> Json.Encode.Value -> Cmd msg
 subscribe chan token =
   sendRaw (encode 4 (
     list [
-      string "subscribe", 
+      string "subscribe",
       object [
         ("channel", int chan),
         ("token", token)
