@@ -76,7 +76,8 @@ update msg model =
     SocketMessage str ->
       case parseResponse str of
         Ok resp -> handleResponse model resp
-        Err err -> ({model | messages = err :: model.messages}, Cmd.none)
+        Err err -> let msg = "unable to parse response >> " ++ str ++ " << : " ++ err
+          in ({model | messages = msg :: model.messages}, Cmd.none)
 
     AskCall f -> ({model | toCall = Just f, callToken = Nothing, callArgument = Nothing, callResult = Nothing}, Cmd.none)
 

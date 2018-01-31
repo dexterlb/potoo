@@ -132,7 +132,7 @@ tokenDecoder = JD.field "msg" JD.string
     "got_contract" -> JD.map GotContractToken <| JD.field "pid" JD.int
     "unsafe_call_result" -> JD.map UnsafeCallResultToken <| JD.field "token_string" JD.string
     "channel_result" -> JD.map ChannelResultToken <| JD.field "token" JD.value
-    "subscribed_channel" -> JD.map ChannelResultToken <| JD.field "token" JD.value
+    "subscribed_channel" -> JD.map SubscribedChannelToken <| JD.field "token" JD.value
     "property_value" -> JD.map2 (\pid id -> PropertyValueResultToken (pid, id))
       (JD.field "pid" JD.int)
       (JD.field "id" JD.int)
