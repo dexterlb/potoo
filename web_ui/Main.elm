@@ -319,7 +319,7 @@ renderAskCallWindow mf callArgument callToken callResult = case mf of
   _ -> div [] []
 
 renderProperty : Pid -> PropertyID -> Property -> Html Msg
-renderProperty pid propID prop = div [] <| justs
+renderProperty pid propID prop = div [Styles.propertyContainer] <| justs
   [ Maybe.map renderPropertyValue prop.value
   , renderPropertyControl pid propID prop
   , renderPropertyGetButton pid propID prop

@@ -139,10 +139,16 @@ propertyGet = css
   [
   ]
 
+propertyContainer = css
+  [ display inline
+  ]
+
 propertyValue = css
-  [
+  [ display inline
+  , marginLeft (px 20)
+  , before [ property "content" "\"► \"", color (hex "60f453") ]
   ]
 
 propertyFloatSlider = css
-  [
+  [ display inline
   ]
