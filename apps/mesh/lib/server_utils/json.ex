@@ -68,7 +68,7 @@ defmodule Mesh.ServerUtils.Json do
       },
       pc
     ) do
-  
+
     OK.for do
       actual_argument <- unjsonify_type(argument, pc)
       actual_retval   <- unjsonify_type(retval, pc)
@@ -90,7 +90,7 @@ defmodule Mesh.ServerUtils.Json do
       },
       pc
     ) do
-        
+
     OK.for do
       actual_data     <- unjsonify(data, pc)
       actual_destination <- PidCache.fetch(pc, {:delegate, destination})
@@ -146,11 +146,12 @@ defmodule Mesh.ServerUtils.Json do
   def unjsonify_type(["literal", value], _) do
     {:ok, {:literal, value}}
   end
-  def unjsonify_type(["type", j], pc) do
+  def unjsonify_type(["type", j, data], pc) do
     OK.for do
       t <- unjsonify_type(j, pc)
+      d <- unjsonify(data, pc)
     after
-      {:type, t}
+      {:type, t, d}
     end
   end
   def unjsonify_type(["list", j], pc) do

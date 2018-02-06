@@ -29,9 +29,9 @@ defmodule JsonTest do
 
   test "can jsonify types", %{pc: pc} do
     assert(
-      Enum.map(type_jsons(), 
-        fn({type, _}) 
-          -> {type, jsonify(type, pc)} 
+      Enum.map(type_jsons(),
+        fn({type, _})
+          -> {type, jsonify(type, pc)}
         end
       )
       == type_jsons()
@@ -40,9 +40,9 @@ defmodule JsonTest do
 
   test "can unjsonify types", %{pc: pc} do
     assert(
-      Enum.map(type_jsons(), 
-        fn({_, json}) 
-          -> {unjsonify_type!(json, pc), json} 
+      Enum.map(type_jsons(),
+        fn({_, json})
+          -> {unjsonify_type!(json, pc), json}
         end
       )
       == type_jsons()
@@ -61,7 +61,7 @@ defmodule JsonTest do
 
       {{:channel, :integer}, ["channel", "integer"]},
       {{:literal, 42}, ["literal", 42]},
-      {{:type, :string}, ["type", "string"]},
+      {{:type, :string, %{"foo" => "bar"}}, ["type", "string", %{"foo" => "bar"}]},
       {
         {:union, :string, :integer},
         ["union", "string", "integer"]
