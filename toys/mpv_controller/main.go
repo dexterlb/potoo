@@ -68,28 +68,6 @@ func main() {
 	}
 	log.Printf("pid: %v", pid)
 
-	err = meshConn.OkCall("set_contract", json.RawMessage(contract))
-	if err != nil {
-		log.Fatalf("cannot set contract: %s", err)
-	}
-
-	err = meshConn.OkCall("call", map[string]interface{}{
-		"pid":  0,
-		"path": "register",
-		"argument": map[string]interface{}{
-			"name": "epic_player",
-			"delegate": &mesh.Delegate{
-				Destination: int(pid.(float64)),
-				Data: map[string]interface{}{
-					"description": "TV in my room",
-				},
-			},
-		},
-	})
-	if err != nil {
-		log.Fatalf("cannot register: %s", err)
-	}
-
 	if len(os.Args) > 1 {
 		args := append(os.Args[1:], "--input-ipc-server=/tmp/mpv")
 		cmd := exec.Command("mpv", args...)
@@ -168,6 +146,28 @@ func main() {
 
 		return volumeChan
 	})
+
+	err = meshConn.OkCall("set_contract", json.RawMessage(contract))
+	if err != nil {
+		log.Fatalf("cannot set contract: %s", err)
+	}
+
+	err = meshConn.OkCall("call", map[string]interface{}{
+		"pid":  0,
+		"path": "register",
+		"argument": map[string]interface{}{
+			"name": "epic_player",
+			"delegate": &mesh.Delegate{
+				Destination: int(pid.(float64)),
+				Data: map[string]interface{}{
+					"description": "TV in my room",
+				},
+			},
+		},
+	})
+	if err != nil {
+		log.Fatalf("cannot register: %s", err)
+	}
 
 	for event := range events {
 		if event.ID == VOLUME_ID {
