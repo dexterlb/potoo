@@ -6,7 +6,7 @@ import Json.Encode
 
 import Result
 
-type alias Data = Dict String String
+type alias Data = Dict String Json.Encode.Value
 
 type Type
   = TNil
@@ -160,7 +160,7 @@ listDecoder = Json.Decode.map ListContract <|
   Json.Decode.list (Json.Decode.lazy (\_ -> contractDecoder))
 
 dataDecoder : Decoder Data
-dataDecoder = dict string
+dataDecoder = dict Json.Decode.value
 
 makeDelegate : Int -> Data -> Contract
 makeDelegate destination data = Delegate {
@@ -336,7 +336,7 @@ inspectType t = case t of
 inspectData : Data -> String
 inspectData d = d
   |> Dict.toList
-  |> List.map (\(k, v) -> k ++ ": " ++ v)
+  |> List.map (\(k, v) -> k ++ ": " ++ (Json.Encode.encode 0 v))
   |> String.join ", "
   |> (\s -> "<" ++ s ++ ">")
 

@@ -285,7 +285,7 @@ renderData d = div [ Styles.dataBlock ] (
     Dict.toList d |> List.map (
       \(name, value) -> div [ Styles.dataItem ]
         [ div [ Styles.dataName ] [ text name ]
-        , div [ Styles.dataValue ] [ text value ]
+        , div [ Styles.dataValue ] [ text (Json.Encode.encode 0 value) ]
         ]
     ))
 
