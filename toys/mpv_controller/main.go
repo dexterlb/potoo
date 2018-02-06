@@ -24,19 +24,17 @@ const contract = `
 			"__type__": "function"
 		},
 		"volume": {
-			"min_value": 0,
-			"max_value": 100,
 			"get": {
 				"name": "volume.get",
 				"data": {},
 				"argument": null,
-				"retval": "float",
+				"retval": ["type", "float", {"min": 0, "max": 100}],
 				"__type__": "function"
 			},
 			"set": {
 				"name": "volume.set",
 				"data": {},
-				"argument": "float",
+				"argument": ["type", "float", {"min": 0, "max": 100}],
 				"retval": null,
 				"__type__": "function"
 			},
@@ -44,7 +42,7 @@ const contract = `
 				"name": "volume.subscribe",
 				"data": {},
 				"argument": null,
-				"retval": ["channel", "float"],
+				"retval": ["channel", ["type", "float", {"min": 0, "max": 100}]],
 				"__type__": "function"
 			}
 		}

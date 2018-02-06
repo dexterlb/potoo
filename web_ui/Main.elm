@@ -192,7 +192,7 @@ setPropertyValue v prop = case decodePropertyValue v prop of
   Err _    -> { prop | value = Just <| UnknownProperty v }
 
 decodePropertyValue : Json.Encode.Value -> Property -> Result String PropertyValue
-decodePropertyValue v prop = case prop.propertyType of
+decodePropertyValue v prop = case (stripType prop.propertyType) of
     TFloat -> Json.Decode.decodeValue (Json.Decode.float
            |> Json.Decode.map FloatProperty) v
     TInt   -> Json.Decode.decodeValue (Json.Decode.int

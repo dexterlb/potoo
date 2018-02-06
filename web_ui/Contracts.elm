@@ -383,7 +383,7 @@ checkProperty fields = let
       subscriber    = subscriber,
       propertyType  = retval,
       value         = Nothing,
-      meta          = getPropertyMeta fields
+      meta          = getPropertyMeta fields (getTypeFields retval)
     }
 
 checkPropertyConsistency : Property -> Maybe Property
@@ -398,17 +398,27 @@ checkPropertyConsistency prop = let
       True -> Just prop
       False -> Nothing
 
-getPropertyMeta : Dict String Contract -> PropertyMeta
-getPropertyMeta fields =
-  { min = Dict.get "min_value" fields |> numericValue
-  , max = Dict.get "max_value" fields |> numericValue
+getPropertyMeta : Dict String Contract -> Data -> PropertyMeta
+getPropertyMeta fields typeFields =
+  { min = firstJust [
+      Dict.get "min" fields     |> Maybe.andThen numericContract,
+      Dict.get "min" typeFields |> Maybe.andThen numericValue
+    ]
+  , max = firstJust [
+      Dict.get "max" fields     |> Maybe.andThen numericContract,
+      Dict.get "max" typeFields |> Maybe.andThen numericValue
+    ]
   }
 
-numericValue : Maybe Contract -> Maybe Float
-numericValue mc = mc |> Maybe.andThen (\c -> case c of
+numericContract : Contract -> Maybe Float
+numericContract c = case c of
   FloatValue f -> Just f
   IntValue i   -> Just <| toFloat i
-  _            -> Nothing)
+  _            -> Nothing
+
+numericValue : Json.Encode.Value -> Maybe Float
+numericValue v = Json.Decode.decodeValue (Json.Decode.float) v
+  |> Result.toMaybe
 
 
 getFunction : Contract -> Maybe FunctionStruct
@@ -444,6 +454,16 @@ propertifyMap l data = case l of
       let (contract, newData2) = propertify_ hv newData1 in
         ((hk, contract) :: newTail, newData2)
 
+-- todo: make those work on deep types
+getTypeFields : Type -> Dict String Json.Encode.Value
+getTypeFields t = case t of
+  (TType _ data)  -> data
+  _               -> Dict.empty
+
+stripType : Type -> Type
+stripType t = case t of
+  (TType t1 data) -> t1
+  t2              -> t2
 
 -- utils
 
@@ -451,3 +471,9 @@ fetch : comparable -> Dict comparable v -> v
 fetch k d = case Dict.get k d of
   Just v -> v
   Nothing -> Debug.crash "the author of this page is a moron"
+
+firstJust : List (Maybe a) -> Maybe a
+firstJust l = case l of
+  []          -> Nothing
+  (Just x)::_ -> Just x
+  Nothing::t  -> firstJust t
