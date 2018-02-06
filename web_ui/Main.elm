@@ -161,6 +161,8 @@ handleResponse m resp = case resp of
     -> (m, subscribe chan token)
   SubscribedChannel token
     -> (Debug.log (Json.Encode.encode 0 token) m, Cmd.none)
+  PropertySetterStatus token
+    -> (Debug.log ("property setter status: " ++ (Json.Encode.encode 0 token)) m, Cmd.none)
 
   Pong -> (m, nextPing)
 
