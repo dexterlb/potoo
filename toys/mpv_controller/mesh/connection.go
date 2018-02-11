@@ -214,14 +214,12 @@ func (c *Connection) sendMessage(message interface{}) error {
 	if err != nil {
 		return fmt.Errorf("can't encode command: %s", err)
 	}
+	data = append(data, byte('\n'))
 	_, err = c.client.Write(data)
 	if err != nil {
 		return fmt.Errorf("can't write command: %s", err)
 	}
-	_, err = c.client.Write([]byte("\n"))
-	if err != nil {
-		return fmt.Errorf("can't terminate command: %s", err)
-	}
+	log.Printf("sent: %s", string(data))
 	return nil
 }
 
