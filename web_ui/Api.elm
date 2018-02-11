@@ -106,8 +106,9 @@ parseResponse s = JD.decodeString responseDecoder s
 
 responseDecoder : Decoder Response
 responseDecoder = JD.oneOf
-  [ pongDecoder,
-    JD.index 1 tokenDecoder
+  [ pongDecoder
+  , helloDecoder
+  , JD.index 1 tokenDecoder
       |> JD.andThen (responseByTokenDecoder >> JD.index 0)
   ]
 
@@ -116,6 +117,13 @@ pongDecoder = JD.string
   |> JD.andThen (\s -> case s of
     "pong" -> JD.succeed Pong
     _ -> JD.fail "not a pong message"
+  )
+
+helloDecoder : Decoder Response
+helloDecoder = JD.string
+  |> JD.andThen (\s -> case s of
+    "hello" -> JD.succeed Hello
+    _ -> JD.fail "not a hello message"
   )
 
 responseByTokenDecoder : Token -> Decoder Response
@@ -159,3 +167,4 @@ type Response
   | SubscribedChannel Json.Encode.Value
   | PropertySetterStatus (Int, Int) Json.Encode.Value
   | Pong
+  | Hello

@@ -46,13 +46,15 @@ type alias Model =
 
 init : (Model, Cmd Msg)
 init =
-  (Model "" [] Dict.empty Dict.empty Set.empty Nothing Nothing Nothing Nothing, startCommand)
+  (emptyModel, startCommand)
 
 startCommand : Cmd Msg
 startCommand = Cmd.batch
   [ nextPing
-  , Api.getContract 0
   ]
+
+emptyModel : Model
+emptyModel = Model "" [] Dict.empty Dict.empty Set.empty Nothing Nothing Nothing Nothing
 
 
 -- UPDATE
@@ -165,6 +167,8 @@ handleResponse m resp = case resp of
     -> (Debug.log ("property setter status: " ++ (Json.Encode.encode 0 status)) m, Cmd.none)
 
   Pong -> (m, nextPing)
+
+  Hello -> (emptyModel, Api.getContract 0)
 
 subscribeProperties : Pid -> ContractProperties -> Cmd Msg
 subscribeProperties pid properties

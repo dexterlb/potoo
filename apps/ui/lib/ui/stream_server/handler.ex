@@ -5,6 +5,8 @@ defmodule Ui.StreamServer.Handler do
   require Logger
 
   def init(_opts \\ []) do
+    send(self(), {__MODULE__, :begin})
+
     OK.for do
       endpoint <- ReverseEndpoint.start_link(self())
     after
@@ -15,6 +17,7 @@ defmodule Ui.StreamServer.Handler do
     end
   end
 
+
   def socket_handle({:text, text}, state) do
     line = text
       |> String.replace("\r", "")
@@ -24,6 +27,10 @@ defmodule Ui.StreamServer.Handler do
       {:reply, text, state} -> {:reply, [text, "\n"], state}
       other -> other
     end
+  end
+
+  def socket_info({__MODULE__, :begin}, state) do
+    reply_json("hello", state)
   end
 
   def socket_info({{:subscription, token}, message}, state) do
