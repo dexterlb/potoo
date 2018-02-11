@@ -14,7 +14,7 @@ defmodule Ui.StreamServer.TcpListener do
     Logger.debug(fn -> ["start tcp listener: ", inspect(socket)] end)
 
     :ok = :ranch.accept_ack(ref)
-    :ok = transport.setopts(socket, [{:active, true}])
+    :ok = transport.setopts(socket, [active: true, packet: :line])
     {:ok, handler_state} = Handler.init()
     :gen_server.enter_loop(__MODULE__, opts, %{socket: socket, transport: transport, handler_state: handler_state})
   end

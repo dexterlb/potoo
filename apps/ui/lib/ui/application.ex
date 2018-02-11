@@ -20,12 +20,12 @@ defmodule Ui.Application do
         [name: PidCache]
       ]),
       worker(Ui.StreamServer.TcpServer, [
-        [port: 4444, connection_type: :worker],
+        [port: 4444],
       ]),
 
 
       {
-        Plug.Adapters.Cowboy, 
+        Plug.Adapters.Cowboy,
         scheme: :http,
         plug: Ui.Router,
         options: [
