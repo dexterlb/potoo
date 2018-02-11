@@ -1,26 +1,3 @@
-- registry
-    - [rpc] register
-    - [rpc] unregister
-        - explicit
-        - network failiure
-        - timeouts
-
-    * maybe cache contracts?
-
-- service
-    - [fn] register(book: node_id_t, id: id_t, info: reginfo_t): ok_t
-    - [fn] set_contract(contract: contract_t): ok_t
-
-    - [rpc] get_contract(): contract_t
-    - [rpc] subscribe_contract(): sub_t<contract_t>
-    - [rpc] call(args_t): value_t
-
-- client
-    - [fn] construct(target: pid_t)
-    - [fn] get_contract(): contract_t
-    - [fn] subscribe_contract(): sub_t<contract_t>
-    - [fn] call(method: method_path_t, args: args_t): value_t
-
 - elixir code:
 
 defcontract do
@@ -45,8 +22,8 @@ defcontract do
 end
 
 - todo:
-    - notify channel subscribers when channel dies
-    - persistent register
+    - notify channel subscribers when channel dies (maybe also subscribe_link)
+    - persistent register (register_link?)
     - a unified cache which allows calling by path, keeps contracts
         - persistent subscribe (by path from unified cache)
         - cache subscribes to all contracts, updates them on the fly
@@ -62,7 +39,6 @@ end
         - docs everywhere
 
 - roadmap:
-    - some sort of ui for a slider property (demo with volume)
     - construct unified cache, remove unsafe calls from everywhere
     - api refactoring
     - prettify code
