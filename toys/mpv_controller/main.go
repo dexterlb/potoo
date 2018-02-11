@@ -60,6 +60,11 @@ func main() {
 	if err != nil {
 		log.Fatalf("cannot open mesh connection: %s", err)
 	}
+	go func() {
+		meshConn.WaitUntilClosed()
+		log.Fatal("connection to mesh died")
+	}()
+
 	pid, err := meshConn.Call("my_pid")
 	if err != nil {
 		log.Fatalf("cannot get pid: %s", err)
@@ -74,6 +79,7 @@ func main() {
 		cmd.Stderr = os.Stderr
 
 		go cmd.Run()
+		defer cmd.Process.Kill()
 		time.Sleep(2 * time.Second)
 	}
 
