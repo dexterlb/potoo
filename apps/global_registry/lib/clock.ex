@@ -1,23 +1,30 @@
 defmodule GlobalRegistry.Clock do
   use GenServer
+  require OK
 
   def start_link(registry, opts \\ []) do
     GenServer.start_link(__MODULE__, registry, opts)
   end
 
   def init(registry) do
-    result = Mesh.direct_call(registry, ["register"], %{
-        "name" => "clock_service", 
+    :ok = Mesh.direct_call(registry, ["register"], %{
+        "name" => "clock_service",
         "delegate" => %Mesh.Contract.Delegate{destination: self()}
     })
 
     Process.send_after(self(), :tick, 100)
 
-    {:ok, chan} = Mesh.Channel.start_link()
-
-    case result do
-      :ok -> {:ok, chan}
-      err -> err
+    OK.for do
+      time_channel <- Mesh.Channel.start_link()
+      is_utc_channel <- Mesh.Channel.start_link()
+      contract_channel <- Mesh.Channel.start_link()
+    after
+      {:ok, %{
+        time_channel: time_channel,
+        is_utc_channel: is_utc_channel,
+        contract_channel: contract_channel,
+        is_utc: false
+      }}
     end
   end
 
@@ -34,6 +41,23 @@ defmodule GlobalRegistry.Clock do
         argument: nil,
         retval: {:channel, :string}
       }
+    },
+    "is_utc" => %{
+      "get" => %Mesh.Contract.Function{
+        name: "is_utc.get",
+        argument: nil,
+        retval: :bool,
+      },
+      "subscribe" => %Mesh.Contract.Function{
+        name: "is_utc.subscribe",
+        argument: nil,
+        retval: {:channel, :bool}
+      },
+      "set" => %Mesh.Contract.Function{
+        name: "is_utc.set",
+        argument: :bool,
+        retval: nil
+      }
     }
   }
 
@@ -41,26 +65,44 @@ defmodule GlobalRegistry.Clock do
     {:reply, @contract, state}
   end
 
-  def handle_call(:subscribe_contract, _from, state) do
-    {:ok, chan} = Mesh.Channel.start_link()
+  def handle_call(:subscribe_contract, _from, state = %{contract_channel: chan}) do
     {:reply, chan, state}
   end
 
-  def handle_call({"time.get", nil}, _, state) do
-    {:reply, time(), state}
+  def handle_call({"time.get", nil}, _, state = %{is_utc: is_utc}) do
+    {:reply, time(is_utc), state}
   end
 
-  def handle_call({"time.subscribe", nil}, _, chan) do
-    {:reply, chan, chan}
+  def handle_call({"time.subscribe", nil}, _, state = %{time_channel: time_channel}) do
+    {:reply, time_channel, state}
   end
 
-  def handle_info(:tick, chan) do
-    Mesh.Channel.send(chan, time())
+  def handle_call({"is_utc.get", nil}, _, state = %{is_utc: is_utc}) do
+    {:reply, is_utc, state}
+  end
+
+  def handle_call({"is_utc.set", is_utc}, _, state = %{is_utc_channel: is_utc_channel}) do
+    Mesh.Channel.send(is_utc_channel, is_utc)
+    send(self(), :tick)
+    {:reply, nil, %{ state | is_utc: is_utc }}
+  end
+
+  def handle_call({"is_utc.subscribe", nil}, _, state = %{is_utc_channel: is_utc_channel}) do
+    {:reply, is_utc_channel, state}
+  end
+
+
+  def handle_info(:tick, state = %{time_channel: time_channel, is_utc: is_utc}) do
+    Mesh.Channel.send(time_channel, time(is_utc))
     Process.send_after(self(), :tick, 1000)
-    {:noreply, chan}
+    {:noreply, state}
   end
 
-  defp time do
-    "Erlang time: #{inspect(:calendar.local_time)}"
+  defp time(false) do
+    "#{inspect(:calendar.local_time)}"
+  end
+
+  defp time(true) do
+    "#{inspect(:calendar.universal_time)}"
   end
 end
