@@ -16,6 +16,8 @@ import Random.Char
 import Delay
 import Time
 
+import Debug exposing (log)
+
 
 import Contracts exposing (..)
 import Styles
@@ -199,6 +201,8 @@ decodePropertyValue : Json.Encode.Value -> Property -> Result String PropertyVal
 decodePropertyValue v prop = case (stripType prop.propertyType) of
     TFloat -> Json.Decode.decodeValue (Json.Decode.float
            |> Json.Decode.map FloatProperty) v
+    TBool  -> Json.Decode.decodeValue (Json.Decode.bool
+           |> Json.Decode.map BoolProperty) v
     TInt   -> Json.Decode.decodeValue (Json.Decode.int
            |> Json.Decode.map IntProperty) v
     _      -> Err "unknown property type"
@@ -333,6 +337,7 @@ renderPropertyValue : PropertyValue -> Html Msg
 renderPropertyValue v = (case v of
     IntProperty i -> [ text (toString i) ]
     FloatProperty f -> [ text (toString f) ]
+    BoolProperty b -> [ text (toString b) ]
     UnknownProperty v -> [ text <| Json.Encode.encode 0 v]
   ) |> div [Styles.propertyValue]
 
@@ -353,6 +358,8 @@ renderPropertyControl pid propID prop = case prop.setter of
         case getMinMax prop of
           Just minmax -> Just <| renderFloatSliderControl pid propID minmax setter value
           Nothing -> Nothing
+      Just (BoolProperty value) ->
+        Just <| renderBoolCheckboxControl pid propID setter value
       _ -> Nothing
 
 getMinMax : Property -> Maybe (Float, Float)
@@ -376,6 +383,14 @@ renderFloatSliderControl pid propID (min, max) setter value = input
       |> (CallSetter (pid, propID) setter)
     )
   , Styles.propertyFloatSlider
+  ] []
+
+renderBoolCheckboxControl : Pid -> PropertyID -> FunctionStruct -> Bool -> Html Msg
+renderBoolCheckboxControl pid propID setter value = input
+  [ Attrs.type_ "checkbox"
+  , Attrs.value <| toString value
+  , onClick (CallSetter (pid, propID) setter (Json.Encode.bool <| not value))
+  , Styles.propertyBoolCheckbox
   ] []
 
 

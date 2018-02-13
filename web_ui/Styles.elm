@@ -152,3 +152,7 @@ propertyValue = css
 propertyFloatSlider = css
   [ display inline
   ]
+
+propertyBoolCheckbox = css
+  [ display inline
+  ]

@@ -73,6 +73,7 @@ type alias PropertyMeta = {
 type PropertyValue
   = IntProperty Int
   | FloatProperty Float
+  | BoolProperty Bool
   | UnknownProperty Json.Encode.Value
 
 type VisualContract

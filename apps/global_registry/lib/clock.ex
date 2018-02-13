@@ -83,8 +83,9 @@ defmodule GlobalRegistry.Clock do
 
   def handle_call({"is_utc.set", is_utc}, _, state = %{is_utc_channel: is_utc_channel}) do
     Mesh.Channel.send(is_utc_channel, is_utc)
-    send(self(), :tick)
-    {:reply, nil, %{ state | is_utc: is_utc }}
+    newstate = %{ state | is_utc: is_utc }
+    tick(newstate)
+    {:reply, nil, newstate}
   end
 
   def handle_call({"is_utc.subscribe", nil}, _, state = %{is_utc_channel: is_utc_channel}) do
@@ -92,10 +93,14 @@ defmodule GlobalRegistry.Clock do
   end
 
 
-  def handle_info(:tick, state = %{time_channel: time_channel, is_utc: is_utc}) do
-    Mesh.Channel.send(time_channel, time(is_utc))
+  def handle_info(:tick, state) do
+    tick(state)
     Process.send_after(self(), :tick, 1000)
     {:noreply, state}
+  end
+
+  defp tick(%{time_channel: time_channel, is_utc: is_utc}) do
+    Mesh.Channel.send(time_channel, time(is_utc))
   end
 
   defp time(false) do
