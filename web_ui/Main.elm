@@ -1,5 +1,5 @@
 import Html
-import Html.Keyed
+import Html.Styled.Keyed
 import Html.Styled exposing (..)
 import Html.Styled.Attributes exposing (css, href, src, styled, class, title)
 import Html.Styled.Attributes as Attrs
@@ -399,14 +399,14 @@ renderFloatSliderControl pid propID (min, max) setter value = input
 
 renderBoolCheckboxControl : Pid -> PropertyID -> FunctionStruct -> Bool -> Html Msg
 renderBoolCheckboxControl pid propID setter value =
-  Html.Keyed.node "span" [] [
-    ("checkBox" ++ (toString value), renderBoolCheckbox pid propID setter value)
+  Html.Styled.Keyed.node "span" [] [
+    ((toString value), renderBoolCheckbox pid propID setter value)
   ]
 
 renderBoolCheckbox : Pid -> PropertyID -> FunctionStruct -> Bool -> Html Msg
 renderBoolCheckbox pid propID setter value = input
   [ Attrs.type_ "checkbox"
-  , Attrs.value <| toString value
+  , Attrs.checked value
   , onClick (CallSetter (pid, propID) setter (Json.Encode.bool <| not value))
   , Styles.propertyBoolCheckbox
   ] []
