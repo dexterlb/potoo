@@ -6,26 +6,28 @@ import Json.Decode as JD exposing (Decoder)
 
 import Contracts exposing (..)
 
-ws : String
-ws = "ws://localhost:4040/ws"
+type alias Conn = String
 
-listenRaw : (String -> msg) -> Sub msg
-listenRaw f = Sub.batch
-  [ WebSocket.listen ws f
-  , WebSocket.keepAlive ws
+connect : String -> Conn
+connect url = url
+
+listenRaw : Conn -> (String -> msg) -> Sub msg
+listenRaw conn f = Sub.batch
+  [ WebSocket.listen conn f
+  , WebSocket.keepAlive conn
   ]
 
-sendRaw : String -> Cmd msg
-sendRaw = WebSocket.send ws
+sendRaw : Conn -> String -> Cmd msg
+sendRaw conn = WebSocket.send conn
 
-sendPing : Cmd msg
-sendPing = sendRaw (encode 4
+sendPing : Conn -> Cmd msg
+sendPing conn = sendRaw conn (encode 4
     (string "ping")
   )
 
-getContract : Int -> Cmd msg
-getContract n =
-  sendRaw (encode 4 (
+getContract : Conn -> Int -> Cmd msg
+getContract conn n =
+  sendRaw conn (encode 4 (
     list [
       string "get_and_subscribe_contract",
       object [
@@ -36,32 +38,32 @@ getContract n =
     ]
   ))
 
-unsafeCall : { pid: Int, name: String, argument: Json.Encode.Value } -> String -> Cmd msg
-unsafeCall func tokenString =
-  rawUnsafeCall func <|
+unsafeCall : Conn -> { pid: Int, name: String, argument: Json.Encode.Value } -> String -> Cmd msg
+unsafeCall conn func tokenString =
+  rawUnsafeCall conn func <|
       object [("msg", string "unsafe_call_result"), ("token_string", string tokenString)]
 
-getterCall : { pid: Int, name: String, argument: Json.Encode.Value } -> (Int, Int) -> Cmd msg
-getterCall func (propertyPid, propertyID) =
-  rawUnsafeCall func <|
+getterCall : Conn -> { pid: Int, name: String, argument: Json.Encode.Value } -> (Int, Int) -> Cmd msg
+getterCall conn func (propertyPid, propertyID) =
+  rawUnsafeCall conn func <|
     object [
         ("msg", string "property_value"),
         ("pid", int propertyPid),
         ("id",  int propertyID)
       ]
 
-setterCall : { pid: Int, name: String, argument: Json.Encode.Value } -> (Int, Int) -> Cmd msg
-setterCall func (propertyPid, propertyID) =
-  rawUnsafeCall func <|
+setterCall : Conn -> { pid: Int, name: String, argument: Json.Encode.Value } -> (Int, Int) -> Cmd msg
+setterCall conn func (propertyPid, propertyID) =
+  rawUnsafeCall conn func <|
     object [
         ("msg", string "property_setter_status"),
         ("pid", int propertyPid),
         ("id",  int propertyID)
       ]
 
-subscriberCall : { pid: Int, name: String, argument: Json.Encode.Value } -> (Int, Int) -> Cmd msg
-subscriberCall func (propertyPid, propertyID) =
-  rawUnsafeCall func <|
+subscriberCall : Conn -> { pid: Int, name: String, argument: Json.Encode.Value } -> (Int, Int) -> Cmd msg
+subscriberCall conn func (propertyPid, propertyID) =
+  rawUnsafeCall conn func <|
     object [
       ("msg", string "channel_result"),
       ("token",
@@ -73,9 +75,9 @@ subscriberCall func (propertyPid, propertyID) =
       )
     ]
 
-subscribe : Channel -> Json.Encode.Value -> Cmd msg
-subscribe chan token =
-  sendRaw (encode 4 (
+subscribe : Conn -> Channel -> Json.Encode.Value -> Cmd msg
+subscribe conn chan token =
+  sendRaw conn (encode 4 (
     list [
       string "subscribe",
       object [
@@ -87,9 +89,9 @@ subscribe chan token =
   ))
 
 
-rawUnsafeCall : { pid: Int, name: String, argument: Json.Encode.Value } -> Json.Encode.Value -> Cmd msg
-rawUnsafeCall {pid, name, argument} token =
-  sendRaw (encode 4 (
+rawUnsafeCall : Conn -> { pid: Int, name: String, argument: Json.Encode.Value } -> Json.Encode.Value -> Cmd msg
+rawUnsafeCall conn {pid, name, argument} token =
+  sendRaw conn (encode 4 (
     list [
       string "unsafe_call",
       object [

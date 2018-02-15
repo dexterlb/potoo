@@ -3,6 +3,8 @@ import Html.Styled exposing (..)
 import Html.Styled.Attributes exposing (css, href, src, styled, class, title)
 import Html.Styled.Attributes as Attrs
 import Html.Styled.Events exposing (onClick, onInput)
+import Navigation
+import Navigation exposing (Location)
 
 import Api exposing (..)
 
@@ -18,12 +20,12 @@ import Time
 
 import Debug exposing (log)
 
-
 import Contracts exposing (..)
 import Styles
 
 main =
-  Html.program
+  Navigation.program
+    (\loc -> NewLocation loc)
     { init = init
     , view = view >> toUnstyled
     , update = update
@@ -36,6 +38,8 @@ main =
 type alias Model =
   { input : String
   , messages : List String
+  , conn : Conn
+  , location : Location
   , contracts: Dict Int Contract
   , allProperties : Properties
   , fetchingContracts: Set Int
@@ -46,17 +50,20 @@ type alias Model =
   }
 
 
-init : (Model, Cmd Msg)
-init =
-  (emptyModel, startCommand)
+init : Location -> (Model, Cmd Msg)
+init loc =
+  (emptyModel loc, startCommand)
 
 startCommand : Cmd Msg
 startCommand = Cmd.batch
   [ nextPing
   ]
 
-emptyModel : Model
-emptyModel = Model "" [] Dict.empty Dict.empty Set.empty Nothing Nothing Nothing Nothing
+emptyModel : Location -> Model
+emptyModel loc = Model "" [] (connectWithLocation loc) loc Dict.empty Dict.empty Set.empty Nothing Nothing Nothing Nothing
+
+connectWithLocation : Location -> Conn
+connectWithLocation { host } = Api.connect ("ws://" ++ host ++ "/ws")
 
 
 -- UPDATE
@@ -72,6 +79,7 @@ type Msg
   | CallGetter (Pid, PropertyID) FunctionStruct
   | CallSetter (Pid, PropertyID) FunctionStruct Json.Encode.Value
   | SendPing
+  | NewLocation Location
 
 
 update : Msg -> Model -> (Model, Cmd Msg)
@@ -91,7 +99,7 @@ update msg model =
 
     PerformCall data -> (model, performCall data)
 
-    PerformCallWithToken data token -> ({model | callToken = Just token}, Api.unsafeCall data token)
+    PerformCallWithToken data token -> ({model | callToken = Just token}, Api.unsafeCall model.conn data token)
 
     CancelCall -> ({ model |
         toCall = Nothing,
@@ -102,19 +110,21 @@ update msg model =
 
     CallGetter (pid, id) { name } -> (
         model,
-        Api.getterCall
+        Api.getterCall model.conn
           {pid = pid, name = name, argument = Json.Encode.null}
           (pid, id)
       )
 
     CallSetter (pid, id) { name } value -> (
         model,
-        Api.setterCall
+        Api.setterCall model.conn
           {pid = pid, name = name, argument = value}
           (pid, id)
       )
 
-    SendPing -> (model, sendPing)
+    SendPing -> (model, sendPing model.conn)
+
+    NewLocation loc -> (emptyModel loc, Cmd.none)
 
 nextPing : Cmd Msg
 nextPing = Delay.after 5 Time.second SendPing
@@ -142,7 +152,7 @@ handleResponse m resp = case resp of
           fetchingContracts = Set.remove pid m.fetchingContracts
         }
       in
-        (newModel, Cmd.batch [ subscribeProperties pid properties,
+        (newModel, Cmd.batch [ subscribeProperties m.conn pid properties,
                                newCommand ])
 
   UnsafeCallResult token value
@@ -162,7 +172,7 @@ handleResponse m resp = case resp of
       Cmd.none
     )
   ChannelResult token chan
-    -> (m, subscribe chan token)
+    -> (m, subscribe m.conn chan token)
   SubscribedChannel token
     -> (Debug.log (Json.Encode.encode 0 token) m, Cmd.none)
   PropertySetterStatus _ status
@@ -170,24 +180,25 @@ handleResponse m resp = case resp of
 
   Pong -> (m, nextPing)
 
-  Hello -> (emptyModel, Api.getContract 0)
+  Hello -> (emptyModel m.location, Api.getContract m.conn 0)
 
-subscribeProperties : Pid -> ContractProperties -> Cmd Msg
-subscribeProperties pid properties
+
+subscribeProperties : Conn -> Pid -> ContractProperties -> Cmd Msg
+subscribeProperties conn pid properties
    = Dict.toList properties
-  |> List.map (foo pid)
+  |> List.map (foo conn pid)
   |> Cmd.batch
 
-foo : Pid -> (PropertyID, Property) -> Cmd Msg
-foo pid (id, prop) = case prop.subscriber of
+foo : Conn -> Pid -> (PropertyID, Property) -> Cmd Msg
+foo conn pid (id, prop) = case prop.subscriber of
   Nothing -> Cmd.none
   Just { name } -> Cmd.batch
-    [ subscriberCall
+    [ subscriberCall conn
         { pid = pid, name = name, argument = Json.Encode.null }
         (pid, id)
     , case prop.getter of
         Nothing -> Cmd.none
-        Just { name } -> getterCall
+        Just { name } -> getterCall conn
           { pid = pid, name = name, argument = Json.Encode.null }
           (pid, id)
     ]
@@ -212,7 +223,7 @@ checkMissing : Contract -> Model -> (Model, Cmd Msg)
 checkMissing c m = let
     missing = Set.diff (delegatePids c |> Set.fromList) m.fetchingContracts
     newModel = {m | fetchingContracts = Set.union m.fetchingContracts missing}
-    command = missing |> Set.toList |> List.map Api.getContract |> Cmd.batch
+    command = missing |> Set.toList |> List.map (Api.getContract m.conn) |> Cmd.batch
   in (newModel, command)
 
 delegatePids : Contract -> List Int
@@ -236,7 +247,7 @@ checkCallInput s = case Json.Decode.decodeString Json.Decode.value s of
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-  Api.listenRaw SocketMessage
+  Api.listenRaw model.conn SocketMessage
 
 
 -- VIEW
