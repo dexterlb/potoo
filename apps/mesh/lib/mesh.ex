@@ -15,7 +15,7 @@ defmodule Mesh do
   def call(target, function, argument, false) do
     case check_argument(function, argument) do
       {:fail, err}  -> {:fail, err}
-      :ok           -> 
+      :ok           ->
         check_retval(function, GenServer.call(target, {function.name, argument}))
     end
   end
@@ -34,7 +34,7 @@ defmodule Mesh do
   def contract_call(target, contract, [], argument, fuzzy) do
     call(target, contract, argument, fuzzy)
   end
-  
+
   def contract_call(_, %Mesh.Contract.Delegate{destination: new_target}, path, argument, fuzzy) do
     direct_call(new_target, path, argument, fuzzy)
   end
@@ -56,7 +56,7 @@ defmodule Mesh do
   end
 
   @doc """
-  Checks if the given (concrete) argument match the contract.
+  Checks if the given (concrete) argument matches the contract.
   """
   def check_argument(function, argument) do
     case Contract.Type.is_valid(function.argument) do
@@ -74,7 +74,7 @@ defmodule Mesh do
     # of {:ok, retval} is worth it
 
     case Contract.Type.is_valid(function.retval) do
-      false -> 
+      false ->
         {:fail, "function return value type (#{inspect(function.retval)}) in contract is invalid"}
       true ->
         case Contract.Type.is_of(function.retval, retval) do

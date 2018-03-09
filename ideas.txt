@@ -25,10 +25,10 @@ end
     - notify channel subscribers when channel dies (maybe also subscribe_link)
     - persistent register (register_link?)
     - a unified cache which allows calling by path, keeps contracts
+      in state and automatically drops items
         - persistent subscribe (by path from unified cache)
         - cache subscribes to all contracts, updates them on the fly
 
-      in state and automatically drops items
     - fix json api:
         - call unjsonify in all calls before performing the api call
         - (side effect of ^) use channels instead of direct channel pids
@@ -37,6 +37,10 @@ end
     - prettification
         - behaviours for services
         - docs everywhere
+        - normal error handling in mesh.ex
+    - make functions contain a pid. populate it when getting contracts, if not
+      already present. That allows for delegated functions and completes the
+      duality with channels.
 
 - roadmap:
     - construct unified cache, remove unsafe calls from everywhere
