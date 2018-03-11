@@ -1,6 +1,6 @@
 defmodule Mesh do
   @moduledoc """
-  Documentation for Mesh.
+  This module handles calling functions on services.
   """
 
   alias Mesh.Contract
@@ -8,31 +8,30 @@ defmodule Mesh do
   alias Mesh.Channel
 
   def call(function = %Contract.Function{}, argument) do
-    call(function, argument, false)
+    call(nil, function, argument, false)
   end
 
   def call(target, function = %Contract.Function{}, argument) do
     call(target, function, argument, false)
   end
 
-  def call(function = %Contract.Function{pid: target}, argument, fuzzy) when is_boolean(fuzzy) do
-    call(target, function, argument, fuzzy)
+  def call(target, function = %Contract.Function{pid: nil}, argument, fuzzy) when is_boolean(fuzzy) do
+    do_call(target, function, argument, fuzzy)
+  end
+
+  def call(_, function = %Contract.Function{pid: target}, argument, fuzzy) when is_boolean(fuzzy) do
+    do_call(target, function, argument, fuzzy)
   end
 
 
-  def call(nil, function = %Contract.Function{}, argument, fuzzy) when is_boolean(fuzzy) do
-    call(function, argument, fuzzy)
-  end
-
-
-  def call(target, function = %Contract.Function{}, argument, true) do
+  defp do_call(target, function = %Contract.Function{}, argument, true) do
     case Type.cast(argument, function.argument) do
       {:ok, correctly_typed_argument} -> call(target, function, correctly_typed_argument)
       {:fail, err}                    -> {:fail, err}
     end
   end
 
-  def call(target, function = %Contract.Function{}, argument, false) do
+  defp do_call(target, function = %Contract.Function{}, argument, false) do
     case check_argument(function, argument) do
       {:fail, err}  -> {:fail, err}
       :ok           ->
