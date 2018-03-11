@@ -2,6 +2,7 @@ defmodule Mesh.Channel do
   use GenServer
 
   require Logger
+  require OK
 
   defmacro is_channel(value) do
     quote do
@@ -14,11 +15,29 @@ defmodule Mesh.Channel do
     end
   end
 
-  def start_link(opts \\ []) do
-    case GenServer.start_link(__MODULE__, %{}, opts) do
+  def start_link(opts \\ [], transform \\ fn(x) -> x end) do
+    initial_state = %{subscribers: %{}, transform: transform}
+    case GenServer.start_link(__MODULE__, initial_state, opts) do
       {:ok, pid} -> {:ok, {__MODULE__, pid}}
       err        -> err
     end
+  end
+
+  def map(chan = {__MODULE__, _}, fun, opts \\ []) do
+    OK.for do
+      mapped_chan <- start_link(opts, fun)
+      {__MODULE__, mapped_pid} = mapped_chan
+    after
+      case subscribe(chan, mapped_pid, :send) do
+        :ok -> mapped_chan
+        err -> err
+      end
+    end
+  end
+
+  def map!(chan, fun, opts \\ []) do
+    {:ok, mapped_chan} = map(chan, fun, opts)
+    mapped_chan
   end
 
   def subscribe({__MODULE__, channel}, pid, token) do
@@ -41,7 +60,7 @@ defmodule Mesh.Channel do
     GenServer.cast(channel, {:send_lazy, fun})
   end
 
-  def handle_call({:subscribe, pid, token}, _from, subscribers) do
+  def handle_call({:subscribe, pid, token}, _from, state = %{subscribers: subscribers}) do
     Logger.debug fn ->
       "subscribing pid #{inspect(pid)} to channel #{inspect(self())}"
     end
@@ -53,47 +72,51 @@ defmodule Mesh.Channel do
       fn(tokens) -> MapSet.put(tokens, token) end
     )
 
-    {:reply, :ok, new_subscribers}
+    {:reply, :ok, %{ state | subscribers: new_subscribers }}
   end
 
-  def handle_cast({:send, message}, subscribers) do
+  def handle_cast({:send, message}, state = %{subscribers: subscribers}) do
     subscribers |> Enum.map(fn(target) -> dispatch(target, message) end)
 
-    {:noreply, subscribers}
+    {:noreply, state}
   end
 
-  def handle_cast({:send_lazy, fun}, subscribers) do
+  def handle_cast({:send_lazy, fun}, state = %{subscribers: subscribers}) do
     case subscribers == %{} do
-      true -> {:noreply, subscribers}
-      false -> handle_cast({:send, fun.()}, subscribers)
+      true -> {:noreply, state}
+      false -> handle_cast({:send, fun.()}, state)
     end
   end
 
-  def handle_cast({:unsubscribe, pid}, subscribers) do
+  def handle_cast({:unsubscribe, pid}, state = %{subscribers: subscribers}) do
     Logger.debug fn ->
       "unsubscribing pid #{inspect(pid)} from channel #{inspect(self())}"
     end
-    {:noreply, Map.delete(subscribers, pid)}
+    {:noreply, %{ state | subscribers: Map.delete(subscribers, pid)} }
   end
 
-  def handle_cast({:unsubscribe, pid, token}, subscribers) do
+  def handle_cast({:unsubscribe, pid, token}, state = %{subscribers: subscribers}) do
     Logger.debug fn ->
       "unsubscribing pid #{inspect(pid)} from channel #{inspect(self())} with token #{inspect(token)}"
     end
 
     tokens = Map.get(subscribers, pid, MapSet.new())
       |> MapSet.delete(token)
-    
+
     new_subscribers = case MapSet.size(tokens) do
       0 -> Map.delete(subscribers, pid)
       _ -> Map.put(subscribers, pid, tokens)
     end
 
-    {:noreply, new_subscribers}
+    {:noreply, %{ state | subscribers: new_subscribers} }
   end
 
-  def handle_info({:DOWN, _, :process, pid, _}, subscribers) do
-    handle_cast({:unsubscribe, pid}, subscribers)
+  def handle_info({:send, message}, state) do
+    handle_cast({:send, message}, state)
+  end
+
+  def handle_info({:DOWN, _, :process, pid, _}, state) do
+    handle_cast({:unsubscribe, pid}, state)
   end
 
   defp dispatch({pid, tokens}, message) do

@@ -1,4 +1,4 @@
-defmodule Contract.Type do
+defmodule Mesh.Contract.Type do
   require Mesh.Channel
 
   def is_valid(nil), do: true
@@ -50,8 +50,8 @@ defmodule Contract.Type do
     is_of({:list, t1}, keys) && is_of({:list, t2}, values)
   end
   def is_of({:struct, fields = %{}}, struct = %{}) do
-    fields 
-      |> Map.to_list 
+    fields
+      |> Map.to_list
       |> Enum.map(
         fn({key, type}) ->
           {key, type, Map.get(struct, key)}
@@ -93,11 +93,11 @@ defmodule Contract.Type do
 
   defp is_of_struct_field({key, value_type, value}) do
     (is_atom(key) || is_of(:string, key))
-    && is_of(value_type, value)   
+    && is_of(value_type, value)
   end
 
   defp is_of_struct_field({value_type, value}) do
-    is_of(value_type, value)   
+    is_of(value_type, value)
   end
 
   defp do_cast(x, :atom) when is_bitstring(x) do
@@ -203,7 +203,7 @@ defmodule Contract.Type do
       |> Enum.map(
         fn({key, type}) -> {key, cast(Map.get(m, key), type)} end)
       |> Enum.unzip
-    
+
     case check_list_results(results, "cannot cast #{inspect(m)} to #{inspect(struct)}") do
       {:fail, _} = err -> err
       {:ok, values} -> {:ok, Enum.zip(keys, values) |> Map.new}

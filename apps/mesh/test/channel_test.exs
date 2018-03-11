@@ -80,4 +80,15 @@ defmodule Mesh.ChannelTest do
     refute_receive({:foo, 42})
     assert_receive({:bar, 42})
   end
+
+  test "can map function to channel payload" do
+    {:ok, ch} = Channel.start_link()
+    {:ok, mapch} = Channel.map(ch, fn(x) -> x + 1 end)
+
+    :ok = Channel.subscribe(mapch, self(), :foo)
+
+    spawn(fn() -> Channel.send(ch, 42) end)
+
+    assert_receive({:foo, 42})
+  end
 end

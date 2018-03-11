@@ -1,8 +1,8 @@
 defmodule TypeTest do
   use ExUnit.Case
-  doctest Contract.Type
+  doctest Mesh.Contract.Type
 
-  import Contract.Type
+  import Mesh.Contract.Type
   require Mesh.Channel
 
   test "types I think are valid are valid" do
@@ -85,14 +85,14 @@ defmodule TypeTest do
     assert is_of({:type, :integer, %{"description" => "answer"}}, "42") == false
 
     assert is_of(
-      {:struct, %{"foo" => 
+      {:struct, %{"foo" =>
         {:type, :integer, %{"description" => "the Foo field"}}, "bar" => :float}
       },
       %{"foo" => 42, "bar" => 42.5}
     ) == true
 
     assert is_of(
-      {:struct, %{"foo" => 
+      {:struct, %{"foo" =>
         {:type, :integer, %{"description" => "the Foo field"}}, "bar" => :float}
       },
       %{"foo" => :not_int, "bar" => 42.5}
@@ -111,7 +111,7 @@ defmodule TypeTest do
     assert cast("42", :integer) == {:ok, 42}
     assert cast(42, :float) == {:ok, 42}
     assert cast("42.5", :float) == {:ok, 42.5}
-    
+
     assert cast(42, :string) == {:ok, "42"}
     assert cast(42.5, :string) == {:ok, "42.5"}
 
