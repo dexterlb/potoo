@@ -5,7 +5,10 @@ defmodule Mesh do
 
   alias Mesh.Contract
   alias Mesh.Contract.Type
+  alias Mesh.Contract.Function
   alias Mesh.Channel
+
+  @type return_value :: {:ok, term} | {:error, String.t}
 
   def call(function = %Contract.Function{}, argument) do
     call(nil, function, argument, false)
@@ -39,6 +42,33 @@ defmodule Mesh do
     end
   end
 
+  @doc """
+  Call a function without taking any note of its argument and return types.
+  They may even be missing!
+
+  Of course, if malformed data is supplied, this will not be checked and will
+  probably crash the service. On the other hand, `unsafe_call/2` may be faster
+  than `call/2`.
+
+  Use with care.
+  """
+  @spec unsafe_call(Function.t, term) :: term
+  def unsafe_call(function_with_pid, argument)
+  def unsafe_call(%Function{name: name, pid: target}, argument) do
+    unsafe_call(target, name, argument)
+  end
+
+  @doc """
+  Same as `call/2`, but works on pidless functions (calls them on the given pid)
+  """
+  @spec unsafe_call(Contract.pidlike, Function.t, term) :: term
+  def unsafe_call(target, function, argument)
+  def unsafe_call(target, %Function{name: name, pid: nil}, argument) do
+    unsafe_call(target, name, argument)
+  end
+  def unsafe_call(_, %Function{name: name, pid: target}, argument) do
+    unsafe_call(target, name, argument)
+  end
   def unsafe_call(target, function_name, argument) do
     GenServer.call(target, {function_name, argument})
   end

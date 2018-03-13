@@ -1,6 +1,27 @@
 defmodule Mesh.Contract.Type do
+  @moduledoc """
+  This module implements a basic type system. Values can be tested for type
+  affinity and can be cast to applicable types.
+  """
   require Mesh.Channel
 
+  alias Mesh.Contract
+
+  @type t :: primitive | composite
+  @type primitive :: nil | :bool | :atom | :integer | :float | :string | :delegate
+  @type composite :: {:type, t, Contract.data} |
+                     {:union, t, t} |
+                     {:list, t} |
+                     {:map, t, t} |
+                     {:struct, %{required(Contract.key) => t}} |
+                     {:struct, [t]} |
+                     {:channel, t}
+
+  @doc """
+  Test if a term is a valid type
+  """
+  @spec is_valid(t) :: boolean
+  def is_valid(t)
   def is_valid(nil), do: true
   def is_valid(:bool), do: true
   def is_valid(:atom), do: true
@@ -25,6 +46,10 @@ defmodule Mesh.Contract.Type do
   end
   def is_valid(_), do: false
 
+  @doc """
+  Test if a value has (can be said to have) the given type
+  """
+  @spec is_of(t, term) :: boolean
   def is_of(nil, nil), do: true
   def is_of(:atom, x) when is_atom(x), do: true
   def is_of(:bool, x) when is_boolean(x), do: true
@@ -71,6 +96,10 @@ defmodule Mesh.Contract.Type do
     end
   end
 
+  @doc """
+  Visual representation of the given type
+  """
+  @spec to_s(t) :: String.t
   def to_s(t) do
     case is_valid(t) do
       true -> Kernel.inspect(t)
@@ -78,6 +107,10 @@ defmodule Mesh.Contract.Type do
     end
   end
 
+  @doc """
+  Try to cast a term to the given type. Works with most nested structures too!
+  """
+  @spec cast(term, t) :: {:ok, term} | {:error, String.t}
   def cast(x, t) do
     case is_of(t, x) do
       true  -> {:ok, x}

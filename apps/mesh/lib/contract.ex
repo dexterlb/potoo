@@ -15,7 +15,19 @@ defmodule Mesh.Contract do
   """
 
   alias Mesh.Contract.Function
+  alias Mesh.Contract.Delegate
 
+  @type t               :: value | contract_list | contract_map | Function.t | Delegate.t
+  @type value           :: String.t | atom | nil | float | integer
+  @type contract_list   :: [t]
+  @type contract_map    :: %{required(key) => t}
+  @type key             :: String.t | atom
+
+  @type pidlike :: pid | port | atom | {atom, node}
+
+  @type data :: %{required(key) => data} | [data] | value
+
+  @spec populate_pids(t, pidlike) :: t
   @doc """
   Sets the pids of any pidless functions in the contract to the given pid
   """
