@@ -45,8 +45,8 @@ defmodule RegistryTest do
 
     {:ok, hello} = GenServer.start_link(RegistryTest.Hello, nil)
 
-    :ok = Mesh.direct_call(registry, ["register"], %{
-        "name" => "hello_service", 
+    :ok = Mesh.deep_call(registry, ["register"], %{
+        "name" => "hello_service",
         "delegate" => %Mesh.Contract.Delegate{destination: hello}
     })
 
@@ -72,8 +72,8 @@ defmodule RegistryTest do
 
     :timer.sleep(50)
 
-    :ok = Mesh.direct_call(registry, ["register"], %{
-        "name" => "hello_service", 
+    :ok = Mesh.deep_call(registry, ["register"], %{
+        "name" => "hello_service",
         "delegate" => %Mesh.Contract.Delegate{destination: hello}
     })
 
@@ -95,40 +95,18 @@ defmodule RegistryTest do
     end
   end
 
-  test "can perform contract call across delegate boundary" do
-    {:ok, registry} = Mesh.Registry.start_link(%{})
-
-    {:ok, hello} = GenServer.start_link(RegistryTest.Hello, nil)
-
-    :ok = Mesh.direct_call(registry, ["register"], %{
-        "name" => "hello_service", 
-        "delegate" => %Mesh.Contract.Delegate{destination: hello}
-    })
-
-    registry_contract = Mesh.get_contract(registry)
-
-    assert registry_contract != nil
-
-    assert Mesh.contract_call(
-        registry, 
-        registry_contract,
-        ["services", "hello_service", "methods", "hello"],
-        %{"item" => "bar"}
-      ) == "Hello, bar!"
-  end
-
   test "can perform direct call across delegate boundary" do
     {:ok, registry} = Mesh.Registry.start_link(%{})
 
     {:ok, hello} = GenServer.start_link(RegistryTest.Hello, nil)
 
-    :ok = Mesh.direct_call(registry, ["register"], %{
-        "name" => "hello_service", 
+    :ok = Mesh.deep_call(registry, ["register"], %{
+        "name" => "hello_service",
         "delegate" => %Mesh.Contract.Delegate{destination: hello}
     })
 
-    assert Mesh.direct_call(
-        registry, 
+    assert Mesh.deep_call(
+        registry,
         ["services", "hello_service", "methods", "hello"],
         %{"item" => "bar"}
       ) == "Hello, bar!"
@@ -139,12 +117,12 @@ defmodule RegistryTest do
 
     {:ok, hello} = GenServer.start_link(RegistryTest.Hello, nil)
 
-    :ok = Mesh.direct_call(registry, ["register"], %{
-        "name" => "hello_service", 
+    :ok = Mesh.deep_call(registry, ["register"], %{
+        "name" => "hello_service",
         "delegate" => %Mesh.Contract.Delegate{destination: hello}
     })
 
-    :ok = Mesh.direct_call(registry, ["deregister"], %{
+    :ok = Mesh.deep_call(registry, ["deregister"], %{
         "name" => "hello_service",
     })
 
@@ -162,8 +140,8 @@ defmodule RegistryTest do
 
     {:ok, hello} = GenServer.start(RegistryTest.Hello, nil)
 
-    :ok = Mesh.direct_call(registry, ["register"], %{
-        "name" => "hello_service", 
+    :ok = Mesh.deep_call(registry, ["register"], %{
+        "name" => "hello_service",
         "delegate" => %Mesh.Contract.Delegate{destination: hello}
     })
 
@@ -184,8 +162,8 @@ defmodule RegistryTest do
 
     {:ok, hello} = GenServer.start(RegistryTest.Hello, nil)
 
-    :ok = Mesh.direct_call(registry, ["register"], %{
-        "name" => "hello_service", 
+    :ok = Mesh.deep_call(registry, ["register"], %{
+        "name" => "hello_service",
         "delegate" => %Mesh.Contract.Delegate{destination: hello}
     })
 

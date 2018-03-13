@@ -60,19 +60,10 @@ defmodule MeshTest do
     assert Mesh.unsafe_call(pid, hello.name, %{"item" => "foo"}) == "Hello, foo!"
   end
 
-  test "can call function with deep contract call" do
+  test "can call function with deep call" do
     {:ok, pid} = GenServer.start_link(MeshTest.FooService, nil)
 
-    contract = Mesh.get_contract(pid)
-
-    assert Mesh.contract_call(pid, contract, ["methods", "hello"], %{"item" => "foo"})
-      == "Hello, foo!"
-  end
-
-  test "can call function with direct call" do
-    {:ok, pid} = GenServer.start_link(MeshTest.FooService, nil)
-
-    assert Mesh.direct_call(pid, ["methods", "hello"], %{"item" => "foo"})
+    assert Mesh.deep_call(pid, ["methods", "hello"], %{"item" => "foo"})
       == "Hello, foo!"
   end
 end

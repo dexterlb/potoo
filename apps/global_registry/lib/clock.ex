@@ -7,7 +7,7 @@ defmodule GlobalRegistry.Clock do
   end
 
   def init(registry) do
-    :ok = Mesh.direct_call(registry, ["register"], %{
+    :ok = Mesh.deep_call(registry, ["register"], %{
         "name" => "clock_service",
         "delegate" => %Mesh.Contract.Delegate{destination: self()}
     })

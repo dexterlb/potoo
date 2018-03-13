@@ -43,36 +43,44 @@ defmodule Mesh do
     GenServer.call(target, {function_name, argument})
   end
 
-  def direct_call(target, path, argument, fuzzy \\ false)
-  def direct_call(target, path, argument, fuzzy) do
-    contract = Mesh.get_contract(target)
+  def deep_call(target, path, argument, fuzzy \\ false)
+
+  def deep_call(target, path, argument, fuzzy) do
+    contract = Mesh.get_contract_pidless(target)
     contract_call(target, contract, path, argument, fuzzy)
   end
 
-  def contract_call(target, contract, path, argument, fuzzy \\ false)
-  def contract_call(target, contract, [], argument, fuzzy) do
+  defp contract_call(target, contract, [], argument, fuzzy) do
     call(target, contract, argument, fuzzy)
   end
 
-  def contract_call(_, %Contract.Delegate{destination: new_target}, path, argument, fuzzy) do
-    direct_call(new_target, path, argument, fuzzy)
+  defp contract_call(_, %Contract.Delegate{destination: new_target}, path, argument, fuzzy) do
+    deep_call(new_target, path, argument, fuzzy)
   end
 
-  def contract_call(target, contract = %{}, [key | rest], argument, fuzzy) do
+  defp contract_call(target, contract = %{}, [key | rest], argument, fuzzy) do
     contract_call(target, Map.get(contract, key), rest, argument, fuzzy)
   end
 
-  def contract_call(_, nil, _, _, _) do
+  defp contract_call(_, nil, _, _, _) do
     {:fail, "nil contract (probably obtained by wrong path?)"}
   end
 
   def get_contract(target) do
-    GenServer.call(target, :contract) |> Contract.populate_pids(target)
+    get_contract_pidless(target) |> Contract.populate_pids(target)
+  end
+
+  def get_contract_pidless(target) do
+    GenServer.call(target, :contract)
   end
 
   def subscribe_contract(target) do
-    GenServer.call(target, :subscribe_contract)
+    subscribe_contract_pidless(target)
       |> Channel.map!(fn(con) -> Contract.populate_pids(con, target) end)
+  end
+
+  def subscribe_contract_pidless(target) do
+    GenServer.call(target, :subscribe_contract)
   end
 
   @doc """

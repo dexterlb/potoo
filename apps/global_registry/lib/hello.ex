@@ -6,8 +6,8 @@ defmodule GlobalRegistry.Hello do
   end
 
   def init(registry) do
-    result = Mesh.direct_call(registry, ["register"], %{
-        "name" => "hello_service", 
+    result = Mesh.deep_call(registry, ["register"], %{
+        "name" => "hello_service",
         "delegate" => %Mesh.Contract.Delegate{destination: self()}
     })
 

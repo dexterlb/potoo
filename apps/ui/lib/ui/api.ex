@@ -11,7 +11,7 @@ defmodule Ui.Api do
       {:ok, arg} ->
         PidCache
           |> PidCache.get({:delegate, pid})
-          |> Mesh.direct_call(String.split(path, "/"), arg, true)
+          |> Mesh.deep_call(String.split(path, "/"), arg, true)
           |> check_fail
           |> jsonify
       {:error, err} -> %{"error" => jsonify(err)}
@@ -76,7 +76,7 @@ defmodule Ui.Api do
         contract = Mesh.get_contract(pid)
 
         case Mesh.subscribe_contract(pid) do
-          {Mesh.Channel, _} = channel -> 
+          {Mesh.Channel, _} = channel ->
             :ok = Mesh.Channel.subscribe(channel, self(), {:subscription, token})
 
             contract
