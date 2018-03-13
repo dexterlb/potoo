@@ -23,6 +23,10 @@ defmodule MeshTest do
       }
     }
 
+    def init(state) do
+      {:ok, state}
+    end
+
     def handle_call(:contract, _from, state) do
       {:reply, @contract, state}
     end
