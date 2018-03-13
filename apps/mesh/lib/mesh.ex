@@ -6,6 +6,7 @@ defmodule Mesh do
   alias Mesh.Contract
   alias Mesh.Contract.Type
   alias Mesh.Contract.Function
+  alias Mesh.Contract.Delegate
   alias Mesh.Channel
 
   @type return_value :: {:ok, term} | {:error, String.t}
@@ -14,31 +15,21 @@ defmodule Mesh do
     call(nil, function, argument, false)
   end
 
-  def call(target, function = %Contract.Function{}, argument) do
-    call(target, function, argument, false)
-  end
+  def call(target, function, argument, fuzzy \\ false)
 
-  def call(target, function = %Contract.Function{pid: nil}, argument, fuzzy) when is_boolean(fuzzy) do
-    do_call(target, function, argument, fuzzy)
-  end
-
-  def call(_, function = %Contract.Function{pid: target}, argument, fuzzy) when is_boolean(fuzzy) do
-    do_call(target, function, argument, fuzzy)
-  end
-
-
-  defp do_call(target, function = %Contract.Function{}, argument, true) do
+  def call(target, function = %Contract.Function{}, argument, true) do
     case Type.cast(argument, function.argument) do
-      {:ok, correctly_typed_argument} -> call(target, function, correctly_typed_argument)
+      {:ok, correctly_typed_argument} ->
+        check_retval(function, unsafe_call(target, function, correctly_typed_argument))
       {:fail, err}                    -> {:fail, err}
     end
   end
 
-  defp do_call(target, function = %Contract.Function{}, argument, false) do
+  def call(target, function = %Contract.Function{}, argument, false) do
     case check_argument(function, argument) do
       {:fail, err}  -> {:fail, err}
       :ok           ->
-        check_retval(function, GenServer.call(target, {function.name, argument}))
+        check_retval(function, unsafe_call(target, function, argument))
     end
   end
 
@@ -61,8 +52,11 @@ defmodule Mesh do
   @doc """
   Same as `call/2`, but works on pidless functions (calls them on the given pid)
   """
-  @spec unsafe_call(Contract.pidlike, Function.t, term) :: term
+  @spec unsafe_call(Contract.pidlike | Delegate.t, Function.t, term) :: term
   def unsafe_call(target, function, argument)
+  def unsafe_call(%Delegate{destination: target}, function, argument) do
+    unsafe_call(target, function, argument)
+  end
   def unsafe_call(target, %Function{name: name, pid: nil}, argument) do
     unsafe_call(target, name, argument)
   end
