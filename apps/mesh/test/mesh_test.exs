@@ -52,6 +52,94 @@ defmodule MeshTest do
     assert Mesh.call(pid, hello, %{"item" => "foo"}) == "Hello, foo!"
   end
 
+  test "can call function from pidless contract" do
+    {:ok, pid} = GenServer.start_link(MeshTest.FooService, nil)
+
+    contract = Mesh.get_contract_pidless(pid)
+
+    hello = Kernel.get_in(contract, ["methods", "hello"])
+
+    assert hello != nil
+
+    assert Mesh.call(pid, hello, %{"item" => "foo"}) == "Hello, foo!"
+  end
+
+  test "can call function from pidless contract by delegate" do
+    {:ok, pid} = GenServer.start_link(MeshTest.FooService, nil)
+
+    contract = Mesh.get_contract_pidless(pid)
+
+    hello = Kernel.get_in(contract, ["methods", "hello"])
+
+    assert hello != nil
+
+    delegate = %Mesh.Contract.Delegate{destination: pid}
+
+    assert Mesh.call(delegate, hello, %{"item" => "foo"}) == "Hello, foo!"
+  end
+
+  test "can call function from contract without supplying pid" do
+    {:ok, pid} = GenServer.start_link(MeshTest.FooService, nil)
+
+    contract = Mesh.get_contract(pid)
+
+    hello = Kernel.get_in(contract, ["methods", "hello"])
+
+    assert hello != nil
+
+    assert Mesh.call(hello, %{"item" => "foo"}) == "Hello, foo!"
+  end
+
+  test "can call function unsafely from contract" do
+    {:ok, pid} = GenServer.start_link(MeshTest.FooService, nil)
+
+    contract = Mesh.get_contract(pid)
+
+    hello = Kernel.get_in(contract, ["methods", "hello"])
+
+    assert hello != nil
+
+    assert Mesh.unsafe_call(pid, hello, %{"item" => "foo"}) == "Hello, foo!"
+  end
+
+  test "can call function unsafely from pidless contract by delegate" do
+    {:ok, pid} = GenServer.start_link(MeshTest.FooService, nil)
+
+    contract = Mesh.get_contract_pidless(pid)
+
+    hello = Kernel.get_in(contract, ["methods", "hello"])
+
+    assert hello != nil
+
+    delegate = %Mesh.Contract.Delegate{destination: pid}
+
+    assert Mesh.unsafe_call(delegate, hello, %{"item" => "foo"}) == "Hello, foo!"
+  end
+
+  test "can call function unsafely from pidless contract" do
+    {:ok, pid} = GenServer.start_link(MeshTest.FooService, nil)
+
+    contract = Mesh.get_contract_pidless(pid)
+
+    hello = Kernel.get_in(contract, ["methods", "hello"])
+
+    assert hello != nil
+
+    assert Mesh.unsafe_call(pid, hello, %{"item" => "foo"}) == "Hello, foo!"
+  end
+
+  test "can call function unsafely from contract without supplying pid" do
+    {:ok, pid} = GenServer.start_link(MeshTest.FooService, nil)
+
+    contract = Mesh.get_contract(pid)
+
+    hello = Kernel.get_in(contract, ["methods", "hello"])
+
+    assert hello != nil
+
+    assert Mesh.unsafe_call(hello, %{"item" => "foo"}) == "Hello, foo!"
+  end
+
   test "can call function by name (unsafe call)" do
     {:ok, pid} = GenServer.start_link(MeshTest.FooService, nil)
 
