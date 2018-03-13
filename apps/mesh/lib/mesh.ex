@@ -21,13 +21,13 @@ defmodule Mesh do
     case Type.cast(argument, function.argument) do
       {:ok, correctly_typed_argument} ->
         check_retval(function, unsafe_call(target, function, correctly_typed_argument))
-      {:fail, err}                    -> {:fail, err}
+      {:error, err}                    -> {:error, err}
     end
   end
 
   def call(target, function = %Contract.Function{}, argument, false) do
     case check_argument(function, argument) do
-      {:fail, err}  -> {:fail, err}
+      {:error, err}  -> {:error, err}
       :ok           ->
         check_retval(function, unsafe_call(target, function, argument))
     end
@@ -87,7 +87,7 @@ defmodule Mesh do
   end
 
   defp contract_call(_, nil, _, _, _) do
-    {:fail, "nil contract (probably obtained by wrong path?)"}
+    {:error, "nil contract (probably obtained by wrong path?)"}
   end
 
   def get_contract(target) do
@@ -112,10 +112,10 @@ defmodule Mesh do
   """
   def check_argument(function, argument) do
     case Type.is_valid(function.argument) do
-      false -> {:fail, "function argument type (#{inspect(function.argument)}) in contract is invalid"}
+      false -> {:error, "function argument type (#{inspect(function.argument)}) in contract is invalid"}
       true ->
         case Type.is_of(function.argument, argument) do
-          false -> {:fail, "function argument (#{inspect(argument)}) doesn't match type in contract (#{inspect(function.argument)})"}
+          false -> {:error, "function argument (#{inspect(argument)}) doesn't match type in contract (#{inspect(function.argument)})"}
           true  -> :ok
         end
     end
@@ -127,11 +127,11 @@ defmodule Mesh do
 
     case Type.is_valid(function.retval) do
       false ->
-        {:fail, "function return value type (#{inspect(function.retval)}) in contract is invalid"}
+        {:error, "function return value type (#{inspect(function.retval)}) in contract is invalid"}
       true ->
         case Type.is_of(function.retval, retval) do
           true -> retval
-          false -> {:fail, "function return value doesn't match type in contract"}
+          false -> {:error, "function return value doesn't match type in contract"}
         end
     end
   end

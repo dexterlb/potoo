@@ -115,7 +115,7 @@ defmodule Ui.Api do
     Json.unjsonify(json, PidCache)
   end
 
-  defp check_fail({:fail, err}) do
+  defp check_fail({:error, err}) do
     %{"error" => err}
   end
   defp check_fail({:ok, x}), do: x

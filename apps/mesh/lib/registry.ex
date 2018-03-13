@@ -65,7 +65,7 @@ defmodule Mesh.Registry do
 
   defp receive_downs(from, name) do
     receive do
-      {:DOWN, _, :process, _, _} -> 
+      {:DOWN, _, :process, _, _} ->
         GenServer.call(from, {"deregister", %{"name" => name}})
       msg ->
         Logger.debug(fn ->
@@ -88,9 +88,9 @@ defmodule Mesh.Registry do
             },
             "delegate" => :delegate
           }},
-          retval: {:union, 
-            {:literal, :ok}, 
-            {:struct, {{:literal, :fail}, :string}}
+          retval: {:union,
+            {:literal, :ok},
+            {:struct, {{:literal, :error}, :string}}
           },
           data: %{
             "description" => "Registers a new service into the registry"
@@ -104,9 +104,9 @@ defmodule Mesh.Registry do
               %{"description" => "Unique name of the service to be deregistered"}
             }
           }},
-          retval: {:union, 
-            {:literal, :ok}, 
-            {:struct, {{:literal, :fail}, :string}}
+          retval: {:union,
+            {:literal, :ok},
+            {:struct, {{:literal, :error}, :string}}
           },
           data: %{
             "description" => "Deregisters a service from the registry"

@@ -137,7 +137,7 @@ defmodule Mesh.Contract.Type do
     try do
       {:ok, String.to_existing_atom(x)}
     rescue
-      err -> {:fail, err}
+      err -> {:error, err}
     end
   end
   defp do_cast("false", :bool), do: {:ok, false}
@@ -162,7 +162,7 @@ defmodule Mesh.Contract.Type do
 
   defp do_cast(s, :integer) when is_bitstring(s) do
     case Integer.parse(s) do
-      :error -> {:fail, "unable to cast #{inspect(s)} to integer"}
+      :error -> {:error, "unable to cast #{inspect(s)} to integer"}
       {n, _} when is_integer(n) -> {:ok, n}
     end
   end
@@ -172,7 +172,7 @@ defmodule Mesh.Contract.Type do
 
   defp do_cast(s, :float) when is_bitstring(s) do
     case Float.parse(s) do
-      :error -> {:fail, "unable to cast #{inspect(s)} to float"}
+      :error -> {:error, "unable to cast #{inspect(s)} to float"}
       {n, _} when is_float(n) -> {:ok, n}
     end
   end
@@ -199,10 +199,10 @@ defmodule Mesh.Contract.Type do
   defp do_cast(x, t = {:union, t1, t2}) do
     case cast(x, t1) do
       {:ok, v} -> {:ok, v}
-      {:fail, e1} -> case do_cast(x, t2) do
+      {:error, e1} -> case do_cast(x, t2) do
         {:ok, v} -> {:ok, v}
-        {:fail, e2} ->
-          {:fail, [
+        {:error, e2} ->
+          {:error, [
               "Unable to cast #{inspect(x)} to #{inspect(t)} ",
               e1, e2
             ]
@@ -223,7 +223,7 @@ defmodule Mesh.Contract.Type do
   defp do_cast(m = %{}, {:map, t1, t2} = t) do
     case m |> Map.to_list |> do_cast({:list, {:struct, {t1, t2}}}) do
       {:ok, pairs} -> {:ok, Map.new(pairs)}
-      {:fail, err} -> {:fail, [
+      {:error, err} -> {:error, [
         "cannot cast #{inspect(m)} to #{inspect(t)}"
         | err
       ]}
@@ -238,7 +238,7 @@ defmodule Mesh.Contract.Type do
       |> Enum.unzip
 
     case check_list_results(results, "cannot cast #{inspect(m)} to #{inspect(struct)}") do
-      {:fail, _} = err -> err
+      {:error, _} = err -> err
       {:ok, values} -> {:ok, Enum.zip(keys, values) |> Map.new}
     end
   end
@@ -247,7 +247,7 @@ defmodule Mesh.Contract.Type do
       fn({type, x}) -> cast(x, type) end)
 
     case check_list_results(results, "cannot cast #{inspect(l)} to #{inspect(struct)}") do
-      {:fail, _} = err -> err
+      {:error, _} = err -> err
       {:ok, _} = values -> values
     end
   end
@@ -257,11 +257,11 @@ defmodule Mesh.Contract.Type do
   defp do_cast(l, {:struct, fields}) when is_list(l) and is_tuple(fields) do
     case do_cast(l, {:struct, Tuple.to_list(fields)}) do
       {:ok, values} -> {:ok, List.to_tuple(values)}
-      {:fail, _} = err -> err
+      {:error, _} = err -> err
     end
   end
 
-  defp do_cast(x, t), do: {:fail, "cannot cast #{inspect(x)} to #{inspect(t)}"}
+  defp do_cast(x, t), do: {:error, "cannot cast #{inspect(x)} to #{inspect(t)}"}
 
 
   defp check_list_results(results, error_message) do
@@ -271,11 +271,11 @@ defmodule Mesh.Contract.Type do
     end
   end
 
-  defp is_fail({:fail, _}), do: true
+  defp is_fail({:error, _}), do: true
   defp is_fail({:ok, _}), do: false
 
   defp compose_fails(fails, message) do
-    {:fail, [message | extract_fails(fails)]}
+    {:error, [message | extract_fails(fails)]}
   end
 
   defp compose_results(results) do
@@ -283,7 +283,7 @@ defmodule Mesh.Contract.Type do
   end
 
   defp extract_fails(fails) do
-    fails |> Enum.map(fn({:fail, err}) -> err end)
+    fails |> Enum.map(fn({:error, err}) -> err end)
   end
 
   defp extract_oks(results) do
