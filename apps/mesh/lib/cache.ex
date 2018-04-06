@@ -11,15 +11,11 @@ defmodule Mesh.Cache do
 
   require OK
 
-  def init(root) do
-    OK.for do
-      root_contract <- Mesh.get_contract(root)
-      state = %{
-        root: root,
-        contracts: %{root => root_contract}
-      }
-    after
-      {:ok, state}
-    end
+  def init() do
+    state = %{
+      contracts: %{}
+    }
+
+    {:ok, state}
   end
 end
