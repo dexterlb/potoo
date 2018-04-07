@@ -3,14 +3,8 @@ defmodule CacheTest do
   doctest Mesh.Cache
 
   alias Mesh.Cache
-
-  test "can get contract" do
-    {:ok, service}  = GenServer.start_link(CacheTest.FooService, [])
-    {:ok, cache}    = Cache.start_link()
-
-    assert Cache.get_contract(cache, service) == Mesh.get_contract(service)
-  end
-
+  alias Mesh.Channel
+  alias Mesh.Contract.Delegate
 
   defmodule CacheTest.FooService do
     use GenServer
@@ -73,4 +67,63 @@ defmodule CacheTest do
     end
   end
 
+  test "can get contract" do
+    {:ok, service}  = GenServer.start_link(CacheTest.FooService, [])
+    {:ok, cache}    = Cache.start_link()
+
+    assert Cache.get_contract(cache, service) == Mesh.get_contract(service)
+  end
+
+  test "can subscribe to contract" do
+    {:ok, service}  = GenServer.start_link(CacheTest.FooService, [])
+    {:ok, child}    = GenServer.start_link(CacheTest.FooService, [])
+    {:ok, cache}    = Cache.start_link()
+
+    chan_a = Cache.subscribe_contract(cache, service)
+    chan_b =  Mesh.subscribe_contract(service)
+
+    :ok = Channel.subscribe(chan_a, self(), :cache)
+    :ok = Channel.subscribe(chan_b, self(), :mesh)
+
+    :ok = Mesh.deep_call(service, ["methods", "add_child"], %Delegate{
+      destination: child
+    })
+
+    cache_contract = receive do
+      {:cache, data} -> data
+    end
+
+    mesh_contract = receive do
+      {:mesh, data} -> data
+    end
+
+    assert cache_contract == mesh_contract
+  end
+
+  test "can call function which is available on the root" do
+    {:ok, service}  = GenServer.start_link(CacheTest.FooService, [])
+    {:ok, cache}    = Cache.start_link()
+
+    assert(
+      Cache.call(cache, service, ["methods", "hello"], %{"item" => "foo"})
+      ==
+      Mesh.deep_call(service, ["methods", "hello"], %{"item" => "foo"})
+    )
+  end
+
+  test "can call function on a child" do
+    {:ok, service}  = GenServer.start_link(CacheTest.FooService, [])
+    {:ok, child}    = GenServer.start_link(CacheTest.FooService, [])
+    {:ok, cache}    = Cache.start_link()
+
+    :ok = Mesh.deep_call(service, ["methods", "add_child"], %Delegate{
+      destination: child
+    })
+
+    assert(
+      Cache.call(cache, service, ["children", 0, "methods", "hello"], %{"item" => "foo"})
+      ==
+      Mesh.deep_call(service, ["children", 0, "methods", "hello"], %{"item" => "foo"})
+    )
+  end
 end
