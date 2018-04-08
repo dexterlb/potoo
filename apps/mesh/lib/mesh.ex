@@ -10,6 +10,8 @@ defmodule Mesh do
   alias Mesh.Channel
 
   @type return_value :: {:ok, term} | {:error, String.t}
+  @type target       :: Contract.pidlike | Delegate.t
+  @type path         :: [Contract.key]
 
   def call(function = %Contract.Function{}, argument) do
     call(nil, function, argument, false)
@@ -52,7 +54,7 @@ defmodule Mesh do
   @doc """
   Same as `call/2`, but works on pidless functions (calls them on the given pid)
   """
-  @spec unsafe_call(Contract.pidlike | Delegate.t, Function.t, term) :: term
+  @spec unsafe_call(target, Function.t, term) :: term
   def unsafe_call(target, function, argument)
   def unsafe_call(%Delegate{destination: target}, function, argument) do
     unsafe_call(target, function, argument)
@@ -84,6 +86,10 @@ defmodule Mesh do
 
   defp contract_call(target, contract = %{}, [key | rest], argument, fuzzy) do
     contract_call(target, Map.get(contract, key), rest, argument, fuzzy)
+  end
+
+  defp contract_call(target, contract, [index | rest], argument, fuzzy) when is_list(contract) do
+    contract_call(target, Enum.at(contract, index), rest, argument, fuzzy)
   end
 
   defp contract_call(_, nil, _, _, _) do

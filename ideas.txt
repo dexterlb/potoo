@@ -38,9 +38,6 @@ end
         - behaviours for services
         - docs everywhere
         - normal error handling in mesh.ex
-    - make functions contain a pid. populate it when getting contracts, if not
-      already present. That allows for delegated functions and completes the
-      duality with channels.
 
 - roadmap:
     - construct unified cache, remove unsafe calls from everywhere

@@ -85,7 +85,7 @@ defmodule CacheTest do
     :ok = Channel.subscribe(chan_a, self(), :cache)
     :ok = Channel.subscribe(chan_b, self(), :mesh)
 
-    :ok = Mesh.deep_call(service, ["methods", "add_child"], %Delegate{
+    nil = Mesh.deep_call(service, ["methods", "add_child"], %Delegate{
       destination: child
     })
 
@@ -116,7 +116,7 @@ defmodule CacheTest do
     {:ok, child}    = GenServer.start_link(CacheTest.FooService, [])
     {:ok, cache}    = Cache.start_link()
 
-    :ok = Mesh.deep_call(service, ["methods", "add_child"], %Delegate{
+    nil = Mesh.deep_call(service, ["methods", "add_child"], %Delegate{
       destination: child
     })
 
