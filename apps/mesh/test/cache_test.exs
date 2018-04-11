@@ -100,6 +100,28 @@ defmodule CacheTest do
     assert cache_contract == mesh_contract
   end
 
+  test "registers changes to contract" do
+    {:ok, service}  = GenServer.start_link(CacheTest.FooService, [])
+    {:ok, child}    = GenServer.start_link(CacheTest.FooService, [])
+    {:ok, cache}    = Cache.start_link()
+
+    chan = Cache.subscribe_contract(cache, service)
+
+    :ok = Channel.subscribe(chan, self(), :new_contract)
+
+    nil = Mesh.deep_call(service, ["methods", "add_child"], %Delegate{
+      destination: child
+    })
+
+    received_contract = receive do
+      {:new_contract, data} -> data
+    end
+
+    got_contract = Cache.get_contract(cache, service)
+
+    assert got_contract == received_contract
+  end
+
   test "can call function which is available on the root" do
     {:ok, service}  = GenServer.start_link(CacheTest.FooService, [])
     {:ok, cache}    = Cache.start_link()
