@@ -54,8 +54,8 @@ defmodule Mesh.Cache do
   Returns a channel which has been returned by a call of
   `Mesh.subscribe_contract/1` on the target service.
   """
-  def subscribe_contract(_, target) do
-    Mesh.subscribe_contract(target)
+  def subscribe_contract(cache, target) do
+    GenServer.call(cache, {:subscribe_contract, target})
   end
 
   def call(cache, target, path, argument, fuzzy \\ false) do
@@ -75,18 +75,26 @@ defmodule Mesh.Cache do
   end
 
   def handle_call({:get_contract, target}, _from, state = %{contracts: contracts}) do
-    {contract, new_contracts} = attach_contract(target, contracts)
+    {contract, _chan, new_contracts} = attach_contract(target, contracts)
     {:reply, contract, %{state | contracts: new_contracts}}
   end
 
+  def handle_call({:subscribe_contract, target}, _from, state = %{contracts: contracts}) do
+    {_contract, chan, new_contracts} = attach_contract(target, contracts)
+    {:reply, chan, %{state | contracts: new_contracts}}
+  end
+
   def handle_call({:get, target, path}, _from, state = %{contracts: contracts}) do
-    {contract, contracts_2} = attach_contract(target, contracts)
+    {contract, _chan, contracts_2} = attach_contract(target, contracts)
     {contracts_3, result} = deep_get(path, contract, contracts_2)
     {:reply, result, %{state | contracts: contracts_3}}
   end
 
   def handle_info({{:new_contract, target}, contract}, state = %{contracts: contracts}) do
-    {:noreply, %{ state | contracts: Map.put(contracts, target, contract) } }
+    {:noreply, %{
+      state |
+        contracts: Map.update!(contracts, target, fn({_, chan}) -> {contract, chan} end) }
+    }
   end
 
   def handle_info({:DOWN, _, :process, pid, _}, state) do
@@ -102,7 +110,7 @@ defmodule Mesh.Cache do
   end
 
   defp deep_get(path, %Delegate{destination: target}, contracts) do
-    {contract, new_contracts} = attach_contract(target, contracts)
+    {contract, _chan, new_contracts} = attach_contract(target, contracts)
     deep_get(path, contract, new_contracts)
   end
 
@@ -121,12 +129,15 @@ defmodule Mesh.Cache do
   end
 
   defp attach_contract(target, contracts) do
-    contract = Map.get_lazy(contracts, target, fn ->
-      Process.monitor(target)
-      Mesh.subscribe_contract(target) |> Channel.subscribe(self(), {:new_contract, target})
-      Mesh.get_contract(target)
-    end)
+    case Map.fetch(contracts, target) do
+      {:ok, {contract, chan}} -> {contract, chan, contracts}
+      :error ->
+        Process.monitor(target)
+        chan = Mesh.subscribe_contract(target)
+        Channel.subscribe(chan, self(), {:new_contract, target})
+        contract = Mesh.get_contract(target)
 
-    {contract, Map.put(contracts, target, contract)}
+        {contract, chan, Map.put(contracts, target, {contract, chan})}
+    end
   end
 end
