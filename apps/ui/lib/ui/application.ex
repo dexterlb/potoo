@@ -6,6 +6,7 @@ defmodule Ui.Application do
   use Application
 
   alias Mesh.ServerUtils.PidCache
+  alias Mesh.Cache
 
   def start(_type, _args) do
     import Supervisor.Spec
@@ -18,6 +19,9 @@ defmodule Ui.Application do
       worker(PidCache, [
         [{:delegate, Application.fetch_env!(:ui, :root_target), 0}],
         [name: PidCache]
+      ]),
+      worker(Cache, [
+        [name: Cache]
       ]),
       worker(Ui.StreamServer.TcpServer, [
         [port: 4444],

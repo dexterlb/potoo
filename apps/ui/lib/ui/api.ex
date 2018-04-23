@@ -1,119 +1,76 @@
 defmodule Ui.Api do
 
   alias Mesh.ServerUtils.PidCache
-  alias Mesh.ServerUtils.Json
+  alias Mesh.Contract.Delegate
+  alias Mesh.Cache
 
   require Logger
   require OK
 
-  def call(%{"pid" => pid, "path" => path, "argument" => argument}) when is_integer(pid) do
-    case unjsonify(argument) do
-      {:ok, arg} ->
-        PidCache
-          |> PidCache.get({:delegate, pid})
-          |> Mesh.deep_call(String.split(path, "/"), arg, true)
-          |> check_fail
-          |> jsonify
-      {:error, err} -> %{"error" => jsonify(err)}
-    end
+  def call(%{"target" => target = %Delegate{}, "path" => path, "argument" => argument}) do
+    Cache.call(Cache, target, String.split(path, "/"), argument, true)
+      |> check_fail
   end
 
   def call(%{"path" => _, "argument" => _} = handle) do
-    call(Map.put(handle, "pid", 0))
+    call(Map.put(handle, "target",
+      %Delegate{
+        destination: PidCache.get(PidCache, {:delegate, 0})
+      }
+    ))
   end
 
-  def subscribe(%{"channel" => chan_id, "token" => token}) when is_integer(chan_id) do
-    {Mesh.Channel, PidCache.get(PidCache, {:channel, chan_id})}
+  def subscribe(%{"channel" => chan = {Mesh.Channel, _}, "token" => token}) do
+    chan
       |> Mesh.Channel.subscribe(self(), {:subscription, token})
   end
 
-  def unsubscribe(%{"channel" => chan_id, "token" => token}) when is_integer(chan_id) do
-    {Mesh.Channel, PidCache.get(PidCache, {:channel, chan_id})}
+  def unsubscribe(%{"channel" => chan = {Mesh.Channel, _}, "token" => token}) do
+    chan
       |> Mesh.Channel.unsubscribe(self(), {:subscription, token})
   end
 
-  def unsafe_call(%{"pid" => pid, "function_name" => name, "argument" => argument}) when is_integer(pid) do
-    case unjsonify(argument) do
-      {:ok, arg} ->
-        PidCache
-          |> PidCache.get({:delegate, pid})
-          |> Mesh.unsafe_call(name, arg)
-          |> jsonify
-      {:error, err} -> %{"error" => jsonify(err)}
-    end
+  def unsafe_call(%{"target" => target = %Delegate{}, "function_name" => name, "argument" => argument}) do
+    target
+      |> Mesh.unsafe_call(name, argument)
   end
 
-  def get_contract(empty) when empty == %{} do
-    get_contract(%{"pid" => 0})
+  def get_contract(%{"target" => target = %Delegate{}}) do
+    Cache.get_contract(Cache, target)
   end
 
-  def get_contract(%{"pid" => pid_id}) when is_integer(pid_id) do
-    case PidCache.get(PidCache, {:delegate, pid_id}) do
-      nil -> %{"error" => "no such pid: #{pid_id}"}
-      pid -> pid
-        |> Mesh.get_contract
-        |> jsonify
-    end
+  def subscribe_contract(%{"target" => target = %Delegate{}}) do
+    Cache.subscribe_contract(Cache, target)
   end
 
-  def subscribe_contract(empty) when empty == %{} do
-    subscribe_contract(%{"pid" => 0})
-  end
+  def get_and_subscribe_contract(%{"target" => target = %Delegate{}, "token" => token}) do
+    contract = Cache.get_contract(Cache, target)
 
-  def subscribe_contract(%{"pid" => pid_id}) when is_integer(pid_id) do
-    case PidCache.get(PidCache, {:delegate, pid_id}) do
-      nil -> %{"error" => "no such pid: #{pid_id}"}
-      pid -> pid
-        |> Mesh.subscribe_contract
-        |> jsonify
-    end
-  end
+    case Cache.subscribe_contract(Cache, target) do
+      {Mesh.Channel, _} = channel ->
+        :ok = Mesh.Channel.subscribe(channel, self(), {:subscription, token})
 
-  def get_and_subscribe_contract(%{"pid" => pid_id, "token" => token}) do
-    case PidCache.get(PidCache, {:delegate, pid_id}) do
-      nil -> %{"error" => "no such pid: #{pid_id}"}
-      pid ->
-        contract = Mesh.get_contract(pid)
+        contract
 
-        case Mesh.subscribe_contract(pid) do
-          {Mesh.Channel, _} = channel ->
-            :ok = Mesh.Channel.subscribe(channel, self(), {:subscription, token})
-
-            contract
-
-          err -> err
-        end |> jsonify
+      err -> err
     end
   end
 
   def my_pid(endpoint) do
-    PidCache.get(PidCache, {:delegate, endpoint})
+    %Delegate{
+      destination: PidCache.get(PidCache, {:delegate, endpoint})
+    }
   end
 
   def make_channel() do
     {:ok, chan} = Mesh.Channel.start_link()
-    chan |> jsonify
+    chan
   end
 
-  def send_on(channel, message) do
-    {:ok, status} = OK.for do
-      chan <- unjsonify(channel)
-      msg  <- unjsonify(message)  # ugly code! all rubyists cringe!
-    after
-      Mesh.Channel.send(chan, msg) |> jsonify
-    end
-
-    status
+  def send_on(channel = {Mesh.Channel, _}, message) do
+    Mesh.Channel.send(channel, message)
   end
 
-
-  def jsonify(data) do
-    Json.jsonify(data, PidCache)
-  end
-
-  def unjsonify(json) do
-    Json.unjsonify(json, PidCache)
-  end
 
   defp check_fail({:error, err}) do
     %{"error" => err}

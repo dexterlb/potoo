@@ -2,6 +2,8 @@ defmodule Ui.StreamServer.Handler do
   alias Ui.Api
   alias Ui.StreamServer.ReverseEndpoint
   require OK
+  alias Mesh.ServerUtils.Json
+  alias Mesh.ServerUtils.PidCache
   require Logger
 
   def init(_opts \\ []) do
@@ -35,7 +37,7 @@ defmodule Ui.StreamServer.Handler do
 
   def socket_info({{:subscription, token}, message}, state) do
     message
-      |> Api.jsonify
+      |> jsonify
       |> reply_json(state, [token])
   end
 
@@ -46,7 +48,7 @@ defmodule Ui.StreamServer.Handler do
     Process.send_after(self(), {:drop_call, call_ref}, 10000)
 
     ["call", %{"from" => call_ref, "function" => function, "argument" => argument}]
-      |> Api.jsonify
+      |> jsonify
       |> reply_json(%{state | active_calls: new_active_calls})
   end
 
@@ -63,7 +65,12 @@ defmodule Ui.StreamServer.Handler do
   end
 
   defp line_handle(json_data, state) do
-    json_data |> Poison.decode! |> json_handle(state)
+    case json_data |> Poison.decode! |> unjsonify do
+      {:ok, data}   -> json_handle(data, state)
+      {:error, err} -> jsonify(%{
+        "error" => "unable to parse input: #{inspect(err)}"
+      })
+    end
   end
 
   defp json_handle(["return", %{"to" => ref, "value" => retval} | token], state = %{active_calls: active_calls}) do
@@ -71,21 +78,15 @@ defmodule Ui.StreamServer.Handler do
       nil -> %{"error" => "call has expired", "ref" => ref}
       to  -> case GenServer.reply(to, retval) do
         :ok -> "ok"
-        err -> Api.jsonify(%{"error" => "cannot reply", "data" => err})
+        err -> jsonify(%{"error" => "cannot reply", "data" => err})
       end
 
     end |> reply_json(state, token)
   end
 
-  defp json_handle(["set_contract", contract_json | token], state = %{endpoint: endpoint}) do
-    case Api.unjsonify(contract_json) do
-      {:ok, contract} ->
-        :ok = GenServer.call(endpoint, {:set_contract, contract})
-        reply_json("ok", state, token)
-      {:error, err} ->
-        Api.jsonify(%{"error" => "cannot set contract", "data" => err})
-        |> reply_json(state, token)
-    end
+  defp json_handle(["set_contract", contract | token], state = %{endpoint: endpoint}) do
+    :ok = GenServer.call(endpoint, {:set_contract, contract})
+    reply_json("ok", state, token)
   end
 
   defp json_handle(["my_pid" | token], state = %{endpoint: endpoint}) do
@@ -156,5 +157,13 @@ defmodule Ui.StreamServer.Handler do
     Enum.reduce((1..length), [], fn (_i, acc) ->
       [Enum.random(@random_string_chars) | acc]
     end) |> Enum.join("")
+  end
+
+  def jsonify(data) do
+    Json.jsonify(data, PidCache)
+  end
+
+  def unjsonify(json) do
+    Json.unjsonify(json, PidCache)
   end
 end

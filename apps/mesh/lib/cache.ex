@@ -41,12 +41,8 @@ defmodule Mesh.Cache do
     get_contract(cache, target)
   end
 
-  def get_contract(cache, target) when is_pid(target) do
-    GenServer.call(cache, {:get_contract, target})
-  end
-
   def get_contract(cache, target) do
-    get_contract(cache, GenServer.whereis(target))
+    GenServer.call(cache, {:get_contract, target})
   end
 
   @spec subscribe_contract(t, Mesh.target) :: Channel.t

@@ -101,6 +101,16 @@ defmodule Mesh.ServerUtils.Json do
       }
     end
   end
+  def unjsonify(
+      %{
+        "__type__" => "delegate",
+        "destination" => _,
+      } = del,
+      pc
+    ) do
+
+    unjsonify(Map.put(del, "data", nil), pc)
+  end
   def unjsonify(m = %{}, pc) do
     # todo: fix the case when there's a __key__ in the map
     OK.for do
