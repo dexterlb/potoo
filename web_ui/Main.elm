@@ -74,8 +74,8 @@ type Msg
   | AskCall VisualContract
   | AskInstantCall VisualContract
   | CallArgumentInput String
-  | PerformCall { pid: Int, name: String, argument: Json.Encode.Value }
-  | PerformCallWithToken { pid: Int, name: String, argument: Json.Encode.Value } String
+  | PerformCall { target: DelegateStruct, name: String, argument: Json.Encode.Value }
+  | PerformCallWithToken { target: DelegateStruct, name: String, argument: Json.Encode.Value } String
   | CancelCall
   | CallGetter (Pid, PropertyID) FunctionStruct
   | CallSetter (Pid, PropertyID) FunctionStruct Json.Encode.Value
@@ -112,14 +112,14 @@ update msg model =
     CallGetter (pid, id) { name } -> (
         model,
         Api.getterCall model.conn
-          {pid = pid, name = name, argument = Json.Encode.null}
+          {target = delegate pid, name = name, argument = Json.Encode.null}
           (pid, id)
       )
 
     CallSetter (pid, id) { name } value -> (
         model,
         Api.setterCall model.conn
-          {pid = pid, name = name, argument = value}
+          {target = delegate pid, name = name, argument = value}
           (pid, id)
       )
 
@@ -133,10 +133,10 @@ nextPing = Delay.after 5 Time.second SendPing
 instantCall : VisualContract -> Cmd Msg
 instantCall vc = case vc of
   (VFunction {argument, name, retval, data, pid}) ->
-    performCall {pid = pid, name = name, argument = Json.Encode.null}
+    performCall {target = delegate pid, name = name, argument = Json.Encode.null}
   _ -> Cmd.none
 
-performCall : {pid: Int, name: String, argument: Json.Encode.Value} -> Cmd Msg
+performCall : {target: DelegateStruct, name: String, argument: Json.Encode.Value} -> Cmd Msg
 performCall data = Random.generate
   (PerformCallWithToken data)
   (Random.String.string 64 Random.Char.english)
@@ -181,7 +181,7 @@ handleResponse m resp = case resp of
 
   Pong -> (m, nextPing)
 
-  Hello -> (emptyModel m.location, Api.getContract m.conn 0)
+  Hello -> (emptyModel m.location, Api.getContract m.conn (delegate 0))
 
 
 subscribeProperties : Conn -> Pid -> ContractProperties -> Cmd Msg
@@ -195,12 +195,12 @@ foo conn pid (id, prop) = case prop.subscriber of
   Nothing -> Cmd.none
   Just { name } -> Cmd.batch
     [ subscriberCall conn
-        { pid = pid, name = name, argument = Json.Encode.null }
+        { target = delegate pid, name = name, argument = Json.Encode.null }
         (pid, id)
     , case prop.getter of
         Nothing -> Cmd.none
         Just { name } -> getterCall conn
-          { pid = pid, name = name, argument = Json.Encode.null }
+          { target = delegate pid, name = name, argument = Json.Encode.null }
           (pid, id)
     ]
 
@@ -224,7 +224,7 @@ checkMissing : Contract -> Model -> (Model, Cmd Msg)
 checkMissing c m = let
     missing = Set.diff (delegatePids c |> Set.fromList) m.fetchingContracts
     newModel = {m | fetchingContracts = Set.union m.fetchingContracts missing}
-    command = missing |> Set.toList |> List.map (Api.getContract m.conn) |> Cmd.batch
+    command = missing |> Set.toList |> List.map delegate |> List.map (Api.getContract m.conn) |> Cmd.batch
   in (newModel, command)
 
 delegatePids : Contract -> List Int
@@ -325,7 +325,7 @@ renderAskCallWindow mf callArgument callToken callResult = case mf of
             Nothing -> div [Styles.callFunctionEntry]
               [ input [onInput CallArgumentInput] []
               , button
-                  [ onClick (PerformCall {pid = pid, name = name, argument = jsonArg})
+                  [ onClick (PerformCall {target = delegate pid, name = name, argument = jsonArg})
                   ] [text "call"]
               ]
             Just _ -> div []

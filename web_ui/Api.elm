@@ -25,25 +25,25 @@ sendPing conn = sendRaw conn (encode 4
     (string "ping")
   )
 
-getContract : Conn -> Int -> Cmd msg
-getContract conn n =
+getContract : Conn -> DelegateStruct -> Cmd msg
+getContract conn target =
   sendRaw conn (encode 4 (
     list [
       string "get_and_subscribe_contract",
       object [
-        ("pid", int n),
-        ("token", object [("msg", string "got_contract"), ("pid", int n)])
+        ("target", delegateEncoder target),
+        ("token", object [("msg", string "got_contract"), ("target", delegateEncoder target)])
       ],
-      object [("msg", string "got_contract"), ("pid", int n)]
+      object [("msg", string "got_contract"), ("pid", int target.destination)]
     ]
   ))
 
-unsafeCall : Conn -> { pid: Int, name: String, argument: Json.Encode.Value } -> String -> Cmd msg
+unsafeCall : Conn -> { target: DelegateStruct, name: String, argument: Json.Encode.Value } -> String -> Cmd msg
 unsafeCall conn func tokenString =
   rawUnsafeCall conn func <|
       object [("msg", string "unsafe_call_result"), ("token_string", string tokenString)]
 
-getterCall : Conn -> { pid: Int, name: String, argument: Json.Encode.Value } -> (Int, Int) -> Cmd msg
+getterCall : Conn -> { target: DelegateStruct, name: String, argument: Json.Encode.Value } -> (Int, Int) -> Cmd msg
 getterCall conn func (propertyPid, propertyID) =
   rawUnsafeCall conn func <|
     object [
@@ -52,7 +52,7 @@ getterCall conn func (propertyPid, propertyID) =
         ("id",  int propertyID)
       ]
 
-setterCall : Conn -> { pid: Int, name: String, argument: Json.Encode.Value } -> (Int, Int) -> Cmd msg
+setterCall : Conn -> { target: DelegateStruct, name: String, argument: Json.Encode.Value } -> (Int, Int) -> Cmd msg
 setterCall conn func (propertyPid, propertyID) =
   rawUnsafeCall conn func <|
     object [
@@ -61,7 +61,7 @@ setterCall conn func (propertyPid, propertyID) =
         ("id",  int propertyID)
       ]
 
-subscriberCall : Conn -> { pid: Int, name: String, argument: Json.Encode.Value } -> (Int, Int) -> Cmd msg
+subscriberCall : Conn -> { target: DelegateStruct, name: String, argument: Json.Encode.Value } -> (Int, Int) -> Cmd msg
 subscriberCall conn func (propertyPid, propertyID) =
   rawUnsafeCall conn func <|
     object [
@@ -81,7 +81,7 @@ subscribe conn chan token =
     list [
       string "subscribe",
       object [
-        ("channel", int chan),
+        ("channel", channelEncoder chan),
         ("token", token)
       ],
       object [("msg", string "subscribed_channel"), ("token", token)]
@@ -89,13 +89,13 @@ subscribe conn chan token =
   ))
 
 
-rawUnsafeCall : Conn -> { pid: Int, name: String, argument: Json.Encode.Value } -> Json.Encode.Value -> Cmd msg
-rawUnsafeCall conn {pid, name, argument} token =
+rawUnsafeCall : Conn -> { target: DelegateStruct, name: String, argument: Json.Encode.Value } -> Json.Encode.Value -> Cmd msg
+rawUnsafeCall conn {target, name, argument} token =
   sendRaw conn (encode 4 (
     list [
       string "unsafe_call",
       object [
-          ("pid", int pid),
+          ("target", delegateEncoder target),
           ("function_name", string name),
           ("argument", argument)
         ],

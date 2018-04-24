@@ -25,10 +25,14 @@ defmodule Ui.StreamServer.WebSocketListener do
     Handler.socket_handle(msg, state) |> handler_reply(req, state)
   end
 
+  def websocket_handle(_other, req, state) do
+    {:ok, req, state}
+  end
+
   def websocket_info(info, req, state) do
     Handler.socket_info(info, state) |> handler_reply(req, state)
   end
-  
+
 
   defp handler_reply(reply, req, _) do
     case reply do

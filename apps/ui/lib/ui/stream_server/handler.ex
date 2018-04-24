@@ -37,7 +37,6 @@ defmodule Ui.StreamServer.Handler do
 
   def socket_info({{:subscription, token}, message}, state) do
     message
-      |> jsonify
       |> reply_json(state, [token])
   end
 
@@ -48,7 +47,6 @@ defmodule Ui.StreamServer.Handler do
     Process.send_after(self(), {:drop_call, call_ref}, 10000)
 
     ["call", %{"from" => call_ref, "function" => function, "argument" => argument}]
-      |> jsonify
       |> reply_json(%{state | active_calls: new_active_calls})
   end
 
@@ -78,7 +76,7 @@ defmodule Ui.StreamServer.Handler do
       nil -> %{"error" => "call has expired", "ref" => ref}
       to  -> case GenServer.reply(to, retval) do
         :ok -> "ok"
-        err -> jsonify(%{"error" => "cannot reply", "data" => err})
+        err -> %{"error" => "cannot reply", "data" => err}
       end
 
     end |> reply_json(state, token)
@@ -148,7 +146,7 @@ defmodule Ui.StreamServer.Handler do
   end
 
   defp encode_json(data) do
-    Poison.encode!(data, pretty: Application.get_env(:ui, :json_pretty, false))
+    Poison.encode!(jsonify(data), pretty: Application.get_env(:ui, :json_pretty, false))
   end
 
   @random_string_chars "0123456789abcdefghijklmnopqrstuvwxyz" |> String.split("")

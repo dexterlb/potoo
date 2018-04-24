@@ -105,6 +105,9 @@ type VisualContract
     contract: VisualContract
   }
 
+delegate : Pid -> DelegateStruct
+delegate p = { destination = p, data = Dict.empty }
+
 equivTypes : Type -> Type -> Bool
 equivTypes a b = a == b
 
@@ -183,6 +186,23 @@ channelDecoder = field "__type__" string
     "channel" -> field "id" int
     _         -> fail "not a channel"
   )
+
+dataEncoder : Data -> Json.Encode.Value
+dataEncoder d = Json.Encode.object (Dict.toList d)
+
+delegateEncoder : DelegateStruct -> Json.Encode.Value
+delegateEncoder { destination, data } = Json.Encode.object
+  [ ("destination", Json.Encode.int destination),
+    ("data", dataEncoder data),
+    ("__type__", Json.Encode.string "delegate")
+  ]
+
+channelEncoder : Channel -> Json.Encode.Value
+channelEncoder id = Json.Encode.object
+  [ ("id", Json.Encode.int id),
+    ("__type__", Json.Encode.string "channel")
+  ]
+
 
 typeDecoder : Decoder Type
 typeDecoder = oneOf [

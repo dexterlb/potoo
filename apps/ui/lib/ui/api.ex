@@ -58,7 +58,7 @@ defmodule Ui.Api do
 
   def my_pid(endpoint) do
     %Delegate{
-      destination: PidCache.get(PidCache, {:delegate, endpoint})
+      destination: endpoint
     }
   end
 

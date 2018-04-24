@@ -29,7 +29,7 @@ defmodule Mesh.Cache do
   The path may cross delegate boundaries.
   """
   def get(cache, root, path) do
-    GenServer.call(cache, {:get, root, path})
+    GenServer.call(cache, {:get, pid(root), path})
   end
 
   @spec get_contract(t, Mesh.target) :: Contract.t
@@ -37,12 +37,8 @@ defmodule Mesh.Cache do
   Retreives the contract of the target service from the cache. If it's not
   present, calls `Mesh.get_contract/1` and stores it.
   """
-  def get_contract(cache, %Delegate{destination: target}) do
-    get_contract(cache, target)
-  end
-
   def get_contract(cache, target) do
-    GenServer.call(cache, {:get_contract, target})
+    GenServer.call(cache, {:get_contract, pid(target)})
   end
 
   @spec subscribe_contract(t, Mesh.target) :: Channel.t
@@ -51,7 +47,7 @@ defmodule Mesh.Cache do
   `Mesh.subscribe_contract/1` on the target service.
   """
   def subscribe_contract(cache, target) do
-    GenServer.call(cache, {:subscribe_contract, target})
+    GenServer.call(cache, {:subscribe_contract, pid(target)})
   end
 
   def call(cache, target, path, argument, fuzzy \\ false) do
@@ -136,4 +132,9 @@ defmodule Mesh.Cache do
         {contract, chan, Map.put(contracts, target, {contract, chan})}
     end
   end
+
+  defp pid(%Delegate{destination: target}), do: target
+  defp pid(pid) when is_pid(pid), do: pid
+  defp pid(name) when is_atom(name), do: name  # todo: make this into a pid
+  defp pid(target = {node, name}) when is_atom(node) and is_atom(name), do: target
 end
