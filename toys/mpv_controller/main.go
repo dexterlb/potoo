@@ -65,11 +65,12 @@ func main() {
 		log.Fatal("connection to mesh died")
 	}()
 
-	pid, err := meshConn.Call("my_pid")
+	pidDelegate, err := meshConn.Call("my_pid")
 	if err != nil {
 		log.Fatalf("cannot get pid: %s", err)
 	}
-	log.Printf("pid: %v", pid)
+	pid := int(pidDelegate.(map[string]interface{})["destination"].(float64))
+	log.Printf("pid: %d", pid)
 
 	if len(os.Args) > 1 {
 		args := append(os.Args[1:], "--input-ipc-server=/tmp/mpv")
@@ -162,7 +163,7 @@ func main() {
 		"argument": map[string]interface{}{
 			"name": "epic_player",
 			"delegate": &mesh.Delegate{
-				Destination: int(pid.(float64)),
+				Destination: pid,
 				Data: map[string]interface{}{
 					"description": "TV in my room",
 				},
