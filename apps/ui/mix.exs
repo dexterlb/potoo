@@ -27,11 +27,11 @@ defmodule Ui.Mixfile do
   defp deps do
     [
 
-      {:plug, "~> 1.4"},
-      {:cowboy, "~> 1.1"},
+      {:plug, "~> 1.6"},
+      {:cowboy, "~> 2.4"},
       {:poison, "~> 3.1"},
 
-      {:reverse_proxy, "~> 0.3"},
+      {:reverse_proxy, git: "https://github.com/DexterLB/elixir-reverse-proxy"},
 
       {:mesh, in_umbrella: true}
 

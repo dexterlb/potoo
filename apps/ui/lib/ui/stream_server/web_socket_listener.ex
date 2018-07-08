@@ -2,45 +2,40 @@ defmodule Ui.StreamServer.WebSocketListener do
   alias Ui.StreamServer.Handler
   require Logger
 
-  @behaviour :cowboy_websocket_handler
+  @behaviour :cowboy_websocket
 
-  def init(_, _req, _opts) do
-    {:upgrade, :protocol, :cowboy_websocket}
+  def init(req, opts) do
+    Logger.debug(fn -> ["new ws client: ", inspect(req)] end)
+    {:cowboy_websocket, req, opts}
   end
-
-  @timeout 10000 # terminate if no activity for one minute
 
   #Called on websocket connection initialization.
-  def websocket_init(_type, req, opts) do
-    Logger.debug(fn -> ["new ws client: ", inspect(req)] end)
-
-    {:ok, handler_state} = Handler.init(opts)
-
-    {:ok, req, handler_state, @timeout}
+  def websocket_init(opts) do
+    Handler.init(opts)
   end
 
-  def websocket_handle({:text, data} = msg, req, state) do
+  def websocket_handle({:text, data} = msg, state) do
     Logger.debug(fn -> ["ws -> ", data] end)
 
-    Handler.socket_handle(msg, state) |> handler_reply(req, state)
+    Handler.socket_handle(msg, state) |> handler_reply(state)
   end
 
-  def websocket_handle(_other, req, state) do
-    {:ok, req, state}
+  def websocket_handle(_other, state) do
+    {:ok, state}
   end
 
-  def websocket_info(info, req, state) do
-    Handler.socket_info(info, state) |> handler_reply(req, state)
+  def websocket_info(info, state) do
+    Handler.socket_info(info, state) |> handler_reply(state)
   end
 
 
-  defp handler_reply(reply, req, _) do
+  defp handler_reply(reply, _) do
     case reply do
       {:reply, reply, new_state} ->
         Logger.debug(fn -> ["ws <- ", reply] end)
-        {:reply, {:text, reply}, req, new_state}
+        {:reply, {:text, reply}, new_state}
       {:noreply, new_state} ->
-        {:noreply, req, new_state}
+        {:noreply, new_state}
     end
   end
 

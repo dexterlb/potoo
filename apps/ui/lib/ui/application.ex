@@ -30,7 +30,7 @@ defmodule Ui.Application do
 
 
       {
-        Plug.Adapters.Cowboy,
+        Plug.Adapters.Cowboy2,
         scheme: :http,
         plug: Ui.Router,
         options: [
