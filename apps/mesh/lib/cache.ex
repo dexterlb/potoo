@@ -126,7 +126,7 @@ defmodule Mesh.Cache do
       :error ->
         Process.monitor(target)
         chan = Mesh.subscribe_contract(target)
-        Channel.subscribe(chan, self(), {:new_contract, target})
+        :ok = Channel.subscribe(chan, self(), {:new_contract, target})
         contract = Mesh.get_contract(target)
 
         {contract, chan, Map.put(contracts, target, {contract, chan})}

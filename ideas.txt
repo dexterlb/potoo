@@ -22,6 +22,18 @@ defcontract do
 end
 
 - todo:
+    - implement pestering call in cache
+        - user calls pester(root, [foo, bar, baz], arg, fun)
+        - contracts of foo, bar and baz are attached and baz is called
+        - fun is called with the result from baz
+        - if foo was missing, wait for it to appear in root's contract
+        - if bar was missing, wait for it to appear in foo's contract
+        - if baz was missing, wait for it to appear in bar's contract
+    - implement persistent call
+        - that would be a one liner using the pestering call and recursive fun
+
+
+
     - notify channel subscribers when channel dies (maybe also subscribe_link)
     - persistent register (register_link?)
     - a unified cache which allows calling by path, keeps contracts

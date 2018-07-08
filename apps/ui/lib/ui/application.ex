@@ -20,9 +20,10 @@ defmodule Ui.Application do
         [{:delegate, Application.fetch_env!(:ui, :root_target), 0}],
         [name: PidCache]
       ]),
-      worker(Cache, [
-        [name: Cache]
-      ]),
+      {
+        Cache,
+        name: Cache
+      },
       worker(Ui.StreamServer.TcpServer, [
         [port: 4444],
       ]),
