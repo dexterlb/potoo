@@ -22,13 +22,19 @@ defcontract do
 end
 
 - todo:
+    - implement "subscribe" in cache which subscribes to a subcontract
+        - similar semantics to "get" which gets a subcontract from the cache
+        - user calls attach(cache, root, [foo, bar, baz])
+        - if foo was missing, wait for it to appear in root's contract
+        - if bar was missing, wait for it to appear in foo's contract
+        - if baz was missing, wait for it to appear in bar's contract
+
     - implement pestering call in cache
         - user calls pester(root, [foo, bar, baz], arg, fun)
         - contracts of foo, bar and baz are attached and baz is called
         - fun is called with the result from baz
-        - if foo was missing, wait for it to appear in root's contract
-        - if bar was missing, wait for it to appear in foo's contract
-        - if baz was missing, wait for it to appear in bar's contract
+        - easily implemented by using subscribe
+
     - implement persistent call
         - that would be a one liner using the pestering call and recursive fun
 
