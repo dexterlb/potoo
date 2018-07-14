@@ -38,6 +38,18 @@ end
     - implement persistent call
         - that would be a one liner using the pestering call and recursive fun
 
+    - better death support for channels
+        - subscribe_link
+        - way to notify subscribers when channel dies
+        - some sort of one-way link (way to kill subscriber when channel dies but
+          not kill channel when subscriber dies)
+        - go through code and see which uses of Channel.start_link are legit
+            - some channels are shared between many subscribers and should
+              be started with start_link and subscribed with subscribe
+            - others are attached to a producing process and have to be started
+              with start, linked to the producer and subscribed with subscribe_link
+            - maybe set this upon channel creation so subscribers only call
+              subscribe()? (bad idea)
 
     - notify channel subscribers when channel dies (maybe also subscribe_link)
 
