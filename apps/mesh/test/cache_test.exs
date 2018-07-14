@@ -40,6 +40,9 @@ defmodule CacheTest do
     defp contract(children) do
       %{
         "description" => "A service which provides a greeting.",
+        "values" => %{
+          "answer" => 42
+        },
         "methods" => %{
           "hello" => %Mesh.Contract.Function{
             name: "methods.hello",
@@ -120,6 +123,80 @@ defmodule CacheTest do
     got_contract = Cache.get_contract(cache, service)
 
     assert got_contract == received_contract
+  end
+
+  test "subscribing to subcontract waits for it to appear" do
+    {:ok, service}  = GenServer.start_link(CacheTest.FooService, [])
+    {:ok, child}    = GenServer.start_link(CacheTest.FooService, [])
+    {:ok, cache}    = Cache.start_link()
+
+    path = ["children", 0, "values", "answer"]
+    :ok = Channel.subscribe(Cache.subscribe(cache, service, path), self(), :got)
+
+    nil = Mesh.deep_call(service, ["methods", "add_child"], %Delegate{
+      destination: child
+    })
+
+    received_answer = receive do
+      {:got, data} -> data
+    end
+
+    got_answer = Cache.get(cache, service, path)
+
+    assert got_answer == received_answer
+  end
+
+  test "subscribing to subcontract reacts to value change" do
+    {:ok, service}  = GenServer.start_link(CacheTest.FooService, [])
+    {:ok, child}    = GenServer.start_link(CacheTest.FooService, [])
+    {:ok, cache}    = Cache.start_link()
+
+    path = ["children"]
+    :ok = Channel.subscribe(Cache.subscribe(cache, service, path), self(), :got)
+
+    nil = Mesh.deep_call(service, ["methods", "add_child"], %Delegate{
+      destination: child
+    })
+
+    received_answer = receive do
+      {:got, data} -> data
+    end
+
+    got_answer = Cache.get(cache, service, path)
+
+    assert got_answer == received_answer
+  end
+
+  test "subscribing to subcontract reacts to changing nested contracts" do
+    {:ok, service}    = GenServer.start_link(CacheTest.FooService, [])
+    {:ok, child}      = GenServer.start_link(CacheTest.FooService, [])
+    {:ok, grandchild} = GenServer.start_link(CacheTest.FooService, [])
+    {:ok, cache}      = Cache.start_link()
+
+    nil = Mesh.deep_call(service, ["methods", "add_child"], %Delegate{
+      destination: child
+    })
+
+    nil = Mesh.deep_call(service, ["children", 0, "methods", "add_child"], %Delegate{
+      destination: grandchild
+    })
+
+    path = ["children", 0, "children", 0, "values", "answer"]
+    :ok = Channel.subscribe(Cache.subscribe(cache, service, path), self(), :got)
+
+    nil = Mesh.deep_call(service, ["methods", "del_child"], 0)
+
+    nil = Mesh.deep_call(service, ["methods", "add_child"], %Delegate{
+      destination: child
+    })
+
+    received_answer = receive do
+      {:got, data} -> data
+    end
+
+    got_answer = Cache.get(cache, service, path)
+
+    assert got_answer == received_answer
   end
 
   test "can call function which is available on the root" do

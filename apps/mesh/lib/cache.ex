@@ -32,6 +32,14 @@ defmodule Mesh.Cache do
     GenServer.call(cache, {:get, pid(root), path})
   end
 
+  @spec subscribe(t, Mesh.target, Mesh.path) :: Channel.t
+  @doc """
+
+  """
+  def subscribe(cache, root, path) do
+    :not_implemented
+  end
+
   @spec get_contract(t, Mesh.target) :: Contract.t
   @doc """
   Retreives the contract of the target service from the cache. If it's not

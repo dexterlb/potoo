@@ -39,23 +39,16 @@ end
         - that would be a one liner using the pestering call and recursive fun
 
 
-
     - notify channel subscribers when channel dies (maybe also subscribe_link)
-    - persistent register (register_link?)
-    - a unified cache which allows calling by path, keeps contracts
-      in state and automatically drops items
-        - persistent subscribe (by path from unified cache)
-        - cache subscribes to all contracts, updates them on the fly
 
-    - fix json api:
-        - call unjsonify in all calls before performing the api call
-        - (side effect of ^) use channels instead of direct channel pids
-        * hold off for now, since this will break clients
+    - persistent register (register_link?)
+
     - make channels die when their parent exits normally
+
     - prettification
         - behaviours for services
         - docs everywhere
-        - normal error handling in mesh.ex
+        - better error handling in mesh.ex
 
 - roadmap:
     - construct unified cache, remove unsafe calls from everywhere

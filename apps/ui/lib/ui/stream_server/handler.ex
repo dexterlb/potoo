@@ -19,7 +19,6 @@ defmodule Ui.StreamServer.Handler do
     end
   end
 
-
   def socket_handle({:text, text}, state) do
     line = text
       |> String.replace("\r", "")
