@@ -34,7 +34,12 @@ defmodule Mesh.Cache do
 
   @spec subscribe(t, Mesh.target, Mesh.path) :: Channel.t
   @doc """
+  Subscribes to a contract object. Updates will be sent each time
+  it changes or when an intermediate contract in the path up to
+  the object is changed. If an intermeiate contract disappears,
+  silently waits for it to reappear.
 
+  Kill the returned channel when the subscription is no more needed.
   """
   def subscribe(cache, root, path) do
     :not_implemented
