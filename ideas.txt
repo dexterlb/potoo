@@ -22,15 +22,8 @@ defcontract do
 end
 
 - todo:
-    - implement "subscribe" in cache which subscribes to a subcontract
-        - similar semantics to "get" which gets a subcontract from the cache
-        - user calls attach(cache, root, [foo, bar, baz])
-        - if foo was missing, wait for it to appear in root's contract
-        - if bar was missing, wait for it to appear in foo's contract
-        - if baz was missing, wait for it to appear in bar's contract
-
-    - retainment of last channel message, subscribe_retained and get_message
-        - that would obsolete get_and_subscribe
+    - fix cache subscribe() to work for dead targets
+        - use a timeout
 
     - implement pestering call in cache
         - user calls pester(root, [foo, bar, baz], arg, fun)
@@ -54,11 +47,7 @@ end
             - maybe set this upon channel creation so subscribers only call
               subscribe()? (bad idea)
 
-    - notify channel subscribers when channel dies (maybe also subscribe_link)
-
     - persistent register (register_link?)
-
-    - make channels die when their parent exits normally
 
     - prettification
         - behaviours for services
