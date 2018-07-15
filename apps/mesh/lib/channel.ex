@@ -31,6 +31,11 @@ defmodule Mesh.Channel do
     end
   end
 
+  def init(state) do
+    Process.flag(:trap_exit, true)
+    {:ok, state}
+  end
+
   def map(chan = {__MODULE__, _}, fun, opts \\ []) do
     OK.for do
       mapped_chan <- start_link(opts, fun)
@@ -127,6 +132,10 @@ defmodule Mesh.Channel do
 
   def handle_info({:DOWN, _, :process, pid, _}, state) do
     handle_cast({:unsubscribe, pid}, state)
+  end
+
+  def handle_info({:EXIT, _, _}, state) do
+    {:stop, {:shutdown, :link_exited}, state}
   end
 
   defp dispatch({pid, tokens}, message) do

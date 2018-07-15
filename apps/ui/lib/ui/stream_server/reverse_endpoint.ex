@@ -41,8 +41,8 @@ defmodule Ui.StreamServer.ReverseEndpoint do
     {:noreply, state}
   end
 
-  def handle_info({:EXIT, _, _}, _) do
-    {:stop, :link_exited}
+  def handle_info({:EXIT, _, _}, state) do
+    {:stop, {:shutdown, :link_exited}, state}
   end
 
   def start_link(parent) do

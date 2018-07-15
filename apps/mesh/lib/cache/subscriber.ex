@@ -37,6 +37,10 @@ defmodule Mesh.Cache.Subscriber do
 
   def handle_info({{:new_contract, _target}, _contract}, state) do
     restart(state)
-    {:stop, :restarting, state}
+    {:stop, :normal, state}
+  end
+
+  def handle_info({:DOWN, _, :process, _pid, _}, state) do
+    {:stop, {:shutdown, :related_died}, state}
   end
 end
