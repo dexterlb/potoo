@@ -15,6 +15,14 @@ defmodule Mesh.Channel do
     end
   end
 
+  def start(opts \\ [], transform \\ fn(x) -> x end) do
+    initial_state = %{subscribers: %{}, transform: transform}
+    case GenServer.start(__MODULE__, initial_state, opts) do
+      {:ok, pid} -> {:ok, {__MODULE__, pid}}
+      err        -> err
+    end
+  end
+
   def start_link(opts \\ [], transform \\ fn(x) -> x end) do
     initial_state = %{subscribers: %{}, transform: transform}
     case GenServer.start_link(__MODULE__, initial_state, opts) do
@@ -59,6 +67,8 @@ defmodule Mesh.Channel do
   def send_lazy({__MODULE__, channel}, fun) do
     GenServer.cast(channel, {:send_lazy, fun})
   end
+
+  def pid({__MODULE__, pid}), do: pid
 
   def handle_call({:subscribe, pid, token}, _from, state = %{subscribers: subscribers}) do
     Logger.debug fn ->

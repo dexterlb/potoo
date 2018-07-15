@@ -33,6 +33,16 @@ defmodule CacheTest do
       {:reply, nil, new_state}
     end
 
+    def handle_call({"methods.del_child", child_index}, _, state) do
+      %{children: children, contract_chan: chan} = state
+
+      new_state = %{ state | children: List.delete_at(children, child_index) }
+
+      Mesh.Channel.send(chan, new_state.children)
+
+      {:reply, nil, new_state}
+    end
+
     def handle_call({"methods.hello", %{"item" => item}}, _, state) do
       {:reply, "Hello, #{item}!", state}
     end
@@ -62,6 +72,14 @@ defmodule CacheTest do
             retval: nil,
             data: %{
               "description" => "Adds a child service"
+            }
+          },
+          "del_child" => %Mesh.Contract.Function{
+            name: "methods.del_child",
+            argument: :integer,
+            retval: nil,
+            data: %{
+              "description" => "Deletes a child service"
             }
           }
         },
@@ -141,7 +159,7 @@ defmodule CacheTest do
       {:got, data} -> data
     end
 
-    got_answer = Cache.get(cache, service, path)
+    {:ok, got_answer} = Cache.get(cache, service, path)
 
     assert got_answer == received_answer
   end
@@ -162,7 +180,7 @@ defmodule CacheTest do
       {:got, data} -> data
     end
 
-    got_answer = Cache.get(cache, service, path)
+    {:ok, got_answer} = Cache.get(cache, service, path)
 
     assert got_answer == received_answer
   end
@@ -194,7 +212,7 @@ defmodule CacheTest do
       {:got, data} -> data
     end
 
-    got_answer = Cache.get(cache, service, path)
+    {:ok, got_answer} = Cache.get(cache, service, path)
 
     assert got_answer == received_answer
   end

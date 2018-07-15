@@ -13,6 +13,7 @@ defmodule Mesh.Cache do
   alias Mesh.Contract
   alias Mesh.Contract.Delegate
   alias Mesh.Contract.Function
+  alias Mesh.Cache
 
   require OK
 
@@ -22,14 +23,29 @@ defmodule Mesh.Cache do
     GenServer.start_link(__MODULE__, nil, opts)
   end
 
-  @spec get(t, Mesh.target, Mesh.path) :: {:ok, Contract.t} | {:error, String.t}
   @doc """
   This is the main functionality of the cache.
   Gets a contract object by a path in the tree under the given root service.
   The path may cross delegate boundaries.
   """
+  @spec get(t, Mesh.target, Mesh.path) :: {:ok, Contract.t} | {:error, String.t}
   def get(cache, root, path) do
-    GenServer.call(cache, {:get, pid(root), path})
+    {_, result} = GenServer.call(cache, {:probe, pid(root), path})
+    result
+  end
+
+  @doc """
+  This is mainly for debugging or internal purposes.
+
+  Same as `get/3`, but returns all encountered valid contracts.
+  """
+  @spec probe(t, Mesh.target, Mesh.path) :: {%{Mesh.target => Contract.t}, {:ok, Contract.t} | {:error, String.t}}
+  def probe(cache, root, path) do
+    {raw_contracts, result} = GenServer.call(cache, {:probe, pid(root), path})
+    contracts = raw_contracts
+      |> Enum.map(fn({target, {contract, _}}) -> {target, contract} end)
+      |> Map.new
+    {contracts, result}
   end
 
   @spec subscribe(t, Mesh.target, Mesh.path) :: Channel.t
@@ -42,7 +58,9 @@ defmodule Mesh.Cache do
   Kill the returned channel when the subscription is no more needed.
   """
   def subscribe(cache, root, path) do
-    :not_implemented
+    {:ok, chan} = Channel.start()
+    {:ok, _} = Cache.Subscriber.start(cache, root, path, chan)
+    chan
   end
 
   @spec get_contract(t, Mesh.target) :: Contract.t
@@ -89,10 +107,10 @@ defmodule Mesh.Cache do
     {:reply, chan, %{state | contracts: new_contracts}}
   end
 
-  def handle_call({:get, target, path}, _from, state = %{contracts: contracts}) do
-    {contract, _chan, contracts_2} = attach_contract(target, contracts)
+  def handle_call({:probe, target, path}, _from, state = %{contracts: contracts}) do
+    {contract, _chan, contracts_2} = attach_contract(target, %{})
     {contracts_3, result} = deep_get(path, contract, contracts_2)
-    {:reply, result, %{state | contracts: contracts_3}}
+    {:reply, {contracts_3, result}, %{state | contracts: Map.merge(contracts, contracts_3)}}
   end
 
   def handle_info({{:new_contract, target}, contract}, state = %{contracts: contracts}) do

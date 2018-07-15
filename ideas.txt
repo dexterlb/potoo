@@ -29,6 +29,9 @@ end
         - if bar was missing, wait for it to appear in foo's contract
         - if baz was missing, wait for it to appear in bar's contract
 
+    - retainment of last channel message, subscribe_retained and get_message
+        - that would obsolete get_and_subscribe
+
     - implement pestering call in cache
         - user calls pester(root, [foo, bar, baz], arg, fun)
         - contracts of foo, bar and baz are attached and baz is called
