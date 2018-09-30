@@ -151,6 +151,8 @@ defmodule CacheTest do
     path = ["children", 0, "values", "answer"]
     :ok = Channel.subscribe(Cache.subscribe(cache, service, path), self(), :got)
 
+    :timer.sleep(100)
+
     nil = Mesh.deep_call(service, ["methods", "add_child"], %Delegate{
       destination: child
     })
