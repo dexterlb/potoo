@@ -7,6 +7,8 @@ import Html.Styled.Events exposing (onClick, onInput)
 import Navigation
 import Navigation exposing (Location)
 
+import UrlParser exposing ((</>), s, string, parseHash)
+
 import Api exposing (..)
 
 import Dict exposing (Dict)
@@ -40,7 +42,8 @@ type alias Model =
   { input : String
   , messages : List String
   , conn : Conn
-  , location : Location
+  , mode : Mode
+  , location: Location
   , contracts: Dict Int Contract
   , allProperties : Properties
   , fetchingContracts: Set Int
@@ -50,6 +53,7 @@ type alias Model =
   , callResult : Maybe Json.Encode.Value
   }
 
+type Mode = Advanced | Basic
 
 init : Location -> (Model, Cmd Msg)
 init loc =
@@ -61,7 +65,12 @@ startCommand = Cmd.batch
   ]
 
 emptyModel : Location -> Model
-emptyModel loc = Model "" [] (connectWithLocation loc) loc Dict.empty Dict.empty Set.empty Nothing Nothing Nothing Nothing
+emptyModel loc = Model "" [] (connectWithLocation loc) (parseMode loc) loc Dict.empty Dict.empty Set.empty Nothing Nothing Nothing Nothing
+
+parseMode : Location -> Mode
+parseMode l = case parseHash (UrlParser.s "mode" </> string) l of
+  Just "advanced" -> Advanced
+  _               -> Basic
 
 connectWithLocation : Location -> Conn
 connectWithLocation { host } = Api.connect ("ws://" ++ host ++ "/ws")
