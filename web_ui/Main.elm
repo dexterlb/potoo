@@ -253,11 +253,11 @@ subscriptions model =
 
 -- VIEW
 
-renderContract : VisualContract -> Html Msg
-renderContract vc = div [ Styles.contract ] [ renderContractContent vc ]
+renderContract : Mode -> VisualContract -> Html Msg
+renderContract mode vc = div [ Styles.contract ] [ renderContractContent mode vc ]
 
-renderContractContent : VisualContract -> Html Msg
-renderContractContent vc = case vc of
+renderContractContent : Mode -> VisualContract -> Html Msg
+renderContractContent mode vc = case vc of
   VStringValue s -> div [ Styles.stringValue ]
     [text s]
   VIntValue i -> div [ Styles.intValue ]
@@ -278,7 +278,7 @@ renderContractContent vc = case vc of
     [ div [ Styles.delegateDescriptor, title ("destination: " ++ (toString destination))]
         [ renderData data ]
     , div [ Styles.delegateSubContract ]
-        [ renderContract contract]
+        [ renderContract mode contract]
     ]
   VBrokenDelegate {data, destination} -> div [ Styles.brokenDelegate ]
     [ div [ Styles.delegateDescriptor, title ("destination: " ++ (toString destination))]
@@ -288,16 +288,16 @@ renderContractContent vc = case vc of
     Dict.toList d |> List.map (
       \(name, contract) -> div [ Styles.mapContractItem ]
         [ div [Styles.mapContractName] [ text name ]
-        , renderContractContent contract
+        , renderContractContent mode contract
         ]
     ))
   VListContract l -> div [ Styles.listContract ] (
     l |> List.map (
-      \contract -> renderContractContent contract
+      \contract -> renderContractContent mode contract
     ))
   VProperty {pid, propertyID, value, contract} -> div [ Styles.propertyBlock ]
-    [ renderProperty pid propertyID value
-    , div [ Styles.propertySubContract ] [ renderContractContent contract ]
+    [ renderProperty mode pid propertyID value
+    , div [ Styles.propertySubContract ] [ renderContractContent mode contract ]
     ]
 
 renderData : Data -> Html Msg
@@ -338,12 +338,17 @@ renderAskCallWindow mf callArgument callToken callResult = case mf of
 
   _ -> div [] []
 
-renderProperty : Pid -> PropertyID -> Property -> Html Msg
-renderProperty pid propID prop = div [Styles.propertyContainer] <| justs
-  [ Maybe.map renderPropertyValue prop.value
-  , renderPropertyControl pid propID prop
-  , renderPropertyGetButton pid propID prop
-  ]
+renderProperty : Mode -> Pid -> PropertyID -> Property -> Html Msg
+renderProperty mode pid propID prop = div [Styles.propertyContainer] <| justs
+  case mode of
+    Basic ->
+      [ renderPropertyControl mode pid propID prop
+      ]
+    Advanced ->
+      [ Maybe.map renderPropertyValue prop.value
+      , renderPropertyControl mode pid propID prop
+      , renderPropertyGetButton pid propID prop
+      ]
 
 renderPropertyValue : PropertyValue -> Html Msg
 renderPropertyValue v = (case v of
@@ -361,9 +366,11 @@ renderPropertyGetButton pid propID prop = case prop.getter of
       [ onClick (CallGetter (pid, propID) getter), Styles.propertyGet ]
       [ text "↺" ]
 
-renderPropertyControl : Pid -> PropertyID -> Property -> Maybe (Html Msg)
-renderPropertyControl pid propID prop = case prop.setter of
-  Nothing -> Nothing
+renderPropertyControl : Mode -> Pid -> PropertyID -> Property -> Maybe (Html Msg)
+renderPropertyControl mode pid propID prop = case prop.setter of
+  Nothing -> case Mode of
+    Advanced -> Nothing
+    Basic    -> renderPropertyValue prop.value
   Just setter ->
     case prop.value of
       Just (FloatProperty value) ->
@@ -420,7 +427,7 @@ justs l = case l of
 view : Model -> Html Msg
 view model =
   div []
-    [ renderContract <| toVisual 0 model.contracts model.allProperties
+    [ renderContract model.mode <| toVisual 0 model.contracts model.allProperties
     , renderAskCallWindow model.toCall model.callArgument model.callToken model.callResult
     ]
 
