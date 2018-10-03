@@ -5,61 +5,61 @@ import Html
 import Html.Styled exposing (..)
 import Html.Styled.Attributes exposing (css, href, src, styled)
 
-contract = css
+contract mode = css
   [
   ]
 
 mapContract = indentedContract
 listContract = indentedContract
 
-indentedContract = css
+indentedContract mode = css
   [ marginLeft (px 20)
   ]
 
-mapContractName = css
+mapContractName mode = css
   [ display inline,
     after [ property "content" "\": \"" ]
   ]
 
-mapContractItem = css
+mapContractItem mode = css
   [
   ]
 
-function = css
+function mode = css
   [ backgroundColor (hex "d3ead5"),
     display inline
   ]
 
-functionArgumentType = css
+functionArgumentType mode = css
   [ display inline,
     after [ property "content" "\" → \"", color (hex "c99376")]
   ]
 
-functionRetvalType = css
+functionRetvalType mode = css
   [ display inline
   ]
 
-functionCallButton = css
+functionCallButton mode = css
   [
   ]
 
-instantCallButton = css
+instantCallButton mode = css
   [
   ]
 
-connectedDelegate = css
+connectedDelegate mode = css
   [
   ]
 
-brokenDelegate = css
+brokenDelegate mode = css
   [
   ]
 
-delegateDescriptor = css
+delegateDescriptor mode = css
   [
   ]
 
-delegateSubContract = css
+delegateSubContract mode = css
   [
   ]
 
@@ -67,92 +67,92 @@ intValue = simpleValue
 floatValue = simpleValue
 stringValue = simpleValue
 
-simpleValue = css
+simpleValue mode = css
   [ display inline
   ]
 
-dataBlock = css
+dataBlock mode = css
   [ marginLeft (px 10),
     paddingLeft (px 10),
     borderLeft3 (px 1) solid (hex "000000")
   ]
 
-dataItem = css
+dataItem mode = css
   [
   ]
 
 
-dataName = css
+dataName mode = css
   [ display inline,
     after [ property "content" "\": \"" ]
   ]
 
-dataValue = css
+dataValue mode = css
   [ display inline
   ]
 
-callWindow = css
+callWindow mode = css
   [
   ]
 
-callFunctionName = css
+callFunctionName mode = css
   [
   ]
 
-callFunctionArgumentType = css
+callFunctionArgumentType mode = css
   [
   ]
 
-callFunctionRetvalType = css
+callFunctionRetvalType mode = css
   [
   ]
 
-callFunctionEntry = css
+callFunctionEntry mode = css
   [
   ]
 
-callFunctionInput = css
+callFunctionInput mode = css
   [
   ]
 
-callCancel = css
+callCancel mode = css
   [
   ]
 
-callFunctionOutputWaiting = css
+callFunctionOutputWaiting mode = css
   [
   ]
 
-callFunctionOutput = css
+callFunctionOutput mode = css
   [
   ]
 
-propertyBlock = css
+propertyBlock mode = css
   [
   ]
 
-propertySubContract = css
+propertySubContract mode = css
   [
   ]
 
-propertyGet = css
+propertyGet mode = css
   [
   ]
 
-propertyContainer = css
+propertyContainer mode = css
   [ display inline
   ]
 
-propertyValue = css
+propertyValue mode = css
   [ display inline
   , marginLeft (px 20)
   , before [ property "content" "\"► \"", color (hex "60f453") ]
   ]
 
-propertyFloatSlider = css
+propertyFloatSlider mode = css
   [ display inline
   ]
 
-propertyBoolCheckbox = css
+propertyBoolCheckbox mode = css
   [ display inline
   ]

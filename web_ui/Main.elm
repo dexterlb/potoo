@@ -263,131 +263,124 @@ subscriptions model =
 -- VIEW
 
 renderContract : Mode -> VisualContract -> Html Msg
-renderContract mode vc = div [ Styles.contract ] [ renderContractContent mode vc ]
+renderContract mode vc = div [ Styles.contract mode ] [ renderContractContent mode vc ]
 
 renderContractContent : Mode -> VisualContract -> Html Msg
 renderContractContent mode vc = case vc of
-  VStringValue s -> div [ Styles.stringValue ]
+  VStringValue s -> div [ Styles.stringValue mode ]
     [text s]
-  VIntValue i -> div [ Styles.intValue ]
+  VIntValue i -> div [ Styles.intValue mode ]
     [text <| toString i]
-  VFloatValue f -> div [ Styles.floatValue ]
+  VFloatValue f -> div [ Styles.floatValue mode ]
     [text <| toString f]
-  VFunction {argument, name, retval, data, pid} -> div [Styles.function, title ("name: " ++ name ++ ", pid: " ++ (toString pid))]
-    [ div [ Styles.functionArgumentType ]
+  VFunction {argument, name, retval, data, pid} -> div [Styles.function mode, title ("name: " ++ name ++ ", pid: " ++ (toString pid))]
+    [ div [ Styles.functionArgumentType mode ]
         [ text <| inspectType argument ]
-    , div [ Styles.functionRetvalType ]
+    , div [ Styles.functionRetvalType mode ]
         [ text <| inspectType retval]
     , case argument of
-        TNil -> button [ Styles.instantCallButton, onClick (AskInstantCall vc) ] [ text "instant call" ]
-        _ -> button [ Styles.functionCallButton, onClick (AskCall vc) ] [ text "call" ]
-    , renderData data
+        TNil -> button [ Styles.instantCallButton mode, onClick (AskInstantCall vc) ] [ text "instant call" ]
+        _ -> button [ Styles.functionCallButton mode, onClick (AskCall vc) ] [ text "call" ]
+    , renderData mode data
     ]
-  VConnectedDelegate {contract, data, destination} -> div [ Styles.connectedDelegate ]
-    [ div [ Styles.delegateDescriptor, title ("destination: " ++ (toString destination))]
-        [ renderData data ]
-    , div [ Styles.delegateSubContract ]
+  VConnectedDelegate {contract, data, destination} -> div [ Styles.connectedDelegate mode ]
+    [ div [ Styles.delegateDescriptor mode, title ("destination: " ++ (toString destination))]
+        [ renderData mode data ]
+    , div [ Styles.delegateSubContract mode ]
         [ renderContract mode contract]
     ]
-  VBrokenDelegate {data, destination} -> div [ Styles.brokenDelegate ]
-    [ div [ Styles.delegateDescriptor, title ("destination: " ++ (toString destination))]
-        [ renderData data ]
+  VBrokenDelegate {data, destination} -> div [ Styles.brokenDelegate mode ]
+    [ div [ Styles.delegateDescriptor mode, title ("destination: " ++ (toString destination))]
+        [ renderData mode data ]
     ]
-  VMapContract d -> div [ Styles.mapContract ] (
+  VMapContract d -> div [ Styles.mapContract mode ] (
     Dict.toList d |> List.map (
-      \(name, contract) -> div [ Styles.mapContractItem ]
-        [ div [Styles.mapContractName] [ text name ]
+      \(name, contract) -> div [ Styles.mapContractItem mode ]
+        [ div [Styles.mapContractName mode] [ text name ]
         , renderContractContent mode contract
         ]
     ))
-  VListContract l -> div [ Styles.listContract ] (
+  VListContract l -> div [ Styles.listContract mode ] (
     l |> List.map (
       \contract -> renderContractContent mode contract
     ))
-  VProperty {pid, propertyID, value, contract} -> div [ Styles.propertyBlock ]
+  VProperty {pid, propertyID, value, contract} -> div [ Styles.propertyBlock mode ]
     [ renderProperty mode pid propertyID value
-    , div [ Styles.propertySubContract ] [ renderContractContent mode contract ]
+    , div [ Styles.propertySubContract mode ] [ renderContractContent mode contract ]
     ]
 
-renderData : Data -> Html Msg
-renderData d = div [ Styles.dataBlock ] (
+renderData : Mode -> Data -> Html Msg
+renderData mode d = div [ Styles.dataBlock mode ] (
     Dict.toList d |> List.map (
-      \(name, value) -> div [ Styles.dataItem ]
-        [ div [ Styles.dataName ] [ text name ]
-        , div [ Styles.dataValue ] [ text (Json.Encode.encode 0 value) ]
+      \(name, value) -> div [ Styles.dataItem mode ]
+        [ div [ Styles.dataName mode ] [ text name ]
+        , div [ Styles.dataValue mode ] [ text (Json.Encode.encode 0 value) ]
         ]
     ))
 
-renderAskCallWindow : Maybe VisualContract -> Maybe Json.Encode.Value -> Maybe String -> Maybe Json.Encode.Value -> Html Msg
-renderAskCallWindow mf callArgument callToken callResult = case mf of
+renderAskCallWindow : Mode -> Maybe VisualContract -> Maybe Json.Encode.Value -> Maybe String -> Maybe Json.Encode.Value -> Html Msg
+renderAskCallWindow mode mf callArgument callToken callResult = case mf of
   Just (VFunction {argument, name, retval, data, pid}) ->
-    div [Styles.callWindow]
-      [ button [onClick CancelCall, Styles.callCancel] [text "cancel"]
-      , div [Styles.callFunctionName]         [text name]
-      , div [Styles.callFunctionArgumentType] [text <| inspectType argument]
-      , div [Styles.callFunctionRetvalType]   [text <| inspectType retval]
+    div [Styles.callWindow mode]
+      [ button [onClick CancelCall, Styles.callCancel mode] [text "cancel"]
+      , div [Styles.callFunctionName mode]         [text name]
+      , div [Styles.callFunctionArgumentType mode] [text <| inspectType argument]
+      , div [Styles.callFunctionRetvalType mode]   [text <| inspectType retval]
       , case callArgument of
-          Nothing -> div [Styles.callFunctionEntry]
+          Nothing -> div [Styles.callFunctionEntry mode]
             [ input [onInput CallArgumentInput] []
             ]
           Just jsonArg -> case callToken of
-            Nothing -> div [Styles.callFunctionEntry]
+            Nothing -> div [Styles.callFunctionEntry mode]
               [ input [onInput CallArgumentInput] []
               , button
                   [ onClick (PerformCall {target = delegate pid, name = name, argument = jsonArg})
                   ] [text "call"]
               ]
             Just _ -> div []
-              [ div [Styles.callFunctionInput] [text <| Json.Encode.encode 0 jsonArg]
+              [ div [Styles.callFunctionInput mode] [text <| Json.Encode.encode 0 jsonArg]
               , case callResult of
-                  Nothing -> div [Styles.callFunctionOutputWaiting] []
-                  Just data -> div [Styles.callFunctionOutput] [text <| Json.Encode.encode 0 data]
+                  Nothing -> div [Styles.callFunctionOutputWaiting mode] []
+                  Just data -> div [Styles.callFunctionOutput mode] [text <| Json.Encode.encode 0 data]
               ]
       ]
 
   _ -> div [] []
 
 renderProperty : Mode -> Pid -> PropertyID -> Property -> Html Msg
-renderProperty mode pid propID prop = div [Styles.propertyContainer] <| justs
-  case mode of
-    Basic ->
-      [ renderPropertyControl mode pid propID prop
-      ]
-    Advanced ->
-      [ Maybe.map renderPropertyValue prop.value
-      , renderPropertyControl mode pid propID prop
-      , renderPropertyGetButton pid propID prop
-      ]
+renderProperty mode pid propID prop = div [Styles.propertyContainer mode] <| justs
+  [ Maybe.map (renderPropertyValue mode) prop.value
+  , renderPropertyControl mode pid propID prop
+  , renderPropertyGetButton mode pid propID prop
+  ]
 
-renderPropertyValue : PropertyValue -> Html Msg
-renderPropertyValue v = (case v of
+renderPropertyValue : Mode -> PropertyValue -> Html Msg
+renderPropertyValue mode v = (case v of
     IntProperty i -> [ text (toString i) ]
     FloatProperty f -> [ text (toString f) ]
     BoolProperty b -> [ text (toString b) ]
     UnknownProperty v -> [ text <| Json.Encode.encode 0 v]
-  ) |> div [Styles.propertyValue]
+  ) |> div [Styles.propertyValue mode]
 
-renderPropertyGetButton : Pid -> PropertyID -> Property -> Maybe (Html Msg)
-renderPropertyGetButton pid propID prop = case prop.getter of
+renderPropertyGetButton : Mode -> Pid -> PropertyID -> Property -> Maybe (Html Msg)
+renderPropertyGetButton mode pid propID prop = case prop.getter of
   Nothing -> Nothing
   Just getter ->
     Just <| button
-      [ onClick (CallGetter (pid, propID) getter), Styles.propertyGet ]
+      [ onClick (CallGetter (pid, propID) getter), Styles.propertyGet mode ]
       [ text "↺" ]
 
 renderPropertyControl : Mode -> Pid -> PropertyID -> Property -> Maybe (Html Msg)
 renderPropertyControl mode pid propID prop = case prop.setter of
-  Nothing -> case Mode of
-    Advanced -> Nothing
-    Basic    -> renderPropertyValue prop.value
+  Nothing -> Nothing
   Just setter ->
     case prop.value of
       Just (FloatProperty value) ->
         case getMinMax prop of
-          Just minmax -> Just <| renderFloatSliderControl pid propID minmax setter value
+          Just minmax -> Just <| renderFloatSliderControl mode pid propID minmax setter value
           Nothing -> Nothing
       Just (BoolProperty value) ->
-        Just <| renderBoolCheckboxControl pid propID setter value
+        Just <| renderBoolCheckboxControl mode pid propID setter value
       _ -> Nothing
 
 getMinMax : Property -> Maybe (Float, Float)
@@ -398,8 +391,8 @@ getMinMax prop = case prop.meta.min of
       Nothing -> Nothing
       Just max -> Just (min, max)
 
-renderFloatSliderControl : Pid -> PropertyID -> (Float, Float) -> FunctionStruct -> Float -> Html Msg
-renderFloatSliderControl pid propID (min, max) setter value = input
+renderFloatSliderControl : Mode -> Pid -> PropertyID -> (Float, Float) -> FunctionStruct -> Float -> Html Msg
+renderFloatSliderControl mode pid propID (min, max) setter value = input
   [ Attrs.type_ "range"
   , Attrs.min (min |> toString)
   , Attrs.max (max |> toString)
@@ -411,21 +404,21 @@ renderFloatSliderControl pid propID (min, max) setter value = input
       |> (CallSetter (pid, propID) setter)
     )
   , Styles.propertyFloatSlider
-  ] []
+  mode ] []
 
-renderBoolCheckboxControl : Pid -> PropertyID -> FunctionStruct -> Bool -> Html Msg
-renderBoolCheckboxControl pid propID setter value =
+renderBoolCheckboxControl : Mode -> Pid -> PropertyID -> FunctionStruct -> Bool -> Html Msg
+renderBoolCheckboxControl mode pid propID setter value =
   Html.Styled.Keyed.node "span" [] [
-    ((toString value), renderBoolCheckbox pid propID setter value)
+    ((toString value), renderBoolCheckbox mode pid propID setter value)
   ]
 
-renderBoolCheckbox : Pid -> PropertyID -> FunctionStruct -> Bool -> Html Msg
-renderBoolCheckbox pid propID setter value = input
+renderBoolCheckbox : Mode -> Pid -> PropertyID -> FunctionStruct -> Bool -> Html Msg
+renderBoolCheckbox mode pid propID setter value = input
   [ Attrs.type_ "checkbox"
   , Attrs.checked value
   , onClick (CallSetter (pid, propID) setter (Json.Encode.bool <| not value))
   , Styles.propertyBoolCheckbox
-  ] []
+  mode ] []
 
 justs : List (Maybe a) -> List a
 justs l = case l of
@@ -437,7 +430,7 @@ view : Model -> Html Msg
 view model =
   div []
     [ renderContract model.mode <| toVisual 0 model.contracts model.allProperties
-    , renderAskCallWindow model.toCall model.callArgument model.callToken model.callResult
+    , renderAskCallWindow model.mode model.toCall model.callArgument model.callToken model.callResult
     ]
 
 
