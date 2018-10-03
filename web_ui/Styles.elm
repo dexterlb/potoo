@@ -5,6 +5,8 @@ import Html
 import Html.Styled exposing (..)
 import Html.Styled.Attributes exposing (css, href, src, styled)
 
+import Modes exposing (..)
+
 contract mode = css
   [
   ]
@@ -131,19 +133,31 @@ propertyBlock mode = css
   [
   ]
 
-propertySubContract mode = css
-  [
-  ]
+propertySubContract mode = css <| case mode of
+  Advanced ->
+    [
+    ]
+  Basic ->
+    [ display none
+    ]
 
-propertyGet mode = css
-  [
-  ]
+propertyGet mode = css <| case mode of
+  Advanced ->
+    [
+    ]
+  Basic ->
+    [ display none
+    ]
 
 propertyContainer mode = css
   [ display inline
   ]
 
-propertyValue mode = css
+propertyValue mode = case mode of
+  Advanced -> readOnlyPropertyValue mode
+  Basic    -> css [display none]
+
+readOnlyPropertyValue mode = css
   [ display inline
   , marginLeft (px 20)
   , before [ property "content" "\"► \"", color (hex "60f453") ]

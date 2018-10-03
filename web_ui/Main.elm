@@ -26,6 +26,8 @@ import Debug exposing (log)
 import Contracts exposing (..)
 import Styles
 
+import Modes exposing (..)
+
 main =
   Navigation.program
     (\loc -> NewLocation loc)
@@ -52,8 +54,6 @@ type alias Model =
   , callArgument : Maybe Json.Encode.Value
   , callResult : Maybe Json.Encode.Value
   }
-
-type Mode = Advanced | Basic
 
 init : Location -> (Model, Cmd Msg)
 init loc =
@@ -349,18 +349,23 @@ renderAskCallWindow mode mf callArgument callToken callResult = case mf of
 
 renderProperty : Mode -> Pid -> PropertyID -> Property -> Html Msg
 renderProperty mode pid propID prop = div [Styles.propertyContainer mode] <| justs
-  [ Maybe.map (renderPropertyValue mode) prop.value
+  [ Maybe.map (renderPropertyValue mode (propValueStyle mode prop)) prop.value
   , renderPropertyControl mode pid propID prop
   , renderPropertyGetButton mode pid propID prop
   ]
 
-renderPropertyValue : Mode -> PropertyValue -> Html Msg
-renderPropertyValue mode v = (case v of
+propValueStyle : Mode -> Property -> Attribute Msg
+propValueStyle mode prop = case prop.setter of
+  Nothing -> Styles.readOnlyPropertyValue mode
+  Just _  -> Styles.propertyValue         mode
+
+renderPropertyValue : Mode -> Attribute Msg -> PropertyValue -> Html Msg
+renderPropertyValue mode style v = (case v of
     IntProperty i -> [ text (toString i) ]
     FloatProperty f -> [ text (toString f) ]
     BoolProperty b -> [ text (toString b) ]
     UnknownProperty v -> [ text <| Json.Encode.encode 0 v]
-  ) |> div [Styles.propertyValue mode]
+  ) |> div [style]
 
 renderPropertyGetButton : Mode -> Pid -> PropertyID -> Property -> Maybe (Html Msg)
 renderPropertyGetButton mode pid propID prop = case prop.getter of
