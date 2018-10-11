@@ -262,8 +262,23 @@ subscriptions model =
 
 -- VIEW
 
+uiLevel : VisualContract -> Int
+uiLevel vc = case vc of
+  VFunction             {data} -> dataUiLevel data
+  VConnectedDelegate    {data} -> dataUiLevel data
+  VBrokenDelegate       {data} -> dataUiLevel data
+  VMapContract d               -> Dict.get "ui_level" d |> Maybe.andThen getIntValue |> Maybe.withDefault 0
+  _                            -> 0
+
+dataUiLevel : Data -> Int
+dataUiLevel d
+  =  Dict.get "ui_level" d
+  |> Maybe.withDefault (Json.Encode.int 0)
+  |> Json.Decode.decodeValue Json.Decode.int
+  |> Result.withDefault 0
+
 renderContract : Mode -> VisualContract -> Html Msg
-renderContract mode vc = div [ Styles.contract mode ] [ renderContractContent mode vc ]
+renderContract mode vc = div [ Styles.contract mode, Styles.contractContent mode (uiLevel vc) ] [ renderContractContent mode vc ]
 
 renderContractContent : Mode -> VisualContract -> Html Msg
 renderContractContent mode vc = case vc of
@@ -295,14 +310,15 @@ renderContractContent mode vc = case vc of
     ]
   VMapContract d -> div [ Styles.mapContract mode ] (
     Dict.toList d |> List.map (
-      \(name, contract) -> div [ Styles.mapContractItem mode ]
+      \(name, contract) -> div [ Styles.mapContractItem mode, Styles.contractContent mode (uiLevel contract)  ]
         [ div [Styles.mapContractName mode] [ text name ]
         , renderContractContent mode contract
         ]
     ))
   VListContract l -> div [ Styles.listContract mode ] (
     l |> List.map (
-      \contract -> renderContractContent mode contract
+      \contract -> div [ Styles.listContractItem mode, Styles.contractContent mode (uiLevel contract) ]
+        [ renderContractContent mode contract ]
     ))
   VProperty {pid, propertyID, value, contract} -> div [ Styles.propertyBlock mode ]
     [ renderProperty mode pid propertyID value

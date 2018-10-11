@@ -11,6 +11,20 @@ contract mode = css
   [
   ]
 
+contractContent mode uiLevel = case mode of
+  Advanced -> css
+    [
+    ]
+  Basic -> if uiLevel > 0
+    then
+      css
+        [ display none
+        ]
+    else
+      css
+        [
+        ]
+
 mapContract = indentedContract
 listContract = indentedContract
 
@@ -24,6 +38,10 @@ mapContractName mode = css
   ]
 
 mapContractItem mode = css
+  [
+  ]
+
+listContractItem mode = css
   [
   ]
 
@@ -85,8 +103,8 @@ dataItem mode = css
 
 
 dataName mode = css
-  [ display inline,
-    after [ property "content" "\": \"" ]
+  [ display inline
+  , after [ property "content" "\": \"" ]
   ]
 
 dataValue mode = css

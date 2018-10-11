@@ -498,3 +498,8 @@ firstJust l = case l of
   []          -> Nothing
   (Just x)::_ -> Just x
   Nothing::t  -> firstJust t
+
+getIntValue : VisualContract -> Maybe Int
+getIntValue c = case c of
+  VIntValue i -> Just i
+  _           -> Nothing

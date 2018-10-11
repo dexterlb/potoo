@@ -93,7 +93,8 @@ defmodule Mesh.Registry do
             {:struct, {{:literal, :error}, :string}}
           },
           data: %{
-            "description" => "Registers a new service into the registry"
+            "description" => "Registers a new service into the registry",
+            "ui_level" => 2
           }
         },
         "deregister" => %Mesh.Contract.Function{
@@ -109,7 +110,8 @@ defmodule Mesh.Registry do
             {:struct, {{:literal, :error}, :string}}
           },
           data: %{
-            "description" => "Deregisters a service from the registry"
+            "description" => "Deregisters a service from the registry",
+            "ui_level" => 2
           }
         },
         "services" => services
