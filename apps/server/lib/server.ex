@@ -1,6 +1,6 @@
-defmodule FidgetService do
+defmodule Server do
   @moduledoc """
-  Documentation for FidgetService.
+  Documentation for Server.
   """
 
   @doc """
@@ -8,7 +8,7 @@ defmodule FidgetService do
 
   ## Examples
 
-      iex> FidgetService.hello
+      iex> Server.hello
       :world
 
   """

@@ -1,4 +1,4 @@
-defmodule Ui.StreamServer.ReverseEndpoint do
+defmodule Server.StreamServer.ReverseEndpoint do
   use GenServer
   require OK
 

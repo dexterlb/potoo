@@ -1,4 +1,4 @@
 use Mix.Config
 
-config :ui,
+config :server,
     json_pretty: false

@@ -1,4 +1,4 @@
-defmodule Ui.Application do
+defmodule Server.Application do
   # See https://hexdocs.pm/elixir/Application.html
   # for more information on OTP Applications
   @moduledoc false
@@ -13,18 +13,18 @@ defmodule Ui.Application do
 
     # List all child processes to be supervised
     children = [
-      # Starts a worker by calling: Ui.Worker.start_link(arg)
-      # {Ui.Worker, arg},
+      # Starts a worker by calling: Server.Worker.start_link(arg)
+      # {Server.Worker, arg},
 
       worker(PidCache, [
-        [{:delegate, Application.fetch_env!(:ui, :root_target), 0}],
+        [{:delegate, Application.fetch_env!(:server, :root_target), 0}],
         [name: PidCache]
       ]),
       {
         Cache,
         name: Cache
       },
-      worker(Ui.StreamServer.TcpServer, [
+      worker(Server.StreamServer.TcpServer, [
         [port: 4444],
       ]),
 
@@ -32,17 +32,17 @@ defmodule Ui.Application do
       {
         Plug.Adapters.Cowboy2,
         scheme: :http,
-        plug: Ui.Router,
+        plug: Server.Router,
         options: [
           port: 4040,
-          dispatch: Ui.Dispatcher.dispatch
+          dispatch: Server.Dispatcher.dispatch
         ]
       }
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
-    opts = [strategy: :one_for_one, name: Ui.Supervisor]
+    opts = [strategy: :one_for_one, name: Server.Supervisor]
     Supervisor.start_link(children, opts)
   end
 end

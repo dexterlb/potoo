@@ -1,4 +1,4 @@
-defmodule Ui.Api do
+defmodule Server.Api do
 
   alias Mesh.ServerUtils.PidCache
   alias Mesh.Contract.Delegate

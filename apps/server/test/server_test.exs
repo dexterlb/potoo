@@ -1,8 +1,8 @@
 defmodule UiTest do
   use ExUnit.Case
-  doctest Ui
+  doctest Server
 
   test "greets the world" do
-    assert Ui.hello() == :world
+    assert Server.hello() == :world
   end
 end

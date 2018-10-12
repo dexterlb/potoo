@@ -1,6 +1,6 @@
-defmodule Ui.Router do
+defmodule Server.Router do
   use Plug.Router
-  alias Ui.Api
+  alias Server.Api
   alias Mesh.ServerUtils.Json
 
   alias Mesh.ServerUtils.PidCache
@@ -39,7 +39,7 @@ defmodule Ui.Router do
   end
 
   defp encode_json(data) do
-    Poison.encode!(jsonify(data), pretty: Application.get_env(:ui, :json_pretty, false))
+    Poison.encode!(jsonify(data), pretty: Application.get_env(:server, :json_pretty, false))
   end
 
   def jsonify(data) do

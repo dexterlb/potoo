@@ -1,4 +1,4 @@
-defmodule Ui.StreamServer.TcpServer do
+defmodule Server.StreamServer.TcpServer do
   require Logger
 
   def start_link([port: port]) do
@@ -7,7 +7,7 @@ defmodule Ui.StreamServer.TcpServer do
       100,
       :ranch_tcp,
       [port: port, connection_type: :worker],
-      Ui.StreamServer.TcpListener,
+      Server.StreamServer.TcpListener,
       []
     )
     Logger.debug("start tcp server: #{inspect(val)}")

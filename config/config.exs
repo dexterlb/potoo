@@ -16,7 +16,7 @@ import_config "../apps/*/config/config.exs"
 #       format: "$date $time [$level] $metadata$message\n",
 #       metadata: [:user_id]
 
-config :ui,
+config :server,
   root_target: {:global_registry, :reg@localhost}
 
 config :fidget,
