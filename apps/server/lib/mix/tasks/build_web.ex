@@ -7,7 +7,7 @@ defmodule Mix.Tasks.BuildWeb do
     # this is a major hack. fixme.
     f = __ENV__.file
     System.cmd("sh", [
-        "-c", "cd \"$(dirname '#{f}')\"/../../../../../web_ui && mkdir -p ../apps/server/priv/static/ && elm-make Main.elm --output ../apps/server/priv/static/index.html"
+        "-c", "cd \"$(dirname '#{f}')\"/../../../../../web_ui && mkdir -p ../apps/server/priv/static/ && elm-make Main.elm --yes --output ../apps/server/priv/static/index.html"
       ], into: IO.stream(:stdio, :line)
     )
   end
