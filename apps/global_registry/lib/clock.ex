@@ -29,7 +29,7 @@ defmodule GlobalRegistry.Clock do
   end
 
   @contract %{
-    "description" => "A service which provides accurate time.",
+    "description" => "Clock",
     "time" => %{
       "get" => %Mesh.Contract.Function{
         name: "time.get",
