@@ -30,6 +30,9 @@ defmodule Server.Mixfile do
       {:plug, "~> 1.6"},
       {:cowboy, "~> 2.4"},
       {:poison, "~> 3.1"},
+      {:plug_static_index_html, "~> 1.0"},
+
+      {:distillery, "~> 2.0"},
 
       {:reverse_proxy, git: "https://github.com/DexterLB/elixir-reverse-proxy"},
 

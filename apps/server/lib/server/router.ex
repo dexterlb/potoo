@@ -6,6 +6,14 @@ defmodule Server.Router do
   alias Mesh.ServerUtils.PidCache
   require Logger
 
+
+  if Application.get_env(:server, :dev_proxy, false) do
+    forward "/", to: ReverseProxy, upstream: ["localhost:8000"]
+  else
+    plug Plug.Static.IndexHtml
+    plug Plug.Static, at: "/", from: :server
+  end
+
   plug :match
   plug Plug.Parsers, parsers: [:json],
                      pass:  ["application/json"],
@@ -23,8 +31,6 @@ defmodule Server.Router do
   post "/call" do
     conn |> reply_json(Api.call(unjsonify(conn.body_params)))
   end
-
-  forward "/", to: ReverseProxy, upstream: ["localhost:8000"]
 
   # match _ do
   #   conn |> send_resp(404, "404\n")

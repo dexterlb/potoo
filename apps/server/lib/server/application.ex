@@ -25,7 +25,7 @@ defmodule Server.Application do
         name: Cache
       },
       worker(Server.StreamServer.TcpServer, [
-        [port: 4444],
+        [port: Application.fetch_env!(:server, :tcp_port)],
       ]),
 
 
@@ -34,7 +34,7 @@ defmodule Server.Application do
         scheme: :http,
         plug: Server.Router,
         options: [
-          port: 4040,
+          port: Application.fetch_env!(:server, :web_port),
           dispatch: Server.Dispatcher.dispatch
         ]
       }
