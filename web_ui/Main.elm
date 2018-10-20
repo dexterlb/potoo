@@ -417,6 +417,7 @@ renderFloatSliderControl mode pid propID (min, max) setter value = input
   [ Attrs.type_ "range"
   , Attrs.min (min |> toString)
   , Attrs.max (max |> toString)
+  , Attrs.step "0.01"   -- fixme!
   , Attrs.value <| toString value
   , onInput (\s -> s
       |> String.toFloat

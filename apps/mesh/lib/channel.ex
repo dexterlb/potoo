@@ -31,6 +31,11 @@ defmodule Mesh.Channel do
     end
   end
 
+  def start_link!(opts \\ [], transform \\ fn(x) -> x end) do
+    {:ok, chan} = start_link(opts, transform)
+    chan
+  end
+
   def init(state) do
     Process.flag(:trap_exit, true)
     {:ok, state}
