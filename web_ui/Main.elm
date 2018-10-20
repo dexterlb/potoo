@@ -262,23 +262,35 @@ subscriptions model =
 
 -- VIEW
 
-uiLevel : VisualContract -> Int
-uiLevel vc = case vc of
-  VFunction             {data} -> dataUiLevel data
-  VConnectedDelegate    {data} -> dataUiLevel data
-  VBrokenDelegate       {data} -> dataUiLevel data
-  VMapContract d               -> Dict.get "ui_level" d |> Maybe.andThen getIntValue |> Maybe.withDefault 0
-  _                            -> 0
+type alias MetaData =
+  { uiLevel     : Int
+  , description : String
+  }
 
-dataUiLevel : Data -> Int
-dataUiLevel d
-  =  Dict.get "ui_level" d
+metaData : VisualContract -> MetaData
+metaData vc = case vc of
+  VFunction             {data} -> dataMetaData data
+  VConnectedDelegate    {data} -> dataMetaData data
+  VBrokenDelegate       {data} -> dataMetaData data
+  VMapContract d               -> MetaData
+    (Dict.get "ui_level"    d |> Maybe.andThen getIntValue    |> Maybe.withDefault 0)
+    (Dict.get "description" d |> Maybe.andThen getStringValue |> Maybe.withDefault "")
+  _                            -> MetaData 0 ""
+
+dataMetaData : Data -> MetaData
+dataMetaData d = MetaData
+  (  Dict.get "ui_level" d
   |> Maybe.withDefault (Json.Encode.int 0)
   |> Json.Decode.decodeValue Json.Decode.int
-  |> Result.withDefault 0
+  |> Result.withDefault 0)
+  (  Dict.get "description" d
+  |> Maybe.withDefault (Json.Encode.string "")
+  |> Json.Decode.decodeValue Json.Decode.string
+  |> Result.withDefault "")
+
 
 renderContract : Mode -> VisualContract -> Html Msg
-renderContract mode vc = div [ Styles.contract mode, Styles.contractContent mode (uiLevel vc) ] [ renderContractContent mode vc ]
+renderContract mode vc = div [ Styles.contract mode, Styles.contractContent mode (metaData vc) ] [ renderContractContent mode vc ]
 
 renderContractContent : Mode -> VisualContract -> Html Msg
 renderContractContent mode vc = case vc of
@@ -310,20 +322,26 @@ renderContractContent mode vc = case vc of
     ]
   VMapContract d -> div [ Styles.mapContract mode ] (
     Dict.toList d |> List.map (
-      \(name, contract) -> div [ Styles.mapContractItem mode, Styles.contractContent mode (uiLevel contract)  ]
+      \(name, contract) -> div [ Styles.mapContractItem mode, Styles.contractContent mode (metaData contract)  ]
         [ div [Styles.mapContractName mode] [ text name ]
         , renderContractContent mode contract
         ]
     ))
   VListContract l -> div [ Styles.listContract mode ] (
     l |> List.map (
-      \contract -> div [ Styles.listContractItem mode, Styles.contractContent mode (uiLevel contract) ]
-        [ renderContractContent mode contract ]
+      \contract -> div [ Styles.listContractItem mode, Styles.contractContent mode (metaData contract) ]
+        [ renderHeader mode (metaData contract)
+        , renderContractContent mode contract ]
     ))
   VProperty {pid, propertyID, value, contract} -> div [ Styles.propertyBlock mode ]
-    [ renderProperty mode pid propertyID value
+    [ renderHeader mode (metaData contract)
+    , renderProperty mode pid propertyID value
     , div [ Styles.propertySubContract mode ] [ renderContractContent mode contract ]
     ]
+
+renderHeader : Mode -> MetaData -> Html Msg
+renderHeader mode { description } = div [ Styles.contractHeader mode ]
+  [ text description ]
 
 renderData : Mode -> Data -> Html Msg
 renderData mode d = div [ Styles.dataBlock mode ] (

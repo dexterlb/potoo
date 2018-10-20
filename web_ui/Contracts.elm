@@ -503,3 +503,13 @@ getIntValue : VisualContract -> Maybe Int
 getIntValue c = case c of
   VIntValue i -> Just i
   _           -> Nothing
+
+getStringValue : VisualContract -> Maybe String
+getStringValue c = case c of
+  VStringValue i -> Just i
+  _           -> Nothing
+
+getFloatValue : VisualContract -> Maybe Float
+getFloatValue c = case c of
+  VFloatValue i -> Just i
+  _           -> Nothing

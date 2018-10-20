@@ -11,7 +11,7 @@ contract mode = css
   [
   ]
 
-contractContent mode uiLevel = case mode of
+contractContent mode { uiLevel } = case mode of
   Advanced -> css
     [
     ]
@@ -27,6 +27,9 @@ contractContent mode uiLevel = case mode of
 
 mapContract = indentedContract
 listContract = indentedContract
+
+contractHeader _ = css
+  [ color (hex "ff0000") ]
 
 indentedContract mode = css
   [ marginLeft (px 20)
