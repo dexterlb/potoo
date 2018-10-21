@@ -7,15 +7,16 @@ defmodule Server.Router do
   require Logger
 
 
+  plug :match
+  plug Plug.Parsers, parsers: [:json],
+                     pass:  ["application/json"],
+                     json_decoder: Poison
+
   if not Application.get_env(:server, :dev_proxy, false) do
     plug Plug.Static.IndexHtml
     plug Plug.Static, at: "/", from: :server
   end
 
-  plug :match
-  plug Plug.Parsers, parsers: [:json],
-                     pass:  ["application/json"],
-                     json_decoder: Poison
   plug :dispatch
 
   get "/hello" do
