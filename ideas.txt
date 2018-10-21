@@ -47,7 +47,7 @@ end
             - maybe set this upon channel creation so subscribers only call
               subscribe()? (bad idea)
 
-    - persistent register (register_link?)
+    - persistent register (register_link?), but one-way (no need to kill the registry)
 
     - prettification
         - behaviours for services

@@ -290,7 +290,9 @@ dataMetaData d = MetaData
 
 
 renderContract : Mode -> VisualContract -> Html Msg
-renderContract mode vc = div [ Styles.contract mode, Styles.contractContent mode (metaData vc) ] [ renderContractContent mode vc ]
+renderContract mode vc = div [ Styles.contract mode, Styles.contractContent mode (metaData vc) ]
+  [ renderHeader mode (metaData vc)
+  , renderContractContent mode vc ]
 
 renderContractContent : Mode -> VisualContract -> Html Msg
 renderContractContent mode vc = case vc of
@@ -323,7 +325,8 @@ renderContractContent mode vc = case vc of
   VMapContract d -> div [ Styles.mapContract mode ] (
     Dict.toList d |> List.map (
       \(name, contract) -> div [ Styles.mapContractItem mode, Styles.contractContent mode (metaData contract)  ]
-        [ div [Styles.mapContractName mode] [ text name ]
+        [ renderHeader mode (metaData contract)
+        , div [Styles.mapContractName mode] [ text name ]
         , renderContractContent mode contract
         ]
     ))
