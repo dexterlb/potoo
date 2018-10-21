@@ -76,13 +76,13 @@ defmodule MqttMesh do
 
   def handle_call({name, arg}, from, state = %{properties: properties}) do
     [id, func] = String.split(name, ".")
-    case Map.get(properties, id) do
-      prop -> handle_func({id, prop, func, arg}, from, state)
-      _    -> {:error, {:no_such_id, id}}
+    case Map.fetch(properties, id) do
+      {:ok, prop} -> handle_func({id, prop, func, arg}, from, state)
+      _           -> {:error, {:no_such_id, id}}
     end
   end
 
-  def handle_info({:mqtt_message, topic, payload}, state = %{properties: properties, topics: topics}) do
+  def handle_info({:mqtt_message, topic, payload}, state = %{topics: topics}) do
     case Map.fetch(topics, Enum.join(topic, "/")) do
       {:ok, prop_id} ->
         handle_status(prop_id, payload, state)
@@ -130,7 +130,7 @@ defmodule MqttMesh do
       conn <- Tortoise.Connection.start_link(
         client_id: conn_id,
         server: server,
-        handler: {MqttMesh.Connection, [topics: Map.keys(topics), target: self()]},
+        handler: {MqttMesh.Connection, [topics: Map.keys(topics), target: self()]}
       )
     after
       %{
@@ -140,7 +140,7 @@ defmodule MqttMesh do
     end
   end
 
-  defp make_property(spec = %{topic: topic, setter: setter, status: status, instant: instant, default: default, getter: getter, type: type}) do
+  defp make_property(%{topic: topic, setter: setter, status: status, instant: instant, default: default, getter: getter, type: type}) do
     id = random_string(24)
     %{
       contract: %{

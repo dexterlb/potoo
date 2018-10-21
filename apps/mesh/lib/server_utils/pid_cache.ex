@@ -3,6 +3,10 @@ defmodule Mesh.ServerUtils.PidCache do
   require Logger
 
   def start_link(initial_contents \\ [], opts \\ [name: __MODULE__]) do
+    GenServer.start_link(__MODULE__, initial_contents, opts)
+  end
+
+  def init(initial_contents) do
     pid_to_id = initial_contents
       |> Enum.map(fn({bucket, pid, id}) -> {{bucket, pid}, id} end)
       |> Map.new
@@ -13,7 +17,7 @@ defmodule Mesh.ServerUtils.PidCache do
       |> Enum.map(fn({_, _, id}) -> id end)
       |> Enum.max(fn() -> -1 end)
 
-    GenServer.start_link(__MODULE__, {last_id, pid_to_id, id_to_pid}, opts)
+    {:ok, {last_id, pid_to_id, id_to_pid}}
   end
 
   def fetch(cache_pid, target) do
@@ -82,7 +86,7 @@ defmodule Mesh.ServerUtils.PidCache do
 
   defp receive_downs(from, bucket) do
     receive do
-      {:DOWN, _, :process, pid, _} -> 
+      {:DOWN, _, :process, pid, _} ->
         GenServer.cast(from, {:drop, {bucket, pid}})
       _ ->
         receive_downs(from, bucket)

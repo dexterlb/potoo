@@ -6,7 +6,7 @@ defmodule Server.StreamServer.TcpServer do
       make_ref(),
       100,
       :ranch_tcp,
-      [port: port, connection_type: :worker],
+      %{socket_opts: [port: port], connection_type: :worker},
       Server.StreamServer.TcpListener,
       []
     )

@@ -1,5 +1,4 @@
 defmodule Server.StreamServer.TcpListener do
-  use GenServer
   alias Server.StreamServer.Handler
   require Logger
 

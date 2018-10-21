@@ -28,7 +28,7 @@ defmodule Server.Mixfile do
     [
 
       {:plug, "~> 1.6"},
-      {:cowboy, "~> 2.4"},
+      {:plug_cowboy, "~> 2.0"},
       {:poison, "~> 3.1"},
       {:plug_static_index_html, "~> 1.0"},
 

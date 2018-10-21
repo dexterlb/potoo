@@ -3,7 +3,7 @@ defmodule Server.Dispatcher do
     [
       {:_, [
         {"/ws", Server.StreamServer.WebSocketListener, []},
-        {:_, Plug.Adapters.Cowboy2.Handler, {Server.Router, []}}
+        {:_, Plug.Cowboy.Handler, {Server.Router, []}}
       ]}
     ]
   end

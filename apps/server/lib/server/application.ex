@@ -30,7 +30,7 @@ defmodule Server.Application do
 
 
       {
-        Plug.Adapters.Cowboy2,
+        Plug.Cowboy,
         scheme: :http,
         plug: Server.Router,
         options: [

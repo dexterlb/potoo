@@ -17,4 +17,9 @@ defmodule Mix.Tasks.BuildWeb do
     run(nil)
     release
   end
+
+  def after_assembly(release, _opts), do: release
+
+  def before_package(release, _opts), do: release
+  def after_package(release, _opts), do: release
 end

@@ -7,9 +7,7 @@ defmodule Server.Router do
   require Logger
 
 
-  if Application.get_env(:server, :dev_proxy, false) do
-    forward "/", to: ReverseProxy, upstream: ["localhost:8000"]
-  else
+  if not Application.get_env(:server, :dev_proxy, false) do
     plug Plug.Static.IndexHtml
     plug Plug.Static, at: "/", from: :server
   end
@@ -32,9 +30,13 @@ defmodule Server.Router do
     conn |> reply_json(Api.call(unjsonify(conn.body_params)))
   end
 
-  # match _ do
-  #   conn |> send_resp(404, "404\n")
-  # end
+  if Application.get_env(:server, :dev_proxy, false) do
+    forward "/", to: ReverseProxy, upstream: ["localhost:8000"]
+  else
+    match _ do
+      conn |> send_resp(404, "404\n")
+    end
+  end
 
   defp reply_json(conn, data) do
     Logger.debug(fn -> ["http <- ", inspect(data)] end)
