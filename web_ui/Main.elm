@@ -267,15 +267,19 @@ type alias MetaData =
   , description : String
   }
 
-metaData : VisualContract -> MetaData
-metaData vc = case vc of
+metaData : VisualContract -> String -> MetaData
+metaData vc name = case vc of
   VFunction             {data} -> dataMetaData data
   VConnectedDelegate    {data} -> dataMetaData data
   VBrokenDelegate       {data} -> dataMetaData data
   VMapContract d               -> MetaData
     (Dict.get "ui_level"    d |> Maybe.andThen getIntValue    |> Maybe.withDefault 0)
-    (Dict.get "description" d |> Maybe.andThen getStringValue |> Maybe.withDefault "")
-  _                            -> MetaData 0 ""
+    (Dict.get "description" d |> Maybe.andThen getStringValue |> Maybe.withDefault name)
+  VStringValue _               -> case name of
+    "description" -> MetaData 1 name
+    "ui_level"    -> MetaData 1 name
+    _             -> MetaData 0 name
+  _                            -> MetaData 0 name
 
 dataMetaData : Data -> MetaData
 dataMetaData d = MetaData
@@ -290,8 +294,8 @@ dataMetaData d = MetaData
 
 
 renderContract : Mode -> VisualContract -> Html Msg
-renderContract mode vc = div [ Styles.contract mode, Styles.contractContent mode (metaData vc) ]
-  [ renderHeader mode (metaData vc)
+renderContract mode vc = div [ Styles.contract mode, Styles.contractContent mode (metaData vc "") ]
+  [ renderHeader mode (metaData vc "")
   , renderContractContent mode vc ]
 
 renderContractContent : Mode -> VisualContract -> Html Msg
@@ -324,20 +328,20 @@ renderContractContent mode vc = case vc of
     ]
   VMapContract d -> div [ Styles.mapContract mode ] (
     Dict.toList d |> List.map (
-      \(name, contract) -> div [ Styles.mapContractItem mode, Styles.contractContent mode (metaData contract)  ]
-        [ renderHeader mode (metaData contract)
+      \(name, contract) -> div [ Styles.mapContractItem mode, Styles.contractContent mode (metaData contract name)  ]
+        [ renderHeader mode (metaData contract name)
         , div [Styles.mapContractName mode] [ text name ]
         , renderContractContent mode contract
         ]
     ))
   VListContract l -> div [ Styles.listContract mode ] (
     l |> List.map (
-      \contract -> div [ Styles.listContractItem mode, Styles.contractContent mode (metaData contract) ]
-        [ renderHeader mode (metaData contract)
+      \contract -> div [ Styles.listContractItem mode, Styles.contractContent mode (metaData contract "") ]
+        [ renderHeader mode (metaData contract "")
         , renderContractContent mode contract ]
     ))
   VProperty {pid, propertyID, value, contract} -> div [ Styles.propertyBlock mode ]
-    [ renderHeader mode (metaData contract)
+    [ renderHeader mode (metaData contract "")
     , renderProperty mode pid propertyID value
     , div [ Styles.propertySubContract mode ] [ renderContractContent mode contract ]
     ]

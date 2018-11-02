@@ -28,17 +28,22 @@ contractContent mode { uiLevel } = case mode of
 mapContract = indentedContract
 listContract = indentedContract
 
-contractHeader _ = css
-  [ color (hex "ff0000") ]
+contractHeader mode = css <| case mode of
+  Basic ->
+    [ color (hex "ff0000") ]
+  Advanced ->
+    [ display none ]
 
 indentedContract mode = css
   [ marginLeft (px 20)
   ]
 
-mapContractName mode = css
-  [ display inline,
-    after [ property "content" "\": \"" ]
-  ]
+mapContractName mode = css <| case mode of
+  Advanced ->
+    [ display inline,
+        after [ property "content" "\": \"" ]
+    ]
+  Basic -> [ display none ]
 
 mapContractItem mode = css
   [
@@ -90,9 +95,11 @@ intValue = simpleValue
 floatValue = simpleValue
 stringValue = simpleValue
 
-simpleValue mode = css
-  [ display inline
-  ]
+simpleValue mode = case mode of
+  Advanced ->
+    css [ display inline
+    ]
+  Basic -> indentedContract mode
 
 dataBlock mode = css
   [ marginLeft (px 10),
