@@ -201,3 +201,17 @@ propertyFloatSlider mode = css
 propertyBoolCheckbox mode = css
   [ display inline
   ]
+
+progressBarOuter value = css
+  [ display block
+  , width (px 200)
+  , height (px 10)
+  , backgroundColor (hex "00cc00")
+  ]
+
+progressBarInner value = css
+  [ display block
+  , width <| px <| value * 200
+  , height (px 10)
+  , backgroundColor (hex "0000ff")
+  ]

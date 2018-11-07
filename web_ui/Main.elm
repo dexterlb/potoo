@@ -28,6 +28,7 @@ import Styles
 
 import Modes exposing (..)
 
+
 main =
   Navigation.program
     (\loc -> NewLocation loc)
@@ -427,7 +428,13 @@ renderPropertyGetButton mode pid propID prop = case prop.getter of
 
 renderPropertyControl : Mode -> Pid -> PropertyID -> Property -> Maybe (Html Msg)
 renderPropertyControl mode pid propID prop = case prop.setter of
-  Nothing -> Nothing
+  Nothing ->
+    case prop.value of
+      Just (FloatProperty value) ->
+        case getMinMax prop of
+          Just minmax -> Just <| renderFloatBarControl mode pid propID minmax value
+          Nothing -> Nothing
+      _ -> Nothing
   Just setter ->
     case prop.value of
       Just (FloatProperty value) ->
@@ -461,6 +468,13 @@ renderFloatSliderControl mode pid propID (min, max) setter value = input
     )
   , Styles.propertyFloatSlider
   mode ] []
+
+renderFloatBarControl : Mode -> Pid -> PropertyID -> (Float, Float) -> Float -> Html Msg
+renderFloatBarControl mode pid propID (min, max) value
+  = let norm = (((value - min) / (max - min)))in
+      div [ Styles.progressBarOuter norm ] [
+        div [ Styles.progressBarInner norm ] []
+      ]
 
 renderBoolCheckboxControl : Mode -> Pid -> PropertyID -> FunctionStruct -> Bool -> Html Msg
 renderBoolCheckboxControl mode pid propID setter value =
