@@ -83,6 +83,7 @@ type Msg
   = SocketMessage String
   | AskCall VisualContract
   | AskInstantCall VisualContract
+  | ActionCall VisualContract
   | CallArgumentInput String
   | PerformCall { target: DelegateStruct, name: String, argument: Json.Encode.Value }
   | PerformCallWithToken { target: DelegateStruct, name: String, argument: Json.Encode.Value } String
@@ -105,6 +106,8 @@ update msg model =
     AskCall f -> ({model | toCall = Just f, callToken = Nothing, callArgument = Nothing, callResult = Nothing}, Cmd.none)
 
     AskInstantCall f -> ({model | toCall = Just f, callArgument = Just Json.Encode.null}, instantCall f)
+
+    ActionCall f -> (model, actionCall model f)
 
     CallArgumentInput input -> ({model | callArgument = checkCallInput input}, Cmd.none)
 
@@ -144,6 +147,12 @@ instantCall : VisualContract -> Cmd Msg
 instantCall vc = case vc of
   (VFunction {argument, name, retval, data, pid}) ->
     performCall {target = delegate pid, name = name, argument = Json.Encode.null}
+  _ -> Cmd.none
+
+actionCall : Model -> VisualContract -> Cmd Msg
+actionCall model vc = case vc of
+  (VFunction {argument, name, retval, data, pid}) ->
+    Api.actionCall model.conn {target = delegate pid, name = name, argument = Json.Encode.null}
   _ -> Cmd.none
 
 performCall : {target: DelegateStruct, name: String, argument: Json.Encode.Value} -> Cmd Msg
@@ -278,13 +287,18 @@ metaData vc name = case vc of
     (Dict.get "ui_level"    d |> Maybe.map valueOf |> Maybe.andThen getIntValue    |> Maybe.withDefault 0)
     (Dict.get "description" d |> Maybe.map valueOf |> Maybe.andThen getStringValue |> Maybe.withDefault name)
     (Dict.get "enabled"     d |> Maybe.map valueOf |> Maybe.andThen getBoolValue  |>  Maybe.withDefault True)
-  VStringValue _               -> case name of
-    "description" -> MetaData 1 name True
-    "ui_level"    -> MetaData 1 name True
-    "enabled"     -> MetaData 1 name True
-    _             -> MetaData 0 name True
+  VStringValue _               -> case isMeta name of
+    True  -> MetaData 1 name True
+    False -> MetaData 0 name True
   VProperty         {contract} -> metaData contract name
   _                            -> MetaData 0 name True
+
+isMeta : String -> Bool
+isMeta s = case s of
+  "description" -> True
+  "ui_level"    -> True
+  "enabled"     -> True
+  _             -> False
 
 dataMetaData : Data -> MetaData
 dataMetaData d = MetaData
@@ -323,8 +337,13 @@ renderContractContent mode vc = case vc of
     , div [ Styles.functionRetvalType mode ]
         [ text <| inspectType retval]
     , case argument of
-        TNil -> button [ Styles.instantCallButton mode, onClick (AskInstantCall vc) ] [ text "instant call" ]
-        _ -> button [ Styles.functionCallButton mode, onClick (AskCall vc) ] [ text "call" ]
+        TNil -> case retval of
+          TNil ->
+            button [ Styles.actionCallButton mode, onClick (ActionCall vc) ] [ text "button" ]
+          _ ->
+            button [ Styles.instantCallButton mode, onClick (AskInstantCall vc) ] [ text "instant call" ]
+        _ ->
+          button [ Styles.functionCallButton mode, onClick (AskCall vc) ] [ text "call" ]
     , renderData mode data
     ]
   VConnectedDelegate {contract, data, destination} -> div [ Styles.connectedDelegate mode ]
@@ -362,7 +381,11 @@ renderHeader mode { description, enabled } = div [ Styles.contractHeader mode en
 
 renderData : Mode -> Data -> Html Msg
 renderData mode d = div [ Styles.dataBlock mode ] (
-    Dict.toList d |> List.map (
+    Dict.toList d
+    |> List.filter (
+      \(name, _) -> not <| isMeta name
+    )
+    |> List.map (
       \(name, value) -> div [ Styles.dataItem mode ]
         [ div [ Styles.dataName mode ] [ text name ]
         , div [ Styles.dataValue mode ] [ text (Json.Encode.encode 0 value) ]
@@ -400,8 +423,8 @@ renderAskCallWindow mode mf callArgument callToken callResult = case mf of
 
 renderProperty : Mode -> Pid -> PropertyID -> Property -> Html Msg
 renderProperty mode pid propID prop = div [Styles.propertyContainer mode] <| justs
-  [ Maybe.map (renderPropertyValue mode (propValueStyle mode prop)) prop.value
-  , renderPropertyControl mode pid propID prop
+  [ renderPropertyControl mode pid propID prop
+  , Maybe.map (renderPropertyValue mode (propValueStyle mode prop)) prop.value
   , renderPropertyGetButton mode pid propID prop
   ]
 
@@ -471,9 +494,11 @@ renderFloatSliderControl mode pid propID (min, max) setter value = input
 
 renderFloatBarControl : Mode -> Pid -> PropertyID -> (Float, Float) -> Float -> Html Msg
 renderFloatBarControl mode pid propID (min, max) value
-  = let norm = (((value - min) / (max - min)))in
-      div [ Styles.progressBarOuter norm ] [
-        div [ Styles.progressBarInner norm ] []
+  = let norm = (((value - min) / (max - min))) in
+      div [ Styles.propertyFloatBar mode ] [
+        div [ Styles.progressBarOuter norm ] [
+          div [ Styles.progressBarInner norm ] []
+        ]
       ]
 
 renderBoolCheckboxControl : Mode -> Pid -> PropertyID -> FunctionStruct -> Bool -> Html Msg

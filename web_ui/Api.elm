@@ -61,6 +61,13 @@ setterCall conn func (propertyPid, propertyID) =
         ("id",  int propertyID)
       ]
 
+actionCall : Conn -> { target: DelegateStruct, name: String, argument: Json.Encode.Value } -> Cmd msg
+actionCall conn func =
+  rawUnsafeCall conn func <|
+    object [
+        ("msg", string "action_result")
+      ]
+
 subscriberCall : Conn -> { target: DelegateStruct, name: String, argument: Json.Encode.Value } -> (Int, Int) -> Cmd msg
 subscriberCall conn func (propertyPid, propertyID) =
   rawUnsafeCall conn func <|

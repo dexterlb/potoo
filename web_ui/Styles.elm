@@ -56,24 +56,36 @@ listContractItem mode = css
   ]
 
 function mode = css
-  [ backgroundColor (hex "d3ead5"),
-    display inline
+  [ backgroundColor (hex "d3ead5")
+  , display inline
   ]
 
-functionArgumentType mode = css
-  [ display inline,
-    after [ property "content" "\" → \"", color (hex "c99376")]
-  ]
+functionArgumentType mode = css <| case mode of
+  Advanced ->
+    [ display inline,
+        after [ property "content" "\" → \"", color (hex "c99376")]
+    ]
+  Basic ->
+    [ display none
+    ]
 
-functionRetvalType mode = css
-  [ display inline
-  ]
+functionRetvalType mode = css <| case mode of
+  Advanced ->
+    [ display inline
+    ]
+  Basic ->
+    [ display none
+    ]
 
 functionCallButton mode = css
   [
   ]
 
 instantCallButton mode = css
+  [
+  ]
+
+actionCallButton mode = css
   [
   ]
 
@@ -194,6 +206,10 @@ readOnlyPropertyValue mode = css
   , before [ property "content" "\"► \"", color (hex "60f453") ]
   ]
 
+propertyFloatBar mode = css
+  [ display inline
+  ]
+
 propertyFloatSlider mode = css
   [ display inline
   ]
@@ -203,14 +219,17 @@ propertyBoolCheckbox mode = css
   ]
 
 progressBarOuter value = css
-  [ display block
+  [ display inlineBlock
+  , position relative
+  , marginLeft (px 15)
   , width (px 200)
   , height (px 10)
   , backgroundColor (hex "00cc00")
   ]
 
 progressBarInner value = css
-  [ display block
+  [ display inlineBlock
+  , position absolute
   , width <| px <| value * 200
   , height (px 10)
   , backgroundColor (hex "0000ff")
