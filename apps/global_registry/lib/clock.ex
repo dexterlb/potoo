@@ -44,35 +44,11 @@ defmodule GlobalRegistry.Clock do
         retval: {:channel, :string}
       }
     },
-    "is_utc" => %{
-      "get" => %Mesh.Contract.Function{
-        name: "is_utc.get",
-        argument: nil,
-        retval: :bool,
-      },
-      "subscribe" => %Mesh.Contract.Function{
-        name: "is_utc.subscribe",
-        argument: nil,
-        retval: {:channel, :bool}
-      },
-      "set" => %Mesh.Contract.Function{
-        name: "is_utc.set",
-        argument: :bool,
-        retval: nil
-      },
-      "enabled" => %{
-        "get" => %Mesh.Contract.Function{
-          name: "is_utc.enabled.get",
-          argument: nil,
-          retval: :bool,
-        },
-        "subscribe" => %Mesh.Contract.Function{
-          name: "is_utc.enabled.subscribe",
-          argument: nil,
-          retval: {:channel, :bool}
-        },
-      },
-    }
+    "is_utc" => Mesh.Contract.property(:bool, "is_utc", [:set, :get, :subscribe],
+      %{
+        "enabled" => Mesh.Contract.property(:bool, "is_utc.enabled", [:get, :subscribe])
+      }
+    )
   }
 
   def handle_call(:contract, _from, state) do

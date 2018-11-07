@@ -101,6 +101,14 @@ defmodule Mesh.Channel do
     {:reply, last_message, state}
   end
 
+  def handle_call(:last_message, _from, state = %{retain: false}) do
+    {:reply, nil, state}
+  end
+
+  def handle_call(:last_message, _from, state = %{default: default}) do
+    {:reply, default, state}
+  end
+
   def handle_cast({:send, message}, state = %{subscribers: subscribers, retain: false}) do
     dispatch(subscribers, message)
 
@@ -110,7 +118,7 @@ defmodule Mesh.Channel do
   def handle_cast({:send, message}, state = %{subscribers: subscribers, retain: true}) do
     dispatch(subscribers, message)
 
-    {:noreply, %{state | last_message: message}}
+    {:noreply, Map.put(state, :last_message, message)}
   end
 
   def handle_cast({:send, message}, state = %{subscribers: subscribers, retain: :deduplicate, last_message: last_message}) do
@@ -119,6 +127,12 @@ defmodule Mesh.Channel do
     end
 
     {:noreply, %{state | last_message: message}}
+  end
+
+  def handle_cast({:send, message}, state = %{subscribers: subscribers, retain: :deduplicate}) do
+    dispatch(subscribers, message)
+
+    {:noreply, Map.put(state, :last_message, message)}
   end
 
   def handle_cast({:send_lazy, fun}, state = %{subscribers: subscribers}) do
@@ -178,7 +192,7 @@ defmodule Mesh.Channel do
     %{
       subscribers: %{},
       transform: Map.get(opts_map, :transform),
-      last_message: nil,
+      default: Map.get(opts_map, :default),
       retain: Map.get(opts_map, :retain, false),
     }
   end

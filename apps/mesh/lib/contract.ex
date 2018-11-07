@@ -48,4 +48,34 @@ defmodule Mesh.Contract do
   end
 
   def populate_pids(contract, _), do: contract
+
+  def property(type, name, methods \\ [:set, :get, :subscribe], subcontract \\ %{}) do
+    methods
+      |> Enum.map(fn(method) -> make_method(method, type, name) end)
+      |> Enum.reduce(subcontract, &Map.merge/2)
+  end
+
+  defp make_method(:set, type, name) do
+    %{ "set" => %Function{
+      name: "#{name}.set",
+      argument: type,
+      retval: nil,
+    }}
+  end
+
+  defp make_method(:get, type, name) do
+    %{ "get" => %Function{
+      name: "#{name}.get",
+      argument: nil,
+      retval: type,
+    }}
+  end
+
+  defp make_method(:subscribe, type, name) do
+    %{ "subscribe" => %Function{
+      name: "#{name}.subscribe",
+      argument: nil,
+      retval: {:channel, type},
+    }}
+  end
 end

@@ -98,9 +98,21 @@ defmodule Mesh.ChannelTest do
     assert Channel.last_message(ch) == 42
   end
 
+  test "can retain with default" do
+    {:ok, ch} = Channel.start_link(retain: true, default: 69)
+    assert Channel.last_message(ch) == 69
+    Channel.send(ch, 42)
+    assert Channel.last_message(ch) == 42
+  end
+
   test "can not-retain" do
     {:ok, ch} = Channel.start_link()
     Channel.send(ch, 42)
+    assert Channel.last_message(ch) == nil
+  end
+
+  test "default not used when not retaining" do
+    {:ok, ch} = Channel.start_link(default: 69)
     assert Channel.last_message(ch) == nil
   end
 
