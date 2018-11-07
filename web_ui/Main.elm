@@ -265,6 +265,7 @@ subscriptions model =
 type alias MetaData =
   { uiLevel     : Int
   , description : String
+  , enabled     : Bool
   }
 
 metaData : VisualContract -> String -> MetaData
@@ -273,13 +274,16 @@ metaData vc name = case vc of
   VConnectedDelegate    {data} -> dataMetaData data
   VBrokenDelegate       {data} -> dataMetaData data
   VMapContract d               -> MetaData
-    (Dict.get "ui_level"    d |> Maybe.andThen getIntValue    |> Maybe.withDefault 0)
-    (Dict.get "description" d |> Maybe.andThen getStringValue |> Maybe.withDefault name)
+    (Dict.get "ui_level"    d |> Maybe.map valueOf |> Maybe.andThen getIntValue    |> Maybe.withDefault 0)
+    (Dict.get "description" d |> Maybe.map valueOf |> Maybe.andThen getStringValue |> Maybe.withDefault name)
+    (Dict.get "enabled"     d |> Maybe.map valueOf |> Maybe.andThen getBoolValue  |>  Maybe.withDefault True)
   VStringValue _               -> case name of
-    "description" -> MetaData 1 name
-    "ui_level"    -> MetaData 1 name
-    _             -> MetaData 0 name
-  _                            -> MetaData 0 name
+    "description" -> MetaData 1 name True
+    "ui_level"    -> MetaData 1 name True
+    "enabled"     -> MetaData 1 name True
+    _             -> MetaData 0 name True
+  VProperty         {contract} -> metaData contract name
+  _                            -> MetaData 0 name True
 
 dataMetaData : Data -> MetaData
 dataMetaData d = MetaData
@@ -291,6 +295,10 @@ dataMetaData d = MetaData
   |> Maybe.withDefault (Json.Encode.string "")
   |> Json.Decode.decodeValue Json.Decode.string
   |> Result.withDefault "")
+  (  Dict.get "enabled" d
+  |> Maybe.withDefault (Json.Encode.bool True)
+  |> Json.Decode.decodeValue Json.Decode.bool
+  |> Result.withDefault True)
 
 
 renderContract : Mode -> VisualContract -> Html Msg
@@ -303,6 +311,8 @@ renderContractContent mode vc = case vc of
   VStringValue s -> div [ Styles.stringValue mode ]
     [text s]
   VIntValue i -> div [ Styles.intValue mode ]
+    [text <| toString i]
+  VBoolValue i -> div [ Styles.boolValue mode ]
     [text <| toString i]
   VFloatValue f -> div [ Styles.floatValue mode ]
     [text <| toString f]
@@ -341,13 +351,12 @@ renderContractContent mode vc = case vc of
         , renderContractContent mode contract ]
     ))
   VProperty {pid, propertyID, value, contract} -> div [ Styles.propertyBlock mode ]
-    [ renderHeader mode (metaData contract "")
-    , renderProperty mode pid propertyID value
+    [ renderProperty mode pid propertyID value
     , div [ Styles.propertySubContract mode ] [ renderContractContent mode contract ]
     ]
 
 renderHeader : Mode -> MetaData -> Html Msg
-renderHeader mode { description } = div [ Styles.contractHeader mode ]
+renderHeader mode { description, enabled } = div [ Styles.contractHeader mode enabled ]
   [ text description ]
 
 renderData : Mode -> Data -> Html Msg

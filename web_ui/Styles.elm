@@ -28,9 +28,11 @@ contractContent mode { uiLevel } = case mode of
 mapContract = indentedContract
 listContract = indentedContract
 
-contractHeader mode = css <| case mode of
+contractHeader mode enabled = css <| case mode of
   Basic ->
-    [ color (hex "ff0000") ]
+    case enabled of
+      True  -> [ color (hex "cf0000") ]
+      False -> [ color (hex "cccccc") ]
   Advanced ->
     [ display none ]
 
@@ -92,6 +94,7 @@ delegateSubContract mode = css
   ]
 
 intValue = simpleValue
+boolValue = simpleValue
 floatValue = simpleValue
 stringValue = simpleValue
 

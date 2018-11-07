@@ -1,7 +1,7 @@
 module Contracts exposing (..)
 import Dict exposing (Dict)
 
-import Json.Decode exposing (Decoder, decodeString, string, int, float, oneOf, andThen, field, fail, dict, null, succeed)
+import Json.Decode exposing (Decoder, decodeString, bool, string, int, float, oneOf, andThen, field, fail, dict, null, succeed)
 import Json.Encode
 
 import Result
@@ -30,6 +30,7 @@ type Contract
   = StringValue String
   | IntValue Int
   | FloatValue Float
+  | BoolValue Bool
   | Delegate DelegateStruct
   | Function FunctionStruct
   | MapContract (Dict String Contract)
@@ -80,6 +81,7 @@ type VisualContract
   = VStringValue String
   | VIntValue Int
   | VFloatValue Float
+  | VBoolValue Bool
   | VConnectedDelegate {
     contract: VisualContract,
     destination: Int,
@@ -121,6 +123,7 @@ contractDecoder : Decoder Contract
 contractDecoder = oneOf [
     stringValueDecoder,
     intValueDecoder,
+    boolValueDecoder,
     floatValueDecoder,
     objectDecoder,
     Json.Decode.lazy (\_ -> mapDecoder),
@@ -132,6 +135,9 @@ stringValueDecoder = Json.Decode.map StringValue string
 
 intValueDecoder : Decoder Contract
 intValueDecoder = Json.Decode.map IntValue int
+
+boolValueDecoder : Decoder Contract
+boolValueDecoder = Json.Decode.map BoolValue bool
 
 floatValueDecoder : Decoder Contract
 floatValueDecoder = Json.Decode.map FloatValue float
@@ -290,6 +296,7 @@ toVisual_ : Contract -> Int -> Dict Int Contract -> Properties -> VisualContract
 toVisual_ c pid contracts properties = case c of
   StringValue s -> VStringValue s
   IntValue i -> VIntValue i
+  BoolValue i -> VBoolValue i
   FloatValue f -> VFloatValue f
   Function {argument, name, retval, data}
     -> VFunction {
@@ -475,6 +482,20 @@ propertifyMap l data = case l of
       let (contract, newData2) = propertify_ hv newData1 in
         ((hk, contract) :: newTail, newData2)
 
+valueOf : VisualContract -> VisualContract
+valueOf vc = case vc of
+  VStringValue _ -> vc
+  VIntValue    _ -> vc
+  VFloatValue  _ -> vc
+  VBoolValue   _ -> vc
+  VProperty { value } -> case value.value of
+    Just (IntProperty       x) -> VIntValue      x
+    Just (FloatProperty     x) -> VFloatValue    x
+    Just (BoolProperty      x) -> VBoolValue     x
+    _ -> vc
+  _ -> vc
+
+
 -- todo: make those work on deep types
 getTypeFields : Type -> Dict String Json.Encode.Value
 getTypeFields t = case t of
@@ -502,6 +523,11 @@ firstJust l = case l of
 getIntValue : VisualContract -> Maybe Int
 getIntValue c = case c of
   VIntValue i -> Just i
+  _           -> Nothing
+
+getBoolValue : VisualContract -> Maybe Bool
+getBoolValue c = case c of
+  VBoolValue b -> Just b
   _           -> Nothing
 
 getStringValue : VisualContract -> Maybe String

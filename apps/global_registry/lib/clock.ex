@@ -15,13 +15,15 @@ defmodule GlobalRegistry.Clock do
     Process.send_after(self(), :tick, 100)
 
     OK.for do
-      time_channel <- Mesh.Channel.start_link()
-      is_utc_channel <- Mesh.Channel.start_link()
-      contract_channel <- Mesh.Channel.start_link()
+      time_channel            <- Mesh.Channel.start_link()
+      is_utc_channel          <- Mesh.Channel.start_link()
+      contract_channel        <- Mesh.Channel.start_link()
+      is_utc_enabled_channel  <- Mesh.Channel.start_link()
     after
       {:ok, %{
         time_channel: time_channel,
         is_utc_channel: is_utc_channel,
+        is_utc_enabled_channel: is_utc_enabled_channel,
         contract_channel: contract_channel,
         is_utc: false
       }}
@@ -57,7 +59,19 @@ defmodule GlobalRegistry.Clock do
         name: "is_utc.set",
         argument: :bool,
         retval: nil
-      }
+      },
+      "enabled" => %{
+        "get" => %Mesh.Contract.Function{
+          name: "is_utc.enabled.get",
+          argument: nil,
+          retval: :bool,
+        },
+        "subscribe" => %Mesh.Contract.Function{
+          name: "is_utc.enabled.subscribe",
+          argument: nil,
+          retval: {:channel, :bool}
+        },
+      },
     }
   }
 
@@ -75,6 +89,14 @@ defmodule GlobalRegistry.Clock do
 
   def handle_call({"time.subscribe", nil}, _, state = %{time_channel: time_channel}) do
     {:reply, time_channel, state}
+  end
+
+  def handle_call({"is_utc.enabled.get", nil}, _, state) do
+    {:reply, dumb(), state}
+  end
+
+  def handle_call({"is_utc.enabled.subscribe", nil}, _, state = %{is_utc_enabled_channel: chan}) do
+    {:reply, chan, state}
   end
 
   def handle_call({"is_utc.get", nil}, _, state = %{is_utc: is_utc}) do
@@ -99,8 +121,14 @@ defmodule GlobalRegistry.Clock do
     {:noreply, state}
   end
 
-  defp tick(%{time_channel: time_channel, is_utc: is_utc}) do
+  defp tick(%{time_channel: time_channel, is_utc: is_utc, is_utc_enabled_channel: is_utc_enabled_channel}) do
     Mesh.Channel.send(time_channel, time(is_utc))
+    Mesh.Channel.send(is_utc_enabled_channel, dumb())
+  end
+
+  defp dumb() do
+    {_, {_, _, sec}} = :calendar.local_time
+    (rem(div(sec, 4), 2) == 0)
   end
 
   defp time(false) do
