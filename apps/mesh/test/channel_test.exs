@@ -91,4 +91,28 @@ defmodule Mesh.ChannelTest do
 
     assert_receive({:foo, 42})
   end
+
+  test "can retain" do
+    {:ok, ch} = Channel.start_link(retain: true)
+    Channel.send(ch, 42)
+    assert Channel.last_message(ch) == 42
+  end
+
+  test "can not-retain" do
+    {:ok, ch} = Channel.start_link()
+    Channel.send(ch, 42)
+    assert Channel.last_message(ch) == nil
+  end
+
+  test "can deduplicate" do
+    {:ok, ch} = Channel.start_link(retain: :deduplicate)
+    :ok = Channel.subscribe(ch, self(), :foo)
+    Channel.send(ch, 42)
+    Channel.send(ch, 42)
+    Channel.send(ch, 43)
+
+    assert_receive({:foo, 42})
+    refute_receive({:foo, 42})
+    assert_receive({:foo, 43})
+  end
 end

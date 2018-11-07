@@ -15,24 +15,22 @@ defmodule Mesh.Channel do
     end
   end
 
-  def start(opts \\ [], transform \\ fn(x) -> x end) do
-    initial_state = %{subscribers: %{}, transform: transform}
-    case GenServer.start(__MODULE__, initial_state, opts) do
+  def start(opts \\ []) do
+    case GenServer.start(__MODULE__, initial_state(opts), opts) do
       {:ok, pid} -> {:ok, {__MODULE__, pid}}
       err        -> err
     end
   end
 
-  def start_link(opts \\ [], transform \\ fn(x) -> x end) do
-    initial_state = %{subscribers: %{}, transform: transform}
-    case GenServer.start_link(__MODULE__, initial_state, opts) do
+  def start_link(opts \\ []) do
+    case GenServer.start_link(__MODULE__, initial_state(opts), opts) do
       {:ok, pid} -> {:ok, {__MODULE__, pid}}
       err        -> err
     end
   end
 
-  def start_link!(opts \\ [], transform \\ fn(x) -> x end) do
-    {:ok, chan} = start_link(opts, transform)
+  def start_link!(opts \\ []) do
+    {:ok, chan} = start_link(opts)
     chan
   end
 
@@ -43,7 +41,7 @@ defmodule Mesh.Channel do
 
   def map(chan = {__MODULE__, _}, fun, opts \\ []) do
     OK.for do
-      mapped_chan <- start_link(opts, fun)
+      mapped_chan <- start_link([{:transform, fun} | opts])
       {__MODULE__, mapped_pid} = mapped_chan
     after
       case subscribe(chan, mapped_pid, :send) do
@@ -80,6 +78,10 @@ defmodule Mesh.Channel do
 
   def pid({__MODULE__, pid}), do: pid
 
+  def last_message({__MODULE__, channel}) do
+    GenServer.call(channel, :last_message)
+  end
+
   def handle_call({:subscribe, pid, token}, _from, state = %{subscribers: subscribers}) do
     Logger.debug fn ->
       "subscribing pid #{inspect(pid)} to channel #{inspect(self())}"
@@ -95,10 +97,28 @@ defmodule Mesh.Channel do
     {:reply, :ok, %{ state | subscribers: new_subscribers }}
   end
 
-  def handle_cast({:send, message}, state = %{subscribers: subscribers}) do
-    subscribers |> Enum.map(fn(target) -> dispatch(target, message) end)
+  def handle_call(:last_message, _from, state = %{last_message: last_message}) do
+    {:reply, last_message, state}
+  end
+
+  def handle_cast({:send, message}, state = %{subscribers: subscribers, retain: false}) do
+    dispatch(subscribers, message)
 
     {:noreply, state}
+  end
+
+  def handle_cast({:send, message}, state = %{subscribers: subscribers, retain: true}) do
+    dispatch(subscribers, message)
+
+    {:noreply, %{state | last_message: message}}
+  end
+
+  def handle_cast({:send, message}, state = %{subscribers: subscribers, retain: :deduplicate, last_message: last_message}) do
+    if message != last_message do
+      dispatch(subscribers, message)
+    end
+
+    {:noreply, %{state | last_message: message}}
   end
 
   def handle_cast({:send_lazy, fun}, state = %{subscribers: subscribers}) do
@@ -143,9 +163,23 @@ defmodule Mesh.Channel do
     {:stop, {:shutdown, :link_exited}, state}
   end
 
-  defp dispatch({pid, tokens}, message) do
+  defp dispatch(subscribers, message) do
+    subscribers |> Enum.map(fn(target) -> dispatch_single(target, message) end)
+  end
+
+  defp dispatch_single({pid, tokens}, message) do
     tokens |> Enum.map(fn(token) ->
       Kernel.send(pid, {token, message})
     end)
+  end
+
+  defp initial_state(opts) do
+    opts_map = Map.new(opts)
+    %{
+      subscribers: %{},
+      transform: Map.get(opts_map, :transform),
+      last_message: nil,
+      retain: Map.get(opts_map, :retain, false),
+    }
   end
 end
