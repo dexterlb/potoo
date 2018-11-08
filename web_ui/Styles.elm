@@ -224,13 +224,17 @@ progressBarOuter value = css
   , marginLeft (px 15)
   , width (px 200)
   , height (px 10)
-  , backgroundColor (hex "00cc00")
+  , backgroundColor (hex "cccccc")
   ]
 
-progressBarInner value = css
-  [ display inlineBlock
-  , position absolute
-  , width <| px <| value * 200
-  , height (px 10)
-  , backgroundColor (hex "0000ff")
-  ]
+progressBarInner value = css <|
+  let colour = case value > 50 of
+    True    -> "ff0000"
+    False   -> "00ff00"
+  in
+    [ display inlineBlock
+    , position absolute
+    , width <| px <| value * 200
+    , height (px 10)
+    , backgroundColor (hex colour)
+    ]

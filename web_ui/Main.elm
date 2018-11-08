@@ -290,6 +290,12 @@ metaData vc name = case vc of
   VStringValue _               -> case isMeta name of
     True  -> MetaData 1 name True
     False -> MetaData 0 name True
+  VBoolValue _               -> case isMeta name of
+    True  -> MetaData 1 name True
+    False -> MetaData 0 name True
+  VIntValue _               -> case isMeta name of
+    True  -> MetaData 1 name True
+    False -> MetaData 0 name True
   VProperty         {contract} -> metaData contract name
   _                            -> MetaData 0 name True
 

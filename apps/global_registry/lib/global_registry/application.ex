@@ -21,13 +21,15 @@ defmodule GlobalRegistry.Application do
           [name: :global_registry]
         ]
       ),
-      unless Application.get_env(:global_registry, :no_toys, false) do
-        worker(GlobalRegistry.Hello, [:global_registry, [name: GlobalRegistry.Hello]])
-      end,
-      unless Application.get_env(:global_registry, :no_toys, false) do
-        worker(GlobalRegistry.Clock, [:global_registry, [name: GlobalRegistry.Clock]])
-      end
-    ]
+    ] ++ if Application.get_env(:global_registry, :no_toys, false) do
+      []
+    else
+      [
+        worker(GlobalRegistry.Hello, [:global_registry, [name: GlobalRegistry.Hello]]),
+        worker(GlobalRegistry.Clock, [:global_registry, [name: GlobalRegistry.Clock]]),
+      ]
+    end
+
 
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
