@@ -13,7 +13,7 @@ defmodule GlobalRegistry.Application do
       # Starts a worker by calling: GlobalRegistry.Worker.start_link(arg)
       # {GlobalRegistry.Worker, arg},
       worker(
-        Mesh.Registry, 
+        Mesh.Registry,
         [
           %{
             "description" => "The global registry"
@@ -21,8 +21,12 @@ defmodule GlobalRegistry.Application do
           [name: :global_registry]
         ]
       ),
-      worker(GlobalRegistry.Hello, [:global_registry, [name: GlobalRegistry.Hello]]),
-      worker(GlobalRegistry.Clock, [:global_registry, [name: GlobalRegistry.Clock]])
+      unless Application.get_env(:global_registry, :no_toys, false) do
+        worker(GlobalRegistry.Hello, [:global_registry, [name: GlobalRegistry.Hello]])
+      end,
+      unless Application.get_env(:global_registry, :no_toys, false) do
+        worker(GlobalRegistry.Clock, [:global_registry, [name: GlobalRegistry.Clock]])
+      end
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
