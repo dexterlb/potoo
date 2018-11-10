@@ -1,4 +1,4 @@
-# Junkmesh
+# Junkpotoo
 
 A framework for creating realtime services (mostly focused at IoT), with the
 following features:

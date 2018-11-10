@@ -52,7 +52,7 @@ end
     - prettification
         - behaviours for services
         - docs everywhere
-        - better error handling in mesh.ex
+        - better error handling in potoo.ex
 
 - roadmap:
     - construct unified cache, remove unsafe calls from everywhere

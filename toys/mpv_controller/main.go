@@ -8,7 +8,7 @@ import (
 	"os/exec"
 	"time"
 
-	"github.com/DexterLB/junkmesh/toys/mpv_controller/mesh"
+	"github.com/DexterLB/junkpotoo/toys/mpv_controller/potoo"
 	"github.com/DexterLB/mpvipc"
 )
 
@@ -55,17 +55,17 @@ const (
 )
 
 func main() {
-	meshConn := mesh.NewConnection("localhost:4444")
-	err := meshConn.Open()
+	potooConn := potoo.NewConnection("localhost:4444")
+	err := potooConn.Open()
 	if err != nil {
-		log.Fatalf("cannot open mesh connection: %s", err)
+		log.Fatalf("cannot open potoo connection: %s", err)
 	}
 	go func() {
-		meshConn.WaitUntilClosed()
-		log.Fatal("connection to mesh died")
+		potooConn.WaitUntilClosed()
+		log.Fatal("connection to potoo died")
 	}()
 
-	pidDelegate, err := meshConn.Call("my_pid")
+	pidDelegate, err := potooConn.Call("my_pid")
 	if err != nil {
 		log.Fatalf("cannot get pid: %s", err)
 	}
@@ -98,7 +98,7 @@ func main() {
 		stop <- struct{}{}
 	}()
 
-	meshConn.SetHandler("controls.playpause", func(arg interface{}) interface{} {
+	potooConn.SetHandler("controls.playpause", func(arg interface{}) interface{} {
 		if arg != nil {
 			panic("argument given to playpause")
 		}
@@ -115,12 +115,12 @@ func main() {
 		fmt.Print(err)
 	}
 
-	volumeChan, err := meshConn.Call("make_channel")
+	volumeChan, err := potooConn.Call("make_channel")
 	if err != nil {
 		log.Fatal("cannot make volume channel: %s", err)
 	}
 
-	meshConn.SetHandler("volume.get", func(arg interface{}) interface{} {
+	potooConn.SetHandler("volume.get", func(arg interface{}) interface{} {
 		if arg != nil {
 			panic("argument given to volume.get")
 		}
@@ -133,7 +133,7 @@ func main() {
 		return data.(float64)
 	})
 
-	meshConn.SetHandler("volume.set", func(arg interface{}) interface{} {
+	potooConn.SetHandler("volume.set", func(arg interface{}) interface{} {
 		volume := arg.(float64)
 
 		_, err := mpvConn.Call("set_property", "volume", volume)
@@ -144,7 +144,7 @@ func main() {
 		return nil
 	})
 
-	meshConn.SetHandler("volume.subscribe", func(arg interface{}) interface{} {
+	potooConn.SetHandler("volume.subscribe", func(arg interface{}) interface{} {
 		if arg != nil {
 			panic("argument given to volume.subscribe")
 		}
@@ -152,17 +152,17 @@ func main() {
 		return volumeChan
 	})
 
-	err = meshConn.OkCall("set_contract", json.RawMessage(contract))
+	err = potooConn.OkCall("set_contract", json.RawMessage(contract))
 	if err != nil {
 		log.Fatalf("cannot set contract: %s", err)
 	}
 
-	err = meshConn.OkCall("call", map[string]interface{}{
+	err = potooConn.OkCall("call", map[string]interface{}{
 		"pid":  0,
 		"path": "register",
 		"argument": map[string]interface{}{
 			"name": "epic_player",
-			"delegate": &mesh.Delegate{
+			"delegate": &potoo.Delegate{
 				Destination: pid,
 				Data: map[string]interface{}{
 					"description": "TV in my room",
@@ -178,7 +178,7 @@ func main() {
 		if event.ID == VOLUME_ID {
 			volume := event.Data.(float64)
 			log.Printf("volume now is %f", volume)
-			err := meshConn.OkCall("send_on", map[string]interface{}{
+			err := potooConn.OkCall("send_on", map[string]interface{}{
 				"channel": volumeChan,
 				"message": volume,
 			})

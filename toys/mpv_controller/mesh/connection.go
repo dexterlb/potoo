@@ -1,7 +1,7 @@
-// Package mesh is currently a shameless copy-paste from my mpvipc package
+// Package potoo is currently a shameless copy-paste from my mpvipc package
 // someday, I will make a generic interface that merges the logic of both of
 // them. #nogenerics
-package mesh
+package potoo
 
 import (
 	"bufio"
