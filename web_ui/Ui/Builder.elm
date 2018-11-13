@@ -1,4 +1,4 @@
-module Ui.Updater exposing (toTree)
+module Ui.Builder exposing (toTree)
 
 import Ui.Tree exposing(..)
 import Ui.MetaData exposing(..)

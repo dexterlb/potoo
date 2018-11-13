@@ -28,7 +28,7 @@ import Styles
 
 import Modes exposing (..)
 
-import Ui.Updater
+import Ui
 import Ui.MetaData exposing (..)
 
 main =
@@ -56,6 +56,8 @@ type alias Model =
   , callToken : Maybe String
   , callArgument : Maybe Json.Encode.Value
   , callResult : Maybe Json.Encode.Value
+
+  , ui         : Ui.Ui
   }
 
 init : Location -> (Model, Cmd Msg)
@@ -68,7 +70,7 @@ startCommand = Cmd.batch
   ]
 
 emptyModel : Location -> Model
-emptyModel loc = Model "" [] (connectWithLocation loc) (parseMode loc) loc Dict.empty Dict.empty Set.empty Nothing Nothing Nothing Nothing
+emptyModel loc = Model "" [] (connectWithLocation loc) (parseMode loc) loc Dict.empty Dict.empty Set.empty Nothing Nothing Nothing Nothing Ui.blank
 
 parseMode : Location -> Mode
 parseMode l = case parseHash (UrlParser.s "mode" </> string) l of
@@ -140,7 +142,7 @@ update msg model =
 
     SendPing -> (model, sendPing model.conn)
 
-    NewLocation loc -> (emptyModel loc, Cmd.none)
+    NewLocation loc -> (emptyModel loc, startCommand)
 
 nextPing : Cmd Msg
 nextPing = Delay.after 5 Time.second SendPing
@@ -165,7 +167,7 @@ performCall data = Random.generate
 handleResponse : Model -> Response -> (Model, Cmd Msg)
 handleResponse m resp = case resp of
   GotContract pid contract
-    ->
+    -> updateUiCmd <|
       let
         (newContract, properties) = propertify contract
         (newModel, newCommand) = checkMissing newContract {m |
@@ -266,6 +268,12 @@ checkCallInput s = case Json.Decode.decodeString Json.Decode.value s of
   Ok v -> Just v
   _    -> Nothing
 
+
+updateUi : Model -> Model
+updateUi m = { m | ui = Ui.build 0 m.contracts m.allProperties }
+
+updateUiCmd : (Model, a) -> (Model, a)
+updateUiCmd (m, x) = (updateUi m, x)
 
 -- SUBSCRIPTIONS
 
