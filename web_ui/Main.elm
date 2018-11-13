@@ -28,6 +28,8 @@ import Styles
 
 import Modes exposing (..)
 
+import Ui.Updater
+import Ui.MetaData exposing (..)
 
 main =
   Navigation.program
@@ -180,12 +182,12 @@ handleResponse m resp = case resp of
       Just actualToken -> case token of
         actualToken -> ({m | callResult = Just value}, Cmd.none)
       _ -> (m, Cmd.none)
-  PropertyValueResult (pid, propertyID) value
+  ValueResult (pid, propertyID) value
     -> (
       { m | allProperties = m.allProperties |>
         Dict.update pid (Maybe.map <|
           Dict.update propertyID (Maybe.map <|
-            setPropertyValue value
+            setValue value
           )
         )
       },
@@ -223,19 +225,21 @@ foo conn pid (id, prop) = case prop.subscriber of
           (pid, id)
     ]
 
-setPropertyValue : Json.Encode.Value -> Property -> Property
-setPropertyValue v prop = case decodePropertyValue v prop of
+setValue : Json.Encode.Value -> Property -> Property
+setValue v prop = case decodeValue v prop of
   Ok value -> { prop | value = Just value }
-  Err _    -> { prop | value = Just <| UnknownProperty v }
+  Err _    -> { prop | value = Just <| Complex v }
 
-decodePropertyValue : Json.Encode.Value -> Property -> Result String PropertyValue
-decodePropertyValue v prop = case (stripType prop.propertyType) of
+decodeValue : Json.Encode.Value -> Property -> Result String Value
+decodeValue v prop = case (stripType prop.propertyType) of
     TFloat -> Json.Decode.decodeValue (Json.Decode.float
-           |> Json.Decode.map FloatProperty) v
+           |> Json.Decode.map SimpleFloat) v
     TBool  -> Json.Decode.decodeValue (Json.Decode.bool
-           |> Json.Decode.map BoolProperty) v
+           |> Json.Decode.map SimpleBool) v
     TInt   -> Json.Decode.decodeValue (Json.Decode.int
-           |> Json.Decode.map IntProperty) v
+           |> Json.Decode.map SimpleInt) v
+    TString -> Json.Decode.decodeValue (Json.Decode.string
+           |> Json.Decode.map SimpleString) v
     _      -> Err "unknown property type"
 
 
@@ -272,12 +276,6 @@ subscriptions model =
 
 -- VIEW
 
-type alias MetaData =
-  { uiLevel     : Int
-  , description : String
-  , enabled     : Bool
-  }
-
 metaData : VisualContract -> String -> MetaData
 metaData vc name = case vc of
   VFunction             {data} -> dataMetaData data
@@ -287,17 +285,18 @@ metaData vc name = case vc of
     (Dict.get "ui_level"    d |> Maybe.map valueOf |> Maybe.andThen getIntValue    |> Maybe.withDefault 0)
     (Dict.get "description" d |> Maybe.map valueOf |> Maybe.andThen getStringValue |> Maybe.withDefault name)
     (Dict.get "enabled"     d |> Maybe.map valueOf |> Maybe.andThen getBoolValue  |>  Maybe.withDefault True)
+    emptyData
   VStringValue _               -> case isMeta name of
-    True  -> MetaData 1 name True
-    False -> MetaData 0 name True
+    True  -> MetaData 1 name True emptyData
+    False -> MetaData 0 name True emptyData
   VBoolValue _               -> case isMeta name of
-    True  -> MetaData 1 name True
-    False -> MetaData 0 name True
+    True  -> MetaData 1 name True emptyData
+    False -> MetaData 0 name True emptyData
   VIntValue _               -> case isMeta name of
-    True  -> MetaData 1 name True
-    False -> MetaData 0 name True
+    True  -> MetaData 1 name True emptyData
+    False -> MetaData 0 name True emptyData
   VProperty         {contract} -> metaData contract name
-  _                            -> MetaData 0 name True
+  _                            -> MetaData 0 name True emptyData
 
 isMeta : String -> Bool
 isMeta s = case s of
@@ -320,6 +319,7 @@ dataMetaData d = MetaData
   |> Maybe.withDefault (Json.Encode.bool True)
   |> Json.Decode.decodeValue Json.Decode.bool
   |> Result.withDefault True)
+  d
 
 
 renderContract : Mode -> VisualContract -> Html Msg
@@ -430,21 +430,22 @@ renderAskCallWindow mode mf callArgument callToken callResult = case mf of
 renderProperty : Mode -> Pid -> PropertyID -> Property -> Html Msg
 renderProperty mode pid propID prop = div [Styles.propertyContainer mode] <| justs
   [ renderPropertyControl mode pid propID prop
-  , Maybe.map (renderPropertyValue mode (propValueStyle mode prop)) prop.value
+  , Maybe.map (renderValue mode (propValueStyle mode prop)) prop.value
   , renderPropertyGetButton mode pid propID prop
   ]
 
 propValueStyle : Mode -> Property -> Attribute Msg
 propValueStyle mode prop = case prop.setter of
-  Nothing -> Styles.readOnlyPropertyValue mode
+  Nothing -> Styles.readOnlyValue mode
   Just _  -> Styles.propertyValue         mode
 
-renderPropertyValue : Mode -> Attribute Msg -> PropertyValue -> Html Msg
-renderPropertyValue mode style v = (case v of
-    IntProperty i -> [ text (toString i) ]
-    FloatProperty f -> [ text (toString f) ]
-    BoolProperty b -> [ text (toString b) ]
-    UnknownProperty v -> [ text <| Json.Encode.encode 0 v]
+renderValue : Mode -> Attribute Msg -> Value -> Html Msg
+renderValue mode style v = (case v of
+    SimpleInt i -> [ text (toString i) ]
+    SimpleString s -> [ text s ]
+    SimpleFloat f -> [ text (toString f) ]
+    SimpleBool b -> [ text (toString b) ]
+    Complex v -> [ text <| Json.Encode.encode 0 v]
   ) |> div [style]
 
 renderPropertyGetButton : Mode -> Pid -> PropertyID -> Property -> Maybe (Html Msg)
@@ -459,28 +460,20 @@ renderPropertyControl : Mode -> Pid -> PropertyID -> Property -> Maybe (Html Msg
 renderPropertyControl mode pid propID prop = case prop.setter of
   Nothing ->
     case prop.value of
-      Just (FloatProperty value) ->
+      Just (SimpleFloat value) ->
         case getMinMax prop of
           Just minmax -> Just <| renderFloatBarControl mode pid propID minmax value
           Nothing -> Nothing
       _ -> Nothing
   Just setter ->
     case prop.value of
-      Just (FloatProperty value) ->
+      Just (SimpleFloat value) ->
         case getMinMax prop of
           Just minmax -> Just <| renderFloatSliderControl mode pid propID minmax setter value
           Nothing -> Nothing
-      Just (BoolProperty value) ->
+      Just (SimpleBool value) ->
         Just <| renderBoolCheckboxControl mode pid propID setter value
       _ -> Nothing
-
-getMinMax : Property -> Maybe (Float, Float)
-getMinMax prop = case prop.meta.min of
-  Nothing -> Nothing
-  Just min ->
-    case prop.meta.max of
-      Nothing -> Nothing
-      Just max -> Just (min, max)
 
 renderFloatSliderControl : Mode -> Pid -> PropertyID -> (Float, Float) -> FunctionStruct -> Float -> Html Msg
 renderFloatSliderControl mode pid propID (min, max) setter value = input

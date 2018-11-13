@@ -197,10 +197,10 @@ propertyContainer mode = css
   ]
 
 propertyValue mode = case mode of
-  Advanced -> readOnlyPropertyValue mode
+  Advanced -> readOnlyValue mode
   Basic    -> css [display none]
 
-readOnlyPropertyValue mode = css
+readOnlyValue mode = css
   [ display inline
   , marginLeft (px 20)
   , before [ property "content" "\"► \"", color (hex "60f453") ]

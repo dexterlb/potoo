@@ -63,7 +63,7 @@ type alias Property = {
     subscriber:     Maybe FunctionStruct,
     propertyType:   Type,
     meta:           PropertyMeta,
-    value:          Maybe PropertyValue
+    value:          Maybe Value
   }
 
 type alias PropertyMeta = {
@@ -71,11 +71,12 @@ type alias PropertyMeta = {
     max: Maybe Float
   }
 
-type PropertyValue
-  = IntProperty Int
-  | FloatProperty Float
-  | BoolProperty Bool
-  | UnknownProperty Json.Encode.Value
+type Value
+  = SimpleInt Int
+  | SimpleString String
+  | SimpleFloat Float
+  | SimpleBool Bool
+  | Complex Json.Encode.Value
 
 type VisualContract
   = VStringValue String
@@ -489,9 +490,10 @@ valueOf vc = case vc of
   VFloatValue  _ -> vc
   VBoolValue   _ -> vc
   VProperty { value } -> case value.value of
-    Just (IntProperty       x) -> VIntValue      x
-    Just (FloatProperty     x) -> VFloatValue    x
-    Just (BoolProperty      x) -> VBoolValue     x
+    Just (SimpleInt       x) -> VIntValue      x
+    Just (SimpleString    x) -> VStringValue   x
+    Just (SimpleFloat     x) -> VFloatValue    x
+    Just (SimpleBool      x) -> VBoolValue     x
     _ -> vc
   _ -> vc
 
@@ -539,3 +541,14 @@ getFloatValue : VisualContract -> Maybe Float
 getFloatValue c = case c of
   VFloatValue i -> Just i
   _           -> Nothing
+
+emptyData : Data
+emptyData = Dict.empty
+
+getMinMax : Property -> Maybe (Float, Float)
+getMinMax prop = case prop.meta.min of
+  Nothing -> Nothing
+  Just min ->
+    case prop.meta.max of
+      Nothing -> Nothing
+      Just max -> Just (min, max)

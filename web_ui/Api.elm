@@ -138,7 +138,7 @@ helloDecoder = JD.string
 responseByTokenDecoder : Token -> Decoder Response
 responseByTokenDecoder t = case t of
   GotContractToken pid -> JD.map (GotContract pid) contractDecoder
-  PropertyValueResultToken pid_id -> JD.map (PropertyValueResult pid_id) JD.value
+  ValueResultToken pid_id -> JD.map (ValueResult pid_id) JD.value
   PropertySetterStatusToken pid_id -> JD.map (PropertySetterStatus pid_id) JD.value
   ChannelResultToken token -> JD.map (ChannelResult token) channelDecoder
   SubscribedChannelToken token -> JD.succeed <| SubscribedChannel token
@@ -154,7 +154,7 @@ tokenDecoder = JD.field "msg" JD.string
     "property_setter_status" -> JD.map2 (\pid id -> PropertySetterStatusToken (pid, id))
       (JD.field "pid" JD.int)
       (JD.field "id" JD.int)
-    "property_value" -> JD.map2 (\pid id -> PropertyValueResultToken (pid, id))
+    "property_value" -> JD.map2 (\pid id -> ValueResultToken (pid, id))
       (JD.field "pid" JD.int)
       (JD.field "id" JD.int)
     other -> JD.fail <| "unknown token: " ++ other
@@ -162,7 +162,7 @@ tokenDecoder = JD.field "msg" JD.string
 
 type Token
   = GotContractToken Int
-  | PropertyValueResultToken (Int, Int)
+  | ValueResultToken (Int, Int)
   | UnsafeCallResultToken String
   | ChannelResultToken Json.Encode.Value
   | SubscribedChannelToken Json.Encode.Value
@@ -170,7 +170,7 @@ type Token
 
 type Response
   = GotContract Int Contract
-  | PropertyValueResult (Int, Int) Json.Encode.Value
+  | ValueResult (Int, Int) Json.Encode.Value
   | UnsafeCallResult String Json.Encode.Value
   | ChannelResult Json.Encode.Value Channel
   | SubscribedChannel Json.Encode.Value
