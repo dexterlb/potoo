@@ -1,15 +1,17 @@
 module Ui exposing (..)
 
-import Ui.Tree exposing (..)
-import Ui.Builder exposing (..)
+import Ui.Tree      exposing (..)
+import Ui.Builder   exposing (..)
+import Ui.Renderer  exposing (..)
 import Ui.Action
 
 import Contracts
-import Contracts exposing (Contract, Properties, fetch)
+import Contracts    exposing (Contract, Properties, fetch)
 
 
 import Dict
-import Dict exposing(Dict)
+import Dict         exposing (Dict)
+import Html         exposing (Html)
 
 type alias Model =
   { tree: Tree
@@ -33,3 +35,5 @@ update liftAction liftMsg msg m = let
   in
     ({ m | widgets = widgets }, cmd)
 
+view : Properties -> Model -> Html Msg
+view properties { tree, widgets } = renderUi tree widgets properties
