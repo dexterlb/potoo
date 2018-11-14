@@ -52,8 +52,7 @@ type WidgetsMsg
   = UpdateWidget WidgetID WidgetMsg
 
 type WidgetMsg
-  = WidgetFixme
-  | FunctionMsg Ui.Widgets.Function.Msg
+  = FunctionMsg Ui.Widgets.Function.Msg
   | SliderMsg   Ui.Widgets.Slider.Msg
 
 updateWidgets : (Action -> Cmd m) -> (WidgetsMsg -> m) -> WidgetsMsg -> Widgets -> (Widgets, Cmd m)
@@ -68,7 +67,6 @@ updateWidgets liftAction liftMsg msg widgets = case msg of
 
 updateWidget : WidgetMsg -> Widget -> (Widget, Cmd WidgetMsg, List Action)
 updateWidget msg widget = case (msg, widget) of
-  (WidgetFixme,  ListWidget) -> (widget, Cmd.none, [])
   (FunctionMsg msg, FunctionWidget model) -> let
       (newModel, cmd, actions) = Ui.Widgets.Function.update msg model
     in
@@ -101,15 +99,10 @@ getWidget : WidgetID -> Widgets -> Widget
 getWidget i (d, _) = fetch i d
 
 replaceWidget : WidgetID -> (Widget -> Widget) -> Widgets -> Widgets
-replaceWidget id f (widgets, last) = (Dict.update id (maybify f) widgets, last)
+replaceWidget id f (widgets, last) = (Dict.update id (Maybe.map f) widgets, last)
 
 setWidget : WidgetID -> Widget -> Widgets -> Widgets
 setWidget id w (widgets, last) = (Dict.insert id w widgets, last)
 
 noWidgets : Widgets
 noWidgets = (Dict.empty, 0)
-
-maybify : (a -> b) -> Maybe a -> Maybe b
-maybify f x = case x of
-  Just t  -> Just <| f t
-  Nothing -> Nothing
