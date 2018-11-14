@@ -4,6 +4,8 @@ import Contracts    exposing (Type, Data, Value, PropertyID, fetch, Callee)
 import Ui.MetaData  exposing (..)
 import Ui.Action    exposing (..)
 
+import Ui.Widgets.Function
+
 import Dict         exposing (Dict)
 import Debug        exposing (crash)
 
@@ -32,7 +34,7 @@ type ValueBox
   | NoValue
 
 type Widget
-  = FunctionWidget      Callee
+  = FunctionWidget      Ui.Widgets.Function.Model
   | ListWidget
   | StringWidget
   | BoolWidget
@@ -53,6 +55,7 @@ type WidgetsMsg
 
 type WidgetMsg
   = WidgetFixme
+  | FunctionMsg Ui.Widgets.Function.Msg
 
 updateWidgets : (Action -> Cmd m) -> (WidgetsMsg -> m) -> WidgetsMsg -> Widgets -> (Widgets, Cmd m)
 updateWidgets liftAction liftMsg msg widgets = case msg of
@@ -67,6 +70,10 @@ updateWidgets liftAction liftMsg msg widgets = case msg of
 updateWidget : WidgetMsg -> Widget -> (Widget, Cmd WidgetMsg, List Action)
 updateWidget msg widget = case (msg, widget) of
   (WidgetFixme,  ListWidget) -> (widget, Cmd.none, [])
+  (FunctionMsg msg, FunctionWidget model) -> let
+      (newModel, cmd, actions) = Ui.Widgets.Function.update msg model
+    in
+      (FunctionWidget newModel, Cmd.map FunctionMsg cmd, actions)
   _ -> crash "widget message of wrong type"
 
 simpleTree : Widgets -> String -> MetaData -> List Tree -> Widget -> ValueBox -> (Tree, Widgets)

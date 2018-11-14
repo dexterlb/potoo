@@ -3,6 +3,8 @@ module Ui.Builder exposing (toTree)
 import Ui.Tree exposing(..)
 import Ui.MetaData exposing(..)
 
+import Ui.Widgets.Function
+
 import Contracts
 import Contracts exposing (Contract, Properties, fetch, makeCallee)
 
@@ -23,7 +25,8 @@ toTree_ c key pid contracts properties widgets = let metaData = getMetaData key 
     Contracts.BoolValue x   -> simpleTree widgets key metaData [] BoolWidget    (SimpleValue <| Contracts.SimpleBool x)
     Contracts.Function { argument, name, retval, data } -> simpleTree widgets key
       metaData []
-      (FunctionWidget { argument = argument, name = name, retval = retval, pid = pid })
+      (FunctionWidget <| Ui.Widgets.Function.init
+        { argument = argument, name = name, retval = retval, pid = pid })
       NoValue
     Contracts.Delegate { destination, data } ->
         let (children, widget, widgets2) = case Dict.get destination contracts of
