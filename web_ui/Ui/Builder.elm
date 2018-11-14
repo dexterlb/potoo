@@ -4,7 +4,7 @@ import Ui.Tree exposing(..)
 import Ui.MetaData exposing(..)
 
 import Contracts
-import Contracts exposing (Contract, Properties, fetch)
+import Contracts exposing (Contract, Properties, fetch, makeCallee)
 
 import Dict
 import Dict exposing(Dict)

@@ -45,6 +45,21 @@ type alias FunctionStruct = {
     data: Data
   }
 
+type alias Callee =
+  { argument: Type
+  , name: String
+  , retval: Type
+  , pid: Int
+  }
+
+makeCallee : Int -> FunctionStruct -> Callee
+makeCallee pid { argument, retval, name }
+ = { argument = argument
+   , name     = name
+   , retval   = retval
+   , pid      = pid
+   }
+
 type alias DelegateStruct = {
     destination : Pid,
     data: Data

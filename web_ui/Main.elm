@@ -30,6 +30,7 @@ import Modes exposing (..)
 
 import Ui
 import Ui.MetaData exposing (..)
+import Ui.Action
 
 main =
   Navigation.program
@@ -57,7 +58,7 @@ type alias Model =
   , callArgument : Maybe Json.Encode.Value
   , callResult : Maybe Json.Encode.Value
 
-  , ui         : Ui.Ui
+  , ui         : Ui.Model
   }
 
 init : Location -> (Model, Cmd Msg)
@@ -96,6 +97,7 @@ type Msg
   | CallSetter (Pid, PropertyID) FunctionStruct Json.Encode.Value
   | SendPing
   | NewLocation Location
+  | UiMsg Ui.Msg
 
 
 update : Msg -> Model -> (Model, Cmd Msg)
@@ -144,8 +146,17 @@ update msg model =
 
     NewLocation loc -> (emptyModel loc, startCommand)
 
+    UiMsg msg -> let
+        (newUi, cmd) = Ui.update handleUiAction UiMsg msg model.ui
+      in
+        ({ model | ui = newUi }, cmd)
+
 nextPing : Cmd Msg
 nextPing = Delay.after 5 Time.second SendPing
+
+handleUiAction : Ui.Action -> Cmd Msg
+handleUiAction action = case action of
+  Ui.Action.DoNothing -> Cmd.none
 
 instantCall : VisualContract -> Cmd Msg
 instantCall vc = case vc of

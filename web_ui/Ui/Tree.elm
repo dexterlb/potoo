@@ -1,9 +1,11 @@
-module Ui.Tree exposing (..)
+module Ui.Tree      exposing (..)
 
-import Contracts exposing (Type, Data, Value, PropertyID, fetch)
-import Ui.MetaData exposing (..)
+import Contracts    exposing (Type, Data, Value, PropertyID, fetch, Callee)
+import Ui.MetaData  exposing (..)
+import Ui.Action    exposing (..)
 
-import Dict exposing (Dict)
+import Dict         exposing (Dict)
+import Debug        exposing (crash)
 
 type Tree = Tree Node
 
@@ -23,13 +25,6 @@ type alias WidgetID = Int
 type alias Widgets = (Dict Int Widget, Int)
 
 type Children = Children (List Tree)
-
-type alias Callee =
-  { argument: Type
-  , name: String
-  , retval: Type
-  , pid: Int
-  }
 
 type ValueBox
   = SimpleValue Value
@@ -53,6 +48,27 @@ type Widget
   | BrokenWidget        Int
   | LoadingWidget
 
+type WidgetsMsg
+  = UpdateWidget WidgetID WidgetMsg
+
+type WidgetMsg
+  = WidgetFixme
+
+updateWidgets : (Action -> Cmd m) -> (WidgetsMsg -> m) -> WidgetsMsg -> Widgets -> (Widgets, Cmd m)
+updateWidgets liftAction liftMsg msg widgets = case msg of
+  UpdateWidget id wmsg -> let
+      (widget, cmd, actions) = updateWidget wmsg (getWidget id widgets)
+    in let
+      widgetCmd = Cmd.map liftMsg <| Cmd.map (UpdateWidget id) cmd
+      actionCmd = Cmd.batch       <| List.map liftAction actions
+    in
+      (setWidget id widget widgets, Cmd.batch [widgetCmd, actionCmd])
+
+updateWidget : WidgetMsg -> Widget -> (Widget, Cmd WidgetMsg, List Action)
+updateWidget msg widget = case (msg, widget) of
+  (WidgetFixme,  ListWidget) -> (widget, Cmd.none, [])
+  _ -> crash "widget message of wrong type"
+
 simpleTree : Widgets -> String -> MetaData -> List Tree -> Widget -> ValueBox -> (Tree, Widgets)
 simpleTree initialWidgets key metaData children widget v
   = let (widgets, widgetID) = addWidget widget initialWidgets in
@@ -74,13 +90,16 @@ addWidget w (d, last) = ((Dict.insert last w d, last + 1), last)
 getWidget : WidgetID -> Widgets -> Widget
 getWidget i (d, _) = fetch i d
 
+replaceWidget : WidgetID -> (Widget -> Widget) -> Widgets -> Widgets
+replaceWidget id f (widgets, last) = (Dict.update id (maybify f) widgets, last)
+
+setWidget : WidgetID -> Widget -> Widgets -> Widgets
+setWidget id w (widgets, last) = (Dict.insert id w widgets, last)
+
 noWidgets : Widgets
 noWidgets = (Dict.empty, 0)
 
-makeCallee : Int -> Contracts.FunctionStruct -> Callee
-makeCallee pid { argument, retval, name }
- = { argument = argument
-   , name     = name
-   , retval   = retval
-   , pid      = pid
-   }
+maybify : (a -> b) -> Maybe a -> Maybe b
+maybify f x = case x of
+  Just t  -> Just <| f t
+  Nothing -> Nothing
