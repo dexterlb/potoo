@@ -4,6 +4,7 @@ import Ui.Tree exposing(..)
 import Ui.MetaData exposing(..)
 
 import Ui.Widgets.Function
+import Ui.Widgets.Slider
 
 import Contracts
 import Contracts exposing (Contract, Properties, fetch, makeCallee)
@@ -76,7 +77,7 @@ propertyWidget : Contracts.Property -> MetaData -> Widget
 propertyWidget prop _ = case (Contracts.stripType prop.propertyType) of
   Contracts.TFloat -> case Contracts.getMinMax prop of
     -- todo: parse type here instead of using barbaric getMinMax
-    Just (min, max) -> SliderWidget { min = min, max = max, prevValue = 0 }
+    Just (min, max) -> SliderWidget <| Ui.Widgets.Slider.init { min = min, max = max }
     Nothing         -> NumberWidget
   Contracts.TInt    -> NumberWidget
   Contracts.TString -> StringWidget

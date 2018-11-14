@@ -5,6 +5,7 @@ import Ui.MetaData  exposing (..)
 import Ui.Action    exposing (..)
 
 import Ui.Widgets.Function
+import Ui.Widgets.Slider
 
 import Dict         exposing (Dict)
 import Debug        exposing (crash)
@@ -35,17 +36,14 @@ type ValueBox
 
 type Widget
   = FunctionWidget      Ui.Widgets.Function.Model
+  | SliderWidget        Ui.Widgets.Slider.Model
+
   | ListWidget
   | StringWidget
   | BoolWidget
   | NumberWidget
   | UnknownWidget
 
-  | SliderWidget
-    { min:       Float
-    , max:       Float
-    , prevValue: Float
-    }
   | DelegateWidget      Int
   | BrokenWidget        Int
   | LoadingWidget
@@ -56,6 +54,7 @@ type WidgetsMsg
 type WidgetMsg
   = WidgetFixme
   | FunctionMsg Ui.Widgets.Function.Msg
+  | SliderMsg   Ui.Widgets.Slider.Msg
 
 updateWidgets : (Action -> Cmd m) -> (WidgetsMsg -> m) -> WidgetsMsg -> Widgets -> (Widgets, Cmd m)
 updateWidgets liftAction liftMsg msg widgets = case msg of
@@ -74,6 +73,10 @@ updateWidget msg widget = case (msg, widget) of
       (newModel, cmd, actions) = Ui.Widgets.Function.update msg model
     in
       (FunctionWidget newModel, Cmd.map FunctionMsg cmd, actions)
+  (SliderMsg msg, SliderWidget model) -> let
+      (newModel, cmd, actions) = Ui.Widgets.Slider.update msg model
+    in
+      (SliderWidget newModel, Cmd.map SliderMsg cmd, actions)
   _ -> crash "widget message of wrong type"
 
 simpleTree : Widgets -> String -> MetaData -> List Tree -> Widget -> ValueBox -> (Tree, Widgets)
