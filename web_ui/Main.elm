@@ -195,7 +195,7 @@ handleResponse m resp = case resp of
         actualToken -> ({m | callResult = Just value}, Cmd.none)
       _ -> (m, Cmd.none)
   ValueResult (pid, propertyID) value
-    -> (
+    -> updateUiProperty (pid, propertyID) <| (
       { m | allProperties = m.allProperties |>
         Dict.update pid (Maybe.map <|
           Dict.update propertyID (Maybe.map <|
@@ -285,6 +285,12 @@ updateUi m = { m | ui = Ui.build 0 m.contracts m.allProperties }
 updateUiCmd : (Model, a) -> (Model, a)
 updateUiCmd (m, x) = (updateUi m, x)
 
+updateUiProperty : (Pid, PropertyID) -> (Model, Cmd Msg) -> (Model, Cmd Msg)
+updateUiProperty prop (m, x) = let
+    (uiModel, cmd) = Ui.updateProperty handleUiAction UiMsg prop m.allProperties m.ui
+  in
+    ({ m | ui = uiModel } , Cmd.batch [ x, cmd ])
+
 -- SUBSCRIPTIONS
 
 subscriptions : Model -> Sub Msg
@@ -296,25 +302,27 @@ subscriptions model =
 
 metaData : VisualContract -> String -> MetaData
 metaData vc name = case vc of
-  VFunction             {data} -> dataMetaData data
-  VConnectedDelegate    {data} -> dataMetaData data
-  VBrokenDelegate       {data} -> dataMetaData data
+  VFunction             {data} -> dataMetaData name data
+  VConnectedDelegate    {data} -> dataMetaData name data
+  VBrokenDelegate       {data} -> dataMetaData name data
   VMapContract d               -> MetaData
+    name
+    noPropData
     (Dict.get "ui_level"    d |> Maybe.map valueOf |> Maybe.andThen getIntValue    |> Maybe.withDefault 0)
     (Dict.get "description" d |> Maybe.map valueOf |> Maybe.andThen getStringValue |> Maybe.withDefault name)
     (Dict.get "enabled"     d |> Maybe.map valueOf |> Maybe.andThen getBoolValue  |>  Maybe.withDefault True)
     emptyData
   VStringValue _               -> case isMeta name of
-    True  -> MetaData 1 name True emptyData
-    False -> MetaData 0 name True emptyData
+    True  -> MetaData name noPropData 1 name True emptyData
+    False -> MetaData name noPropData 0 name True emptyData
   VBoolValue _               -> case isMeta name of
-    True  -> MetaData 1 name True emptyData
-    False -> MetaData 0 name True emptyData
+    True  -> MetaData name noPropData 1 name True emptyData
+    False -> MetaData name noPropData 0 name True emptyData
   VIntValue _               -> case isMeta name of
-    True  -> MetaData 1 name True emptyData
-    False -> MetaData 0 name True emptyData
+    True  -> MetaData name noPropData 1 name True emptyData
+    False -> MetaData name noPropData 0 name True emptyData
   VProperty         {contract} -> metaData contract name
-  _                            -> MetaData 0 name True emptyData
+  _                            -> MetaData name noPropData 0 name True emptyData
 
 isMeta : String -> Bool
 isMeta s = case s of
@@ -323,21 +331,6 @@ isMeta s = case s of
   "enabled"     -> True
   _             -> False
 
-dataMetaData : Data -> MetaData
-dataMetaData d = MetaData
-  (  Dict.get "ui_level" d
-  |> Maybe.withDefault (Json.Encode.int 0)
-  |> Json.Decode.decodeValue Json.Decode.int
-  |> Result.withDefault 0)
-  (  Dict.get "description" d
-  |> Maybe.withDefault (Json.Encode.string "")
-  |> Json.Decode.decodeValue Json.Decode.string
-  |> Result.withDefault "")
-  (  Dict.get "enabled" d
-  |> Maybe.withDefault (Json.Encode.bool True)
-  |> Json.Decode.decodeValue Json.Decode.bool
-  |> Result.withDefault True)
-  d
 
 
 renderContract : Mode -> VisualContract -> Html Msg
@@ -464,6 +457,7 @@ renderValue mode style v = (case v of
     SimpleFloat f -> [ text (toString f) ]
     SimpleBool b -> [ text (toString b) ]
     Complex v -> [ text <| Json.Encode.encode 0 v]
+    Loading -> [ text "loading" ]
   ) |> div [style]
 
 renderPropertyGetButton : Mode -> Pid -> PropertyID -> Property -> Maybe (Html Msg)

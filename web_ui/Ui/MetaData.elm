@@ -1,7 +1,7 @@
-module Ui.MetaData exposing(getMetaData, MetaData, noMetaData)
+module Ui.MetaData exposing(getMetaData, MetaData, noMetaData, dataMetaData, PropData, noPropData)
 
 import Contracts
-import Contracts exposing (Contract, Properties, emptyData, Data, fetch)
+import Contracts exposing (Contract, Properties, emptyData, Data, fetch, Pid, PropertyID)
 
 import Dict
 import Dict exposing(Dict)
@@ -10,50 +10,90 @@ import Json.Encode
 import Json.Decode
 
 type alias MetaData =
-  { uiLevel     : Int
+  { key         : String
+  , propData    : PropData
+  , uiLevel     : Int
   , description : String
   , enabled     : Bool
   , extra       : Data
   }
 
-noMetaData : String -> MetaData
-noMetaData key = { uiLevel = 0, description = key, enabled = True, extra = emptyData }
+type alias PropData =
+  { hasGetter       : Bool
+  , hasSetter       : Bool
+  , hasSubscriber   : Bool
+  , property        : (Pid, PropertyID)
+  }
 
-getMetaData : String -> Contract -> Int -> Properties -> MetaData
+noMetaData : MetaData
+noMetaData =
+  { key = ""
+  , uiLevel = 0
+  , description = ""
+  , enabled = True
+  , extra = emptyData
+  , propData = noPropData
+  }
+
+noPropData : PropData
+noPropData =
+  { hasGetter     = False
+  , hasSetter     = False
+  , hasSubscriber = False
+  , property      = (-1, -1)
+  }
+
+getMetaData : String -> Contract -> Pid -> Properties -> MetaData
 getMetaData key c pid properties = case c of
   Contracts.StringValue _ -> case key of
-    "description" -> { uiLevel = 1, description = key, enabled = True, extra = emptyData }
-    _             -> noMetaData key
+    "description" -> { noMetaData | key = key, uiLevel = 1 }
+    _             -> { noMetaData | key = key }
   Contracts.BoolValue _ ->   case key of
-    "enabled"     -> { uiLevel = 1, description = key, enabled = True, extra = emptyData }
-    _             -> noMetaData key
+    "enabled"     -> { noMetaData | key = key, uiLevel = 1 }
+    _             -> { noMetaData | key = key }
   Contracts.IntValue _ ->    case key of
-    "ui_level"    -> { uiLevel = 1, description = key, enabled = True, extra = emptyData }
-    _             -> noMetaData key
+    "ui_level"    -> { noMetaData | key = key, uiLevel = 1 }
+    _             -> { noMetaData | key = key }
+  Contracts.PropertyKey propertyID _ -> let
+      { getter, setter, subscriber } = properties |> fetch pid |> fetch propertyID
+      priorData = extractData c pid properties |> dataMetaData key
+    in let
+      propData =
+        { hasGetter     = getter /= Nothing
+        , hasSetter     = setter /= Nothing
+        , hasSubscriber = subscriber /= Nothing
+        , property      = (pid, propertyID)
+        }
+    in
+      { priorData | propData = propData }
   _ ->
     extractData c pid properties |> dataMetaData key
 
 dataMetaData : String -> Data -> MetaData
-dataMetaData defaultDescription d = MetaData
-  (  Dict.get "ui_level" d
-  |> Maybe.withDefault (Json.Encode.int 0)
-  |> Json.Decode.decodeValue Json.Decode.int
-  |> Result.withDefault 0)
-  (  Dict.get "description" d
-  |> Maybe.withDefault (Json.Encode.string defaultDescription)
-  |> Json.Decode.decodeValue Json.Decode.string
-  |> Result.withDefault "")
-  (  Dict.get "enabled" d
-  |> Maybe.withDefault (Json.Encode.bool True)
-  |> Json.Decode.decodeValue Json.Decode.bool
-  |> Result.withDefault True)
-  d
+dataMetaData key d =
+  { key = key
+  , uiLevel = (  Dict.get "ui_level" d
+    |> Maybe.withDefault (Json.Encode.int 0)
+    |> Json.Decode.decodeValue Json.Decode.int
+    |> Result.withDefault 0)
+  , description = (  Dict.get "description" d
+    |> Maybe.withDefault (Json.Encode.string "")
+    |> Json.Decode.decodeValue Json.Decode.string
+    |> Result.withDefault "")
+  , enabled = (  Dict.get "enabled" d
+    |> Maybe.withDefault (Json.Encode.bool True)
+    |> Json.Decode.decodeValue Json.Decode.bool
+    |> Result.withDefault True)
+  , extra = d
+  , propData = noPropData
+  }
 
 extractData : Contract -> Int -> Properties -> Data
 extractData c pid properties = case c of
   Contracts.MapContract d -> Dict.map (\_ value -> extractValue properties pid value) d
   Contracts.Function { data } -> data
   Contracts.Delegate { data } -> data
+  Contracts.PropertyKey _ contract -> extractData contract pid properties
   _ -> emptyData
 
 
@@ -69,6 +109,5 @@ extractValue properties pid c = case c of
       Just (Contracts.SimpleString x ) -> Json.Encode.string x
       Just (Contracts.SimpleFloat x  ) -> Json.Encode.float x
       Just (Contracts.SimpleBool x   ) -> Json.Encode.bool x
-      Just (Contracts.Complex v) -> v
-      Nothing -> Json.Encode.null
+      _ -> Json.Encode.null
   _ -> Json.Encode.null

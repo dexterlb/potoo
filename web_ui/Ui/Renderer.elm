@@ -5,5 +5,5 @@ import Contracts    exposing (Properties)
 
 import Html         exposing (Html, div, text)
 
-renderUi : Tree -> Widgets -> Properties -> Html WidgetsMsg
+renderUi : WidgetID -> Widgets -> Properties -> Html WidgetsMsg
 renderUi _ _ _ = div [] [ text "I am the ui." ]

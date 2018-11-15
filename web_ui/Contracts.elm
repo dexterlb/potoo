@@ -92,6 +92,7 @@ type Value
   | SimpleFloat Float
   | SimpleBool Bool
   | Complex Json.Encode.Value
+  | Loading
 
 type VisualContract
   = VStringValue String
