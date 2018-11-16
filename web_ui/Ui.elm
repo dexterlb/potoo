@@ -24,7 +24,6 @@ type alias Msg      = WidgetsMsg
 type alias Action   = Ui.Action.Action
 
 build : Int -> Dict Int Contract -> Properties -> Model
--- todo: remove properties from here, move setters getters etc inside the contracts
 build pid contracts properties = let (root, widgets) = toTree pid contracts properties
   in
     { root = root
@@ -54,8 +53,8 @@ updateProperty liftAction liftMsg (pid, id) properties m = let
   in
     ({ m | widgets = widgets2 }, Cmd.batch [cmd, cmd2])
 
-view : Properties -> Model -> Html Msg
-view properties { root, widgets } = renderUi root widgets properties
+view : Model -> Html Msg
+view { root, widgets } = renderUi widgets root
 
 getValue : Contracts.Property -> Contracts.Value
 getValue { value } = case value of

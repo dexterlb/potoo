@@ -537,7 +537,7 @@ view model =
   div []
     [ renderContract model.mode <| toVisual 0 model.contracts model.allProperties
     , renderAskCallWindow model.mode model.toCall model.callArgument model.callToken model.callResult
-    , Html.Styled.map UiMsg <| Html.Styled.fromUnstyled <| Ui.view model.allProperties model.ui
+    , Html.Styled.map UiMsg <| Html.Styled.fromUnstyled <| Ui.view model.ui
     ]
 
 
