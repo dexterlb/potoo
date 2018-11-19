@@ -4,54 +4,47 @@ import Contracts exposing (..)
 import Json.Decode as JD exposing (Decoder)
 import Json.Encode exposing (encode, int, list, object, string)
 
+type alias Conn = String
 
-type alias Conn =
-    String
+type alias Msg = (Result String (Conn, Response))
 
-
-connect : String -> Conn
-connect url =
-    url
-
-
-listenRaw : Conn -> (String -> msg) -> Sub msg
-listenRaw conn f = Debug.log "connecting to dummy socket" <|
-    Sub.batch
-        --  [ WebSocket.listen conn f
-        --  , WebSocket.keepAlive conn
-        []
+connect : Conn -> String -> Cmd msg
+connect conn url = Socket.outgoing <| object
+    [ ("key", string conn)
+    , ("action", "connect")
+    , ("url", string url)
+    ]
 
 
-sendRaw : Conn -> String -> Cmd msg
-sendRaw conn =
-    \_ -> Cmd.none
+subscribe : (Msg -> msg) -> Sub msg
+subscribe f = Socket.incoming (f << parseResponse)
 
 
-
--- WebSocket.send conn
+sendRaw : Conn -> Json.Encode.Value -> Cmd msg
+sendRaw conn v = Socket.outgoing <| object
+    [ ("key", string conn)
+    , ("action", string "send")
+    , ("data", v)
+    ]
 
 
 sendPing : Conn -> Cmd msg
 sendPing conn =
     sendRaw conn
-        (encode 4
-            (string "ping")
-        )
+        (string "ping")
 
 
 getContract : Conn -> DelegateStruct -> Cmd msg
 getContract conn target =
     sendRaw conn
-        (encode 4
-            (list (\x -> x)
-                [ string "get_and_subscribe_contract"
-                , object
-                    [ ( "target", delegateEncoder target )
-                    , ( "token", object [ ( "msg", string "got_contract" ), ( "target", delegateEncoder target ) ] )
-                    ]
-                , object [ ( "msg", string "got_contract" ), ( "pid", int target.destination ) ]
+        (list (\x -> x)
+            [ string "get_and_subscribe_contract"
+            , object
+                [ ( "target", delegateEncoder target )
+                , ( "token", object [ ( "msg", string "got_contract" ), ( "target", delegateEncoder target ) ] )
                 ]
-            )
+            , object [ ( "msg", string "got_contract" ), ( "pid", int target.destination ) ]
+            ]
         )
 
 
@@ -107,41 +100,41 @@ subscriberCall conn func ( propertyPid, propertyID ) =
 subscribe : Conn -> Channel -> Json.Encode.Value -> Cmd msg
 subscribe conn chan token =
     sendRaw conn
-        (encode 4
-            (list (\x -> x)
-                [ string "subscribe"
-                , object
-                    [ ( "channel", channelEncoder chan )
-                    , ( "token", token )
-                    ]
-                , object [ ( "msg", string "subscribed_channel" ), ( "token", token ) ]
+        (list (\x -> x)
+            [ string "subscribe"
+            , object
+                [ ( "channel", channelEncoder chan )
+                , ( "token", token )
                 ]
-            )
+            , object [ ( "msg", string "subscribed_channel" ), ( "token", token ) ]
+            ]
         )
 
 
 rawUnsafeCall : Conn -> { target : DelegateStruct, name : String, argument : Json.Encode.Value } -> Json.Encode.Value -> Cmd msg
 rawUnsafeCall conn { target, name, argument } token =
     sendRaw conn
-        (encode 4
-            (list (\x -> x)
-                [ string "unsafe_call"
-                , object
-                    [ ( "target", delegateEncoder target )
-                    , ( "function_name", string name )
-                    , ( "argument", argument )
-                    ]
-                , token
+        (list (\x -> x)
+            [ string "unsafe_call"
+            , object
+                [ ( "target", delegateEncoder target )
+                , ( "function_name", string name )
+                , ( "argument", argument )
                 ]
-            )
+            , token
+            ]
         )
 
 
-parseResponse : String -> Result String Response
+parseResponse : Json.Encode.Value -> Result String Response
 parseResponse s =
-    JD.decodeString responseDecoder s
+    JD.decodeValue responseDecoder s
         |> Result.mapError JD.errorToString
 
+socketMessageDecoder : Decoder (Conn, Response)
+socketMessageDecoder = JD.map2 (\x y -> (x, y))
+    (JD.field "key"  JD.string)
+    (JD.field "data" responseDecoder)
 
 responseDecoder : Decoder Response
 responseDecoder =
