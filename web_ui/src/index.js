@@ -1,9 +1,8 @@
 'use strict';
 
-// Require index.html so it gets copied to dist
 require('./index.html');
+require('./styles/main.scss');
 
-var Elm = require('./Main.elm');
-var mountNode = document.getElementById('main');
+var elm = require('./Main.elm');
 
-var app = Elm.Elm.Main.init({node: mountNode});
+var app = elm.Elm.Main.init({ node: document.documentElement });

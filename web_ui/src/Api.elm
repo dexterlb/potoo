@@ -15,7 +15,7 @@ connect url =
 
 
 listenRaw : Conn -> (String -> msg) -> Sub msg
-listenRaw conn f =
+listenRaw conn f = Debug.log "connecting to dummy socket" <|
     Sub.batch
         --  [ WebSocket.listen conn f
         --  , WebSocket.keepAlive conn
