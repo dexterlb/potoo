@@ -32,7 +32,7 @@ defmodule PotooServer.Router do
   end
 
   if Application.get_env(:server, :dev_proxy, false) do
-    forward "/", to: ReverseProxy, upstream: ["localhost:8000"]
+    forward "/", to: ReverseProxy, upstream: ["localhost:8080"]
   else
     match _ do
       conn |> send_resp(404, "404\n")
