@@ -5,12 +5,15 @@
   "main": "index.js",
   "dependencies": {},
   "devDependencies": {
+    "@types/node": "^10.12.9",
     "css-loader": "^1.0.1",
     "elm-webpack-loader": "^5.0.0",
     "file-loader": "^2.0.0",
     "node-sass": "^4.10.0",
     "sass-loader": "^7.1.0",
     "style-loader": "^0.23.1",
+    "ts-loader": "^5.3.0",
+    "typescript": "^3.1.6",
     "webpack": "^4.26.0",
     "webpack-cli": "^3.1.2",
     "webpack-dev-server": "^3.1.10"

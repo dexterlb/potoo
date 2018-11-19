@@ -5,7 +5,7 @@ module.exports = {
 
   entry: {
     app: [
-      './src/index.js'
+      './src/index.ts'
     ]
   },
 
@@ -30,6 +30,11 @@ module.exports = {
           'style-loader',
           'css-loader',
         ]
+      },
+      {
+          test: /\.tsx?$/,
+          use: 'ts-loader',
+          exclude: /node_modules/
       },
       {
         test:    /\.html$/,
