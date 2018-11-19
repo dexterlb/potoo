@@ -1,0 +1,27 @@
+{
+  "name": "potoo_web_ui",
+  "version": "1.0.0",
+  "description": "Web UI for potoo",
+  "main": "index.js",
+  "dependencies": {},
+  "devDependencies": {
+    "elm-webpack-loader": "^5.0.0",
+    "file-loader": "^2.0.0",
+    "webpack": "^4.26.0",
+    "webpack-cli": "^3.1.2",
+    "webpack-dev-server": "^3.1.10"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DexterLB/potoo.git"
+  },
+  "author": "DexterLB",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/DexterLB/potoo/issues"
+  },
+  "homepage": "https://github.com/DexterLB/potoo#readme"
+}
