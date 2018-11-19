@@ -53,6 +53,7 @@ type alias Model =
     , contracts : Dict Int Contract
     , allProperties : Properties
     , fetchingContracts : Set Int
+    , status : Status
     , toCall : Maybe VisualContract
     , callToken : Maybe String
     , callArgument : Maybe Json.Encode.Value
@@ -63,14 +64,15 @@ type alias Model =
 
 
 init : Json.Encode.Value -> Url -> Key -> ( Model, Cmd Msg )
-init _ url key =
-    ( emptyModel url key, startCommand )
+init _ url key = let model = emptyModel url key
+    in (model , startCommand model)
 
 
-startCommand : Cmd Msg
-startCommand =
+startCommand : Model -> Cmd Msg
+startCommand model =
     Cmd.batch
         [ nextPing
+        , Api.connect "main" <| connectionUrl model.url
         ]
 
 
@@ -78,10 +80,11 @@ emptyModel : Url -> Key -> Model
 emptyModel url key =
     { input = ""
     , messages = []
-    , conn = connectWithUrl url
+    , conn = "main"
     , mode = parseMode url
     , url = url
     , key = key
+    , status = Connecting
     , contracts = Dict.empty
     , allProperties = Dict.empty
     , fetchingContracts = Set.empty
@@ -92,6 +95,10 @@ emptyModel url key =
     , ui = Ui.blank
     }
 
+type Status
+  = Connecting
+  | Reconnecting
+  | JollyGood
 
 parseMode : Url -> Mode
 parseMode url = UP.parse modeParser url |> Maybe.withDefault Basic
@@ -103,9 +110,9 @@ modeParser = UP.oneOf
     ]
 
 
-connectWithUrl : Url -> Conn
-connectWithUrl { host } =
-    Api.connect ("ws://" ++ host ++ "/ws")
+connectionUrl : Url -> Conn
+connectionUrl { host } =
+    ("ws://" ++ host ++ "/ws")
 
 
 
@@ -113,7 +120,7 @@ connectWithUrl { host } =
 
 
 type Msg
-    = SocketMessage String
+    = SocketMessage Api.Msg
     | AskCall VisualContract
     | AskInstantCall VisualContract
     | ActionCall VisualContract
@@ -132,17 +139,14 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        SocketMessage str ->
-            case parseResponse str of
-                Ok resp ->
-                    handleResponse model resp
-
-                Err err ->
-                    let
-                        errMsg =
-                            "unable to parse response >> " ++ str ++ " << : " ++ err
-                    in
-                    ( { model | messages = errMsg :: model.messages }, Cmd.none )
+        SocketMessage (Ok (_, resp)) ->
+            handleResponse model resp
+        SocketMessage (Err err) ->
+            let
+                errMsg =
+                    "unable to parse response: " ++ err
+            in
+            ( { model | messages = errMsg :: model.messages }, Cmd.none )
 
         AskCall f ->
             ( { model | toCall = Just f, callToken = Nothing, callArgument = Nothing, callResult = Nothing }, Cmd.none )
@@ -187,10 +191,10 @@ update msg model =
             )
 
         SendPing ->
-            ( model, sendPing model.conn )
+            ( model, Cmd.batch [ sendPing model.conn, nextPing ] )
 
-        UrlChanged url ->
-            ( emptyModel url model.key, startCommand )
+        UrlChanged url -> let newModel = emptyModel url model.key in
+            ( newModel, startCommand newModel )
 
         UrlRequested urlRequest ->
             case urlRequest of
@@ -313,10 +317,16 @@ handleResponse m resp =
             ( Debug.log ("property setter status: " ++ Json.Encode.encode 0 status) m, Cmd.none )
 
         Pong ->
-            ( m, nextPing )
+            ( m, Cmd.none )
 
         Hello ->
             ( emptyModel m.url m.key, Api.getContract m.conn (delegate 0) )
+
+        Connected ->
+            ( { m | status = JollyGood }, Cmd.none )
+
+        Disconnected ->
+            ( { m | status = Reconnecting }, Cmd.none )
 
 
 subscribeProperties : Conn -> Pid -> ContractProperties -> Cmd Msg
@@ -444,8 +454,8 @@ updateUiProperty prop ( m, x ) =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions model =
-    Api.listenRaw model.conn SocketMessage
+subscriptions _ =
+    Api.subscriptions SocketMessage
 
 
 
@@ -844,12 +854,17 @@ view model = Document
     [ toUnstyled <| bodyView model ]
 
 bodyView : Model -> Html Msg
-bodyView model =
-    div []
-        [ renderContract model.mode <| toVisual 0 model.contracts model.allProperties
-        , renderAskCallWindow model.mode model.toCall model.callArgument model.callToken model.callResult
-        , Html.Styled.map UiMsg <| Html.Styled.fromUnstyled <| Ui.view model.ui
-        ]
+bodyView model = case model.status of
+    JollyGood ->
+        div []
+            [ renderContract model.mode <| toVisual 0 model.contracts model.allProperties
+            , renderAskCallWindow model.mode model.toCall model.callArgument model.callToken model.callResult
+            , Html.Styled.map UiMsg <| Html.Styled.fromUnstyled <| Ui.view model.ui
+            ]
+    Connecting ->
+        div [] [ text "connecting" ]
+    Reconnecting ->
+        div [] [ text "reconnecting" ]
 
 
 viewMessage : String -> Html msg

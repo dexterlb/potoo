@@ -1,4 +1,4 @@
-port module Socket exposing (Socket)
+port module Socket exposing (outgoing, incoming)
 
 import Json.Encode as JE
 

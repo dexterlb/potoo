@@ -1,23 +1,24 @@
-module Api exposing (Conn, Response(..), Token(..), actionCall, connect, getContract, getterCall, helloDecoder, listenRaw, parseResponse, pongDecoder, rawUnsafeCall, responseByTokenDecoder, responseDecoder, sendPing, sendRaw, setterCall, subscribe, subscriberCall, tokenDecoder, unsafeCall)
+module Api exposing (..)
 
 import Contracts exposing (..)
 import Json.Decode as JD exposing (Decoder)
 import Json.Encode exposing (encode, int, list, object, string)
+import Socket
 
 type alias Conn = String
 
-type alias Msg = (Result String (Conn, Response))
+type alias Msg = Result String (Conn, Response)
 
 connect : Conn -> String -> Cmd msg
 connect conn url = Socket.outgoing <| object
     [ ("key", string conn)
-    , ("action", "connect")
+    , ("action", string "connect")
     , ("url", string url)
     ]
 
 
-subscribe : (Msg -> msg) -> Sub msg
-subscribe f = Socket.incoming (f << parseResponse)
+subscriptions : (Msg -> msg) -> Sub msg
+subscriptions f = Socket.incoming (f << parseSocketMessage)
 
 
 sendRaw : Conn -> Json.Encode.Value -> Cmd msg
@@ -126,15 +127,26 @@ rawUnsafeCall conn { target, name, argument } token =
         )
 
 
-parseResponse : Json.Encode.Value -> Result String Response
-parseResponse s =
-    JD.decodeValue responseDecoder s
+parseSocketMessage : Json.Encode.Value -> Msg
+parseSocketMessage s =
+    JD.decodeValue (JD.oneOf [socketMessageDecoder, statusMessageDecoder]) s
         |> Result.mapError JD.errorToString
 
 socketMessageDecoder : Decoder (Conn, Response)
 socketMessageDecoder = JD.map2 (\x y -> (x, y))
     (JD.field "key"  JD.string)
     (JD.field "data" responseDecoder)
+
+statusMessageDecoder : Decoder (Conn, Response)
+statusMessageDecoder = JD.map2 (\x y -> (x, y))
+    (JD.field "key"  JD.string)
+    (JD.field "status" <| (JD.string |> JD.andThen (\s ->
+        case s of
+            "connected" -> JD.succeed Connected
+            "disconnected" -> JD.succeed Disconnected
+            _ -> JD.fail "unknown status"
+        ))
+    )
 
 responseDecoder : Decoder Response
 responseDecoder =
@@ -247,3 +259,5 @@ type Response
     | PropertySetterStatus ( Int, Int ) Json.Encode.Value
     | Pong
     | Hello
+    | Connected
+    | Disconnected
