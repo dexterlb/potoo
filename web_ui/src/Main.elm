@@ -860,11 +860,15 @@ view model = Document
 bodyView : Model -> Html Msg
 bodyView model = case model.status of
     JollyGood ->
-        div []
-            [ renderContract model.mode <| toVisual 0 model.contracts model.allProperties
-            , renderAskCallWindow model.mode model.toCall model.callArgument model.callToken model.callResult
-            , Html.Styled.map UiMsg <| Html.Styled.fromUnstyled <| Ui.view model.ui
-            ]
+        let mode = case model.mode of
+                Advanced -> "advanced"
+                Basic    -> "basic"
+        in
+            div [ class ("mode-" ++ mode) ]
+                [ renderContract model.mode <| toVisual 0 model.contracts model.allProperties
+                , renderAskCallWindow model.mode model.toCall model.callArgument model.callToken model.callResult
+                , Html.Styled.map UiMsg <| Html.Styled.fromUnstyled <| Ui.view model.ui
+                ]
     Connecting ->
         div [] [ text "connecting" ]
     Reconnecting ->

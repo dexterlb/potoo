@@ -1,8 +1,10 @@
 module Ui.Renderer exposing (renderChildren, renderUi, renderWidget)
 
-import Contracts exposing (Properties)
+import Contracts exposing (Properties, Value(..))
 import Html exposing (Html, div, text)
 import Ui.Tree exposing (..)
+
+import Ui.Widgets.Simple exposing (..)
 
 
 renderUi : Widgets -> WidgetID -> Html WidgetsMsg
@@ -24,5 +26,7 @@ renderChildren children widgets =
 
 
 renderWidget : Widget -> List (Html WidgetsMsg) -> Html WidgetsMsg
-renderWidget _ children =
-    div [] [ text "i am a widget.", div [] children ]
+renderWidget w children = case w of
+    StringWidget m (SimpleString s) -> renderStringWidget  m s
+    ListWidget   m                  -> renderListWidget    m children
+    _                               -> renderUnknownWidget   children
