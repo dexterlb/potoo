@@ -78,6 +78,9 @@ export class Socket {
             if (this.ws == ws) {
                 this._disconnected('closed');
                 this.ws = null;
+                setTimeout(() => {
+                    this.connect(url);
+                }, 3000);
             }
         });
 
