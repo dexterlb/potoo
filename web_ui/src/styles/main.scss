@@ -5,10 +5,29 @@
     display: none;
 }
 
-.mode-basic .level-advanced {
-    display: none;
+.mode-basic {
+    .level-advanced {
+        display: none;
+    }
+
+    .widget.connected-delegate {
+        > .header {
+            display: none;
+        }
+        > .body {
+            margin-left: 0px;
+        }
+    }
+
+    .children {
+        display: none;
+    }
 }
 
 .widget .body {
+    margin-left: 20px;
+}
+
+.widget .children {
     margin-left: 20px;
 }

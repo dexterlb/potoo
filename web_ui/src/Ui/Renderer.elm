@@ -5,6 +5,8 @@ import Html exposing (Html, div, text)
 import Ui.Tree exposing (..)
 
 import Ui.Widgets.Simple exposing (..)
+import Ui.Widgets.Function as Function
+import Ui.Widgets.Slider   as Slider
 
 
 renderUi : Widgets -> WidgetID -> Html WidgetsMsg
@@ -17,7 +19,7 @@ renderUi widgets id =
         childrenBox =
             renderChildren children widgets
     in
-    renderWidget widget childrenBox
+    renderWidget (UpdateWidget id) widget childrenBox
 
 
 renderChildren : List WidgetID -> Widgets -> List (Html WidgetsMsg)
@@ -25,11 +27,14 @@ renderChildren children widgets =
     List.map (renderUi widgets) children
 
 
-renderWidget : Widget -> List (Html WidgetsMsg) -> Html WidgetsMsg
-renderWidget w children = case w of
-    StringWidget m (SimpleString s) -> renderStringWidget  m s children
-    NumberWidget m (SimpleInt    i) -> renderNumberWidget  m (toFloat i) children
-    NumberWidget m (SimpleFloat  f) -> renderNumberWidget  m f children
-    BoolWidget   m (SimpleBool   b) -> renderBoolWidget    m b children
-    ListWidget   m                  -> renderListWidget    m children
-    _                               -> renderUnknownWidget   children
+renderWidget : (WidgetMsg -> WidgetsMsg) -> Widget -> List (Html WidgetsMsg) -> Html WidgetsMsg
+renderWidget lift w children = case w of
+    StringWidget   m (SimpleString s) -> renderStringWidget   m s children
+    NumberWidget   m (SimpleInt    i) -> renderNumberWidget   m (toFloat i) children
+    NumberWidget   m (SimpleFloat  f) -> renderNumberWidget   m f children
+    BoolWidget     m (SimpleBool   b) -> renderBoolWidget     m b children
+    ListWidget     m                  -> renderListWidget     m children
+    DelegateWidget m pid              -> renderDelegateWidget m pid children
+    BrokenWidget   m pid              -> renderBrokenWidget   m pid
+    FunctionWidget model              -> Function.view (lift << FunctionMsg) model children
+    _                                 -> renderUnknownWidget   children

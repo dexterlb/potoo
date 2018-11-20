@@ -52,6 +52,7 @@ toTree_ c key pid contracts properties widgets =
                 []
                 (FunctionWidget <|
                     Ui.Widgets.Function.init
+                        metaData
                         { argument = argument, name = name, retval = retval, pid = pid }
                 )
 
