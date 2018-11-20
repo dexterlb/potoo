@@ -27,6 +27,9 @@ renderChildren children widgets =
 
 renderWidget : Widget -> List (Html WidgetsMsg) -> Html WidgetsMsg
 renderWidget w children = case w of
-    StringWidget m (SimpleString s) -> renderStringWidget  m s
+    StringWidget m (SimpleString s) -> renderStringWidget  m s children
+    NumberWidget m (SimpleInt    i) -> renderNumberWidget  m (toFloat i) children
+    NumberWidget m (SimpleFloat  f) -> renderNumberWidget  m f children
+    BoolWidget   m (SimpleBool   b) -> renderBoolWidget    m b children
     ListWidget   m                  -> renderListWidget    m children
     _                               -> renderUnknownWidget   children
