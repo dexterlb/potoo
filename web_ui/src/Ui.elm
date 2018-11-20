@@ -1,4 +1,4 @@
-module Ui exposing (Action, Model, Msg, blank, build, getValue, update, updateProperty, view)
+module Ui exposing (Action, Model, Msg, blank, build, getValue, update, updateProperty, pushResult, view)
 
 import Contracts exposing (Contract, Pid, Properties, PropertyID, fetch)
 import Dict exposing (Dict)
@@ -43,7 +43,7 @@ blank =
     build 0 Dict.empty Dict.empty
 
 
-update : (Action -> Cmd m) -> (Msg -> m) -> Msg -> Model -> ( Model, Cmd m )
+update : (WidgetID -> Action -> Cmd m) -> (Msg -> m) -> Msg -> Model -> ( Model, Cmd m )
 update liftAction liftMsg msg m =
     let
         ( widgets, cmd ) =
@@ -52,7 +52,7 @@ update liftAction liftMsg msg m =
     ( { m | widgets = widgets }, cmd )
 
 
-updateProperty : (Action -> Cmd m) -> (Msg -> m) -> ( Pid, PropertyID ) -> Properties -> Model -> ( Model, Cmd m )
+updateProperty : (WidgetID -> Action -> Cmd m) -> (Msg -> m) -> ( Pid, PropertyID ) -> Properties -> Model -> ( Model, Cmd m )
 updateProperty liftAction liftMsg ( pid, id ) properties m =
     let
         value =
@@ -73,6 +73,15 @@ updateProperty liftAction liftMsg ( pid, id ) properties m =
             updateWidgetsMetaData liftAction liftMsg parentID properties widgets
     in
     ( { m | widgets = widgets2 }, Cmd.batch [ cmd, cmd2 ] )
+
+pushResult : (WidgetID -> Action -> Cmd m) -> (Msg -> m) -> WidgetID -> Ui.Action.ActionResult -> Model -> (Model, Cmd m)
+pushResult liftAction liftMsg id result m =
+    let
+        ( widgets, cmd ) =
+            pushResultToWidgets liftAction liftMsg id result m.widgets
+    in
+    ( { m | widgets = widgets }, cmd )
+
 
 
 view : Model -> Html Msg

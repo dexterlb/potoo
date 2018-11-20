@@ -216,7 +216,7 @@ update msg model =
         UiMsg uiMsg ->
             let
                 ( newUi, cmd ) =
-                    Ui.update handleUiAction UiMsg uiMsg model.ui
+                    Ui.update (handleUiAction model) UiMsg uiMsg model.ui
             in
             ( { model | ui = newUi }, cmd )
 
@@ -226,11 +226,15 @@ nextPing =
     Delay.after 5 Delay.Second SendPing
 
 
-handleUiAction : Ui.Action -> Cmd Msg
-handleUiAction action =
+handleUiAction : Model -> Int -> Ui.Action -> Cmd Msg
+handleUiAction m id action =
     case action of
-        Ui.Action.DoNothing ->
-            Cmd.none
+        Ui.Action.RequestCall { name, pid } argument token ->
+            Api.unsafeCall m.conn
+                { target = { destination = pid, data = emptyData }
+                , name = name
+                , argument = argument
+                } (String.fromInt id ++ ":" ++ token)
 
 
 instantCall : VisualContract -> Cmd Msg
@@ -291,7 +295,12 @@ handleResponse m resp =
                         True ->
                             ( { m | callResult = Just value }, Cmd.none )
                         False ->
-                            ( m, Cmd.none )
+                            case String.split ":" token of
+                                [ h, t ] -> case String.toInt h of
+                                    Just id -> pushUiResult id (Ui.Action.CallResult value t) m
+                                    _ -> ( m, Cmd.none )
+                                _ -> ( m, Cmd.none )
+
 
                 _ ->
                     ( m, Cmd.none )
@@ -444,12 +453,20 @@ updateUiCmd : ( Model, a ) -> ( Model, a )
 updateUiCmd ( m, x ) =
     ( updateUi m, x )
 
+pushUiResult : Int -> Ui.Action.ActionResult -> Model -> (Model, Cmd Msg)
+pushUiResult id result m =
+    let
+        (uiModel, cmd) = Ui.pushResult (handleUiAction m) UiMsg id result m.ui
+    in
+        ( { m | ui = uiModel }, cmd )
+
+
 
 updateUiProperty : ( Pid, PropertyID ) -> ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
 updateUiProperty prop ( m, x ) =
     let
         ( uiModel, cmd ) =
-            Ui.updateProperty handleUiAction UiMsg prop m.allProperties m.ui
+            Ui.updateProperty (handleUiAction m) UiMsg prop m.allProperties m.ui
     in
     ( { m | ui = uiModel }, Cmd.batch [ x, cmd ] )
 

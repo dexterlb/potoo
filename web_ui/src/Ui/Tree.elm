@@ -1,4 +1,4 @@
-module Ui.Tree exposing (Node, Widget(..), WidgetID, WidgetMsg(..), Widgets, WidgetsMsg(..), addWidget, getWidget, liftUpdateResult, noWidgets, replaceWidget, setWidget, simpleTree, updateWidget, updateWidgetMetaData, updateWidgetValue, updateWidgets, updateWidgetsMetaData, updateWidgetsValue)
+module Ui.Tree exposing (..)
 
 import Contracts exposing (Callee, Data, Pid, PropertyID, Type, Value, fetch)
 import Debug
@@ -46,20 +46,25 @@ type alias WidgetID =
     Int
 
 
-updateWidgets : (Action -> Cmd m) -> (WidgetsMsg -> m) -> WidgetsMsg -> Widgets -> ( Widgets, Cmd m )
+updateWidgets : (WidgetID -> Action -> Cmd m) -> (WidgetsMsg -> m) -> WidgetsMsg -> Widgets -> ( Widgets, Cmd m )
 updateWidgets liftAction liftMsg msg widgets =
     case msg of
         UpdateWidget id wmsg ->
             updateWidget wmsg (getWidget id widgets)
-                |> liftUpdateResult id widgets liftAction liftMsg
+                |> liftUpdateResult id widgets (liftAction id) liftMsg
+
+pushResultToWidgets : (WidgetID -> Action -> Cmd m) -> (WidgetsMsg -> m) -> WidgetID -> ActionResult -> Widgets -> ( Widgets, Cmd m )
+pushResultToWidgets liftAction liftMsg id result widgets =
+    pushResultToWidget result (getWidget id widgets)
+        |> liftUpdateResult id widgets (liftAction id) liftMsg
 
 
-updateWidgetsValue : (Action -> Cmd m) -> (WidgetsMsg -> m) -> WidgetID -> Value -> Widgets -> ( Widgets, Cmd m )
+updateWidgetsValue : (WidgetID -> Action -> Cmd m) -> (WidgetsMsg -> m) -> WidgetID -> Value -> Widgets -> ( Widgets, Cmd m )
 updateWidgetsValue liftAction liftMsg id value widgets =
-    updateWidgetValue value (getWidget id widgets) |> liftUpdateResult id widgets liftAction liftMsg
+    updateWidgetValue value (getWidget id widgets) |> liftUpdateResult id widgets (liftAction id) liftMsg
 
 
-updateWidgetsMetaData : (Action -> Cmd m) -> (WidgetsMsg -> m) -> WidgetID -> Contracts.Properties -> Widgets -> ( Widgets, Cmd m )
+updateWidgetsMetaData : (WidgetID -> Action -> Cmd m) -> (WidgetsMsg -> m) -> WidgetID -> Contracts.Properties -> Widgets -> ( Widgets, Cmd m )
 updateWidgetsMetaData liftAction liftMsg id properties widgets =
     let
         widget =
@@ -73,7 +78,7 @@ updateWidgetsMetaData liftAction liftMsg id properties widgets =
         meta =
             metaMaker properties
     in
-    updateWidgetMetaData meta (getWidget id widgets) |> liftUpdateResult id widgets liftAction liftMsg
+    updateWidgetMetaData meta (getWidget id widgets) |> liftUpdateResult id widgets (liftAction id) liftMsg
 
 
 liftUpdateResult : WidgetID -> Widgets -> (Action -> Cmd m) -> (WidgetsMsg -> m) -> ( Widget, Cmd WidgetMsg, List Action ) -> ( Widgets, Cmd m )
@@ -96,17 +101,30 @@ updateWidget outerMsg ( widget, node ) =
                 ( newModel, cmd, actions ) =
                     Ui.Widgets.Function.update msg model
             in
-            ( FunctionWidget newModel, Cmd.map FunctionMsg cmd, actions )
+                ( FunctionWidget newModel, Cmd.map FunctionMsg cmd, actions )
 
         ( SliderMsg msg, SliderWidget model ) ->
             let
                 ( newModel, cmd, actions ) =
                     Ui.Widgets.Slider.update msg model
             in
-            ( SliderWidget newModel, Cmd.map SliderMsg cmd, actions )
+                ( SliderWidget newModel, Cmd.map SliderMsg cmd, actions )
 
         _ ->
             Debug.todo "widget message of wrong type"
+
+pushResultToWidget : ActionResult -> ( Widget, Node ) -> ( Widget, Cmd WidgetMsg, List Action )
+pushResultToWidget result ( widget, node ) =
+    case widget of
+        FunctionWidget model ->
+            let
+                ( newModel, cmd, actions ) =
+                    Ui.Widgets.Function.pushResult result model
+            in
+                ( FunctionWidget newModel, Cmd.map FunctionMsg cmd, actions )
+
+        _ ->
+            Debug.todo "widget of wrong type"
 
 
 updateWidgetValue : Value -> ( Widget, Node ) -> ( Widget, Cmd WidgetMsg, List Action )

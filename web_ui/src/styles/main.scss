@@ -1,11 +1,11 @@
 .child {
 }
 
-.mode-basic .level-average {
-    display: none;
-}
-
 .mode-basic {
+    .level-average {
+        display: none;
+    }
+
     .level-advanced {
         display: none;
     }
@@ -24,10 +24,31 @@
     }
 }
 
-.widget .body {
-    margin-left: 20px;
-}
+.widget {
+    .body, .children {
+        margin-left: 20px;
+    }
 
-.widget .children {
-    margin-left: 20px;
+    &.function {
+        > .header, > .body, > .body * {
+            display: inline;
+        }
+        > .body {
+            margin-left: 0px;
+            .function-type {
+                div {
+                    background-color: #d3ead5;
+                }
+                &:before {
+                    content: " :: ";
+                }
+                .argument {
+                    &:after {
+                        content: " → ";
+                        color: #c99376;
+                    }
+                }
+            }
+        }
+    }
 }

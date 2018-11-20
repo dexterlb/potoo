@@ -1,9 +1,9 @@
-module Ui.Widgets.Function exposing (Model, Msg, init, update, updateMetaData, view)
+module Ui.Widgets.Function exposing (Model, Msg, init, update, updateMetaData, view, pushResult)
 
 import Ui.Widgets.Simple exposing (renderHeaderWithChildren)
 
 import Ui.MetaData exposing (MetaData, noMetaData)
-import Contracts exposing (Callee, Value)
+import Contracts exposing (Callee, Value, inspectType)
 import Ui.Action exposing (..)
 import Ui.MetaData exposing (..)
 
@@ -29,12 +29,18 @@ update : Msg -> Model -> ( Model, Cmd Msg, List Action )
 update NoMsg model =
     ( model, Cmd.none, [] )
 
+pushResult : ActionResult -> Model -> ( Model, Cmd Msg, List Action )
+pushResult _ model = ( model, Cmd.none, [] )
 
 updateMetaData : MetaData -> Model -> ( Model, Cmd Msg, List Action )
 updateMetaData meta model =
     ( { model | metaData = meta }, Cmd.none, [] )
 
 view : (Msg -> msg) -> Model -> List (Html msg) -> Html msg
-view lift { metaData } children =
+view lift { metaData, callee } children =
     renderHeaderWithChildren [ class "function" ] metaData children <|
-    [ text "func2" ]
+    [ div [ class "function-type" ]
+        [ div [ class "argument" ] [ text <| inspectType callee.argument ]
+        , div [ class "retval"   ] [ text <| inspectType callee.retval   ]
+        ]
+    ]
