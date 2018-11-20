@@ -59,20 +59,29 @@ export class Socket {
     connect(url: string) {
         console.log("want to connect to", url);
         if (this.ws) {
-            this.ws.close();    // FIXME: possible race condition
+            this.ws.close();
+            this.ws = null;
         }
 
-        this.ws = new WebSocket(url);
-        this.ws.addEventListener('open', (event: object) => {
-            this._connected();
+        var ws = new WebSocket(url);
+        ws.addEventListener('open', (event: object) => {
+            if (this.ws == ws) {
+                this._connected();
+            }
         });
-        this.ws.addEventListener('message', (event: { data: string }) => {
-            this._received(JSON.parse(event.data));
+        ws.addEventListener('message', (event: { data: string }) => {
+            if (this.ws == ws) {
+                this._received(JSON.parse(event.data));
+            }
         });
-        this.ws.addEventListener('close', (event: object) => {
-            this._disconnected('closed');
-            this.ws = null;
+        ws.addEventListener('close', (event: object) => {
+            if (this.ws == ws) {
+                this._disconnected('closed');
+                this.ws = null;
+            }
         });
+
+        this.ws = ws;
     }
 
     send(data: any) {

@@ -104,11 +104,12 @@ parseMode : Url -> Mode
 parseMode url = UP.parse modeParser url |> Maybe.withDefault Basic
 
 modeParser : UP.Parser (Mode -> a) a
-modeParser = UP.oneOf
-    [ UP.map Advanced (UP.s "mode" </> UP.s "advanced")
-    , UP.map    Basic (UP.s "mode" </> UP.s    "basic")
-    ]
+modeParser = UP.fragment fragmentParser
 
+fragmentParser : Maybe String -> Mode
+fragmentParser s = case s of
+    Just "advanced" -> Advanced
+    _               -> Basic
 
 connectionUrl : Url -> Conn
 connectionUrl { host, port_ } =
