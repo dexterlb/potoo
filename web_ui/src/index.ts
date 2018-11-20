@@ -8,20 +8,20 @@ let app = elm.Elm.Main.init({ node: document.documentElement });
 
 var sockets = new socket.Sockets();
 
-sockets.received(function(key: string, data: any) {
+sockets.received((key: string, data: any) => {
     app.ports.incoming.send({'key': key, 'data': data});
 });
 
-sockets.connected(function(key: string) {
+sockets.connected((key: string) => {
     app.ports.incoming.send({'key': key, 'status': 'connected'});
 });
 
-sockets.disconnected(function(key: string, reason: string) {
+sockets.disconnected((key: string, reason: string) => {
     console.log("disconnected because of", reason);
     app.ports.incoming.send({'key': key, 'status': 'disconnected'});
 });
 
-app.ports.outgoing.subscribe(function(msg: any) {
+app.ports.outgoing.subscribe((msg: any) => {
     if (msg.action == 'connect') {
         sockets.connect(msg.key, msg.url);
     } else if (msg.action == 'send') {

@@ -182,7 +182,7 @@ helloDecoder =
                         JD.succeed Hello
 
                     _ ->
-                        JD.fail "not a hello message"
+                        JD.fail ("'" ++ s ++ "' is not a hello message")
             )
 
 

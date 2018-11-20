@@ -1,8 +1,8 @@
 export class Sockets {
     private sockets: { [key: string]: Socket }
     private _received: ((key: string, data: any) => void);
-    private _connected: ((key: string, data: any) => void);
-    private _disconnected: ((key: string, data: any) => void);
+    private _connected: ((key: string) => void);
+    private _disconnected: ((key: string, reason: any) => void);
 
     constructor() {
         this.sockets = {};
@@ -11,13 +11,13 @@ export class Sockets {
     connect(key: string, url: string) {
         if (!(key in this.sockets)) {
             this.sockets[key] = new Socket();
-            this.sockets[key].received(function(data) {
+            this.sockets[key].received((data) => {
                 this._received(key, data);
             });
-            this.sockets[key].connected(function() {
+            this.sockets[key].connected(() => {
                 this._connected(key);
             });
-            this.sockets[key].disconnected(function(reason) {
+            this.sockets[key].disconnected((reason) => {
                 this._disconnected(key, reason);
             });
         }
@@ -33,37 +33,66 @@ export class Sockets {
         this.sockets[key].send(data);
     }
 
-    received(key: string, f: ((key: string, data: any) => void)) {
+    received(f: ((data: any) => void)) {
         this._received = f;
     }
 
-    connected(key: string, f: ((key: string) => void)) {
+    connected(f: ((key: string) => void)) {
         this._connected = f;
     }
 
-    disconnected(key: string, f: ((key: string, reason: string) => void)) {
+    disconnected(f: ((key: string, reason: string) => void)) {
         this._disconnected = f;
     }
 }
 
 export class Socket {
+    private ws: WebSocket | null;
+    private _received:      ((data: any)        => void);
+    private _connected:     (()                 => void);
+    private _disconnected:  ((reason: string)   => void);
+
+    constructor() {
+        this.ws = null;
+    }
+
     connect(url: string) {
         console.log("want to connect to", url);
+        if (this.ws) {
+            this.ws.close();    // FIXME: possible race condition
+        }
+
+        this.ws = new WebSocket(url);
+        this.ws.addEventListener('open', (event: object) => {
+            this._connected();
+        });
+        this.ws.addEventListener('message', (event: { data: string }) => {
+            this._received(JSON.parse(event.data));
+        });
+        this.ws.addEventListener('close', (event: object) => {
+            this._disconnected('closed');
+            this.ws = null;
+        });
     }
 
     send(data: any) {
+        if (!this.ws) {
+            console.log("want to send data to closed socket: ", data);
+            return;
+        }
 
+        this.ws.send(JSON.stringify(data));
     }
 
     received(f: ((data: any) => void)) {
-
+        this._received = f;
     }
 
     connected(f: (() => void)) {
-
+        this._connected = f;
     }
 
     disconnected(f: ((reason: string) => void)) {
-
+        this._disconnected = f;
     }
 }

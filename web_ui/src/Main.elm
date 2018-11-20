@@ -64,7 +64,7 @@ type alias Model =
 
 
 init : Json.Encode.Value -> Url -> Key -> ( Model, Cmd Msg )
-init _ url key = let model = emptyModel url key
+init _ url key = let model = emptyModel url key Connecting
     in (model , startCommand model)
 
 
@@ -76,15 +76,15 @@ startCommand model =
         ]
 
 
-emptyModel : Url -> Key -> Model
-emptyModel url key =
+emptyModel : Url -> Key -> Status -> Model
+emptyModel url key status =
     { input = ""
     , messages = []
     , conn = "main"
     , mode = parseMode url
     , url = url
     , key = key
-    , status = Connecting
+    , status = status
     , contracts = Dict.empty
     , allProperties = Dict.empty
     , fetchingContracts = Set.empty
@@ -111,8 +111,12 @@ modeParser = UP.oneOf
 
 
 connectionUrl : Url -> Conn
-connectionUrl { host } =
-    ("ws://" ++ host ++ "/ws")
+connectionUrl { host, port_ } =
+    let authority = (case port_ of
+            Nothing -> host
+            (Just p)  -> host ++ ":" ++ (String.fromInt p))
+    in
+        ("ws://" ++ authority ++ "/ws")
 
 
 
@@ -143,7 +147,7 @@ update msg model =
             handleResponse model resp
         SocketMessage (Err err) ->
             let
-                errMsg =
+                errMsg = Debug.log "error" <|
                     "unable to parse response: " ++ err
             in
             ( { model | messages = errMsg :: model.messages }, Cmd.none )
@@ -193,7 +197,7 @@ update msg model =
         SendPing ->
             ( model, Cmd.batch [ sendPing model.conn, nextPing ] )
 
-        UrlChanged url -> let newModel = emptyModel url model.key in
+        UrlChanged url -> let newModel = emptyModel url model.key Connecting in
             ( newModel, startCommand newModel )
 
         UrlRequested urlRequest ->
@@ -320,10 +324,10 @@ handleResponse m resp =
             ( m, Cmd.none )
 
         Hello ->
-            ( emptyModel m.url m.key, Api.getContract m.conn (delegate 0) )
+            ( emptyModel m.url m.key JollyGood, Api.getContract m.conn (delegate 0) )
 
         Connected ->
-            ( { m | status = JollyGood }, Cmd.none )
+            ( emptyModel m.url m.key JollyGood, Cmd.none )
 
         Disconnected ->
             ( { m | status = Reconnecting }, Cmd.none )
