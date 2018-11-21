@@ -10,10 +10,14 @@ import Ui.MetaData exposing (..)
 import Html exposing (Html, div, text)
 import Html.Attributes exposing (class)
 
+import Json.Encode as JE
+
 
 type alias Model =
-    { metaData: MetaData
-    , callee:   Callee
+    { metaData        : MetaData
+    , callee          :   Callee
+    , currentArgument : Maybe JE.Value
+    , token           : Maybe String
     }
 
 
@@ -22,7 +26,12 @@ type Msg
 
 
 init : MetaData -> Callee -> Model
-init meta c = { metaData = meta, callee = c }
+init meta c =
+    { metaData = meta
+    , callee = c
+    , currentArgument = Nothing
+    , token = Nothing
+    }
 
 
 update : Msg -> Model -> ( Model, Cmd Msg, List Action )
@@ -42,5 +51,8 @@ view lift { metaData, callee } children =
     [ div [ class "function-type" ]
         [ div [ class "argument" ] [ text <| inspectType callee.argument ]
         , div [ class "retval"   ] [ text <| inspectType callee.retval   ]
+        ]
+    , div [ class "function-callbox" ]
+        [
         ]
     ]

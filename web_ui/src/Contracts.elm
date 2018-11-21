@@ -1,9 +1,11 @@
 module Contracts exposing (Callee, Channel, Contract(..), ContractProperties, Data, DelegateStruct, FunctionStruct, Pid, Properties, Property, PropertyID, PropertyMeta, Type(..), Value(..), VisualContract(..), boolValueDecoder, channelDecoder, channelEncoder, checkProperty, checkPropertyConsistency, contractDecoder, dataDecoder, dataEncoder, delegate, delegateDecoder, delegateEncoder, emptyData, equivTypes, fetch, firstJust, floatValueDecoder, functionDecoder, getBoolValue, getFloatValue, getFunction, getIntValue, getMinMax, getPropertyMeta, getStringValue, getTypeFields, inspectData, inspectType, intValueDecoder, listDecoder, makeCallee, makeDelegate, makeFunction, mapDecoder, maybeEquivTypes, numericContract, numericValue, objectDecoder, parseContract, parseType, propertify, propertifyList, propertifyMap, propertify_, recursiveTypeDecoder, stringValueDecoder, stripType, tBinaryDecoder, tComplexDecoder, tLiteralDecoder, tNilDecoder, tSimpleDecoder, tStructDecoder, tTaggedTypeDecoder, tTupleDecoder, tUnaryDecoder, tUnknownDecoder, toVisual, toVisual_, typeDecoder, unChannel, valueOf)
 
 import Dict exposing (Dict)
-import Json.Decode exposing (Decoder, andThen, bool, decodeString, dict, fail, field, float, int, null, oneOf, string, succeed)
+import Json.Decode exposing (Decoder, andThen, bool, decodeString, dict, fail, field, float, int, null, oneOf, string, succeed, list, value)
 import Json.Encode
+import Json.Encode as JE
 import Result
+import Set
 
 
 type alias Data =
@@ -934,3 +936,76 @@ getMinMax prop =
 
                 Just max ->
                     Just ( min, max )
+
+type TypeError
+    = NoError
+    | CannotCoerce JE.Value Type
+    | NotSupported String
+    | KeysDiffer (List String) (List String)
+--     = TNil
+--     | TInt
+--     | TFloat
+--     | TAtom
+--     | TString
+--     | TBool
+--     | TLiteral String
+--     | TType Type Data
+--     | TDelegate
+--     | TChannel Type
+--     | TUnion Type Type
+--     | TList Type
+--     | TMap Type Type
+--     | TTuple (List Type)
+--     | TStruct (Dict String Type)
+--     | TUnknown String
+
+typeErrorToString : TypeError -> String
+typeErrorToString err = case err of
+    NoError          -> "no error"
+    CannotCoerce v t -> "cannot coerce '" ++ (JE.encode 0 v) ++ "' to type " ++ (inspectType t)
+    NotSupported s   -> s
+    KeysDiffer a b   -> "keys differ: " ++ (String.join "," a) ++ " ≠ " ++ (String.join "," b)
+
+typeCheck : Type -> Json.Encode.Value -> TypeError
+typeCheck t v = Json.Decode.decodeValue (typeChecker t) v
+    |> Result.withDefault (CannotCoerce v t)
+
+typeChecker : Type -> Decoder TypeError
+typeChecker t_ =
+    let
+        ok = andThen (\_ -> succeed NoError)
+        reduce = andThen (succeed << (List.foldl typeErrorPlus NoError))
+    in case t_ of
+        TNil        -> null     NoError
+        TInt        -> int      |> ok
+        TFloat      -> float    |> ok
+        TAtom       -> string   |> ok
+        TString     -> string   |> ok
+        TBool       -> bool     |> ok
+        TLiteral _  -> succeed  <| NotSupported "literal types not supported yet"
+        TType t _   -> typeChecker t
+        TDelegate   -> succeed  <| NotSupported "delegate types not supported yet"
+        TChannel _  -> succeed  <| NotSupported "channel types not supported yet"
+        TUnion a b  -> oneOf [ typeChecker a, typeChecker b ]
+        TList t     -> list (typeChecker t) |> reduce
+        TMap TString t -> dict (typeChecker t) |> andThen (succeed << Dict.values) |> reduce
+        TMap _ _    -> succeed  <| NotSupported "maps with non-string keys not supported yet"
+        TTuple _    -> succeed  <| NotSupported "tuples not supported yet"
+        TStruct d   -> dict value |> andThen (structChecker d)
+        _           -> value    |> andThen (\v -> succeed <| CannotCoerce v t_)
+
+structChecker : Dict String Type -> Dict String JE.Value -> Decoder TypeError
+structChecker td vd = succeed <| case sameKeys td vd of
+    False -> KeysDiffer (Dict.keys td) (Dict.keys vd)
+    True  -> Dict.toList td
+        |> List.map (\(k, t) -> typeCheck t (fetch k vd))
+        |> List.foldl typeErrorPlus NoError
+
+typeErrorPlus : TypeError -> TypeError -> TypeError
+typeErrorPlus e1 e2 = case (e1, e2) of
+    (NoError, NoError) -> NoError
+    (NoError, _      ) -> e2
+    (_      , _      ) -> e1
+
+sameKeys : Dict comparable v1 -> Dict comparable v2 -> Bool
+sameKeys a b = (a |> Dict.keys |> Set.fromList) == (b |> Dict.keys |> Set.fromList)
