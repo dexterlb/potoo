@@ -295,15 +295,13 @@ handleResponse m resp =
                         True ->
                             ( { m | callResult = Just value }, Cmd.none )
                         False ->
-                            case String.split ":" token of
-                                [ h, t ] -> case String.toInt h of
-                                    Just id -> pushUiResult id (Ui.Action.CallResult value t) m
-                                    _ -> ( m, Cmd.none )
-                                _ -> ( m, Cmd.none )
-
-
-                _ ->
-                    ( m, Cmd.none )
+                            ( m, Cmd.none )
+                Nothing ->
+                    case String.split ":" token of
+                        [ h, t ] -> case String.toInt h of
+                            Just id -> pushUiResult id (Ui.Action.CallResult value t) m
+                            _ -> ( m, Cmd.none )
+                        _ -> ( m, Cmd.none )
 
         ValueResult ( pid, propertyID ) value ->
             updateUiProperty ( pid, propertyID ) <|

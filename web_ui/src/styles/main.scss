@@ -49,6 +49,12 @@
                     }
                 }
             }
+
+            .function-callbox {
+                &.collapsed {
+                    display: none;
+                }
+            }
         }
     }
 }
