@@ -7,6 +7,7 @@ import Ui.Tree exposing (..)
 import Ui.Widgets.Simple exposing (..)
 import Ui.Widgets.Function as Function
 import Ui.Widgets.Slider   as Slider
+import Ui.Widgets.Switch   as Switch
 
 
 renderUi : Widgets -> WidgetID -> Html WidgetsMsg
@@ -32,9 +33,9 @@ renderWidget lift w children = case w of
     StringWidget   m (SimpleString s) -> renderStringWidget   m s children
     NumberWidget   m (SimpleInt    i) -> renderNumberWidget   m (toFloat i) children
     NumberWidget   m (SimpleFloat  f) -> renderNumberWidget   m f children
-    BoolWidget     m (SimpleBool   b) -> renderBoolWidget     m b children
     ListWidget     m                  -> renderListWidget     m children
     DelegateWidget m pid              -> renderDelegateWidget m pid children
     BrokenWidget   m pid              -> renderBrokenWidget   m pid
     FunctionWidget model              -> Function.view (lift << FunctionMsg) model children
+    SwitchWidget   model              -> Switch.view   (lift << SwitchMsg  ) model children
     _                                 -> renderUnknownWidget   children

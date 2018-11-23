@@ -6,6 +6,7 @@ import Ui.MetaData exposing (..)
 import Ui.Tree exposing (..)
 import Ui.Widgets.Function
 import Ui.Widgets.Slider
+import Ui.Widgets.Switch
 
 
 toTree : Pid -> Dict Pid Contract -> Properties -> ( WidgetID, Widgets )
@@ -43,7 +44,8 @@ toTree_ c key pid contracts properties widgets =
             simpleTree widgets key metaMaker [] (NumberWidget metaData <| Contracts.SimpleFloat x)
 
         Contracts.BoolValue x ->
-            simpleTree widgets key metaMaker [] (BoolWidget metaData <| Contracts.SimpleBool x)
+            simpleTree widgets key metaMaker [] (SwitchWidget <|
+                Ui.Widgets.Switch.init metaData <| Contracts.SimpleBool x)
 
         Contracts.Function { argument, name, retval, data } ->
             simpleTree widgets
@@ -144,8 +146,8 @@ propertyWidget prop metaData =
         Contracts.TString ->
             StringWidget metaData Contracts.Loading
 
-        Contracts.TBool ->
-            BoolWidget metaData Contracts.Loading
+        Contracts.TBool -> SwitchWidget <|
+            Ui.Widgets.Switch.init metaData Contracts.Loading
 
         _ ->
             UnknownWidget metaData Contracts.Loading

@@ -7,6 +7,7 @@ import Ui.Action exposing (..)
 import Ui.MetaData exposing (..)
 import Ui.Widgets.Function
 import Ui.Widgets.Slider
+import Ui.Widgets.Switch
 
 
 type alias Widgets =
@@ -16,9 +17,9 @@ type alias Widgets =
 type Widget
     = FunctionWidget Ui.Widgets.Function.Model
     | SliderWidget Ui.Widgets.Slider.Model
+    | SwitchWidget Ui.Widgets.Switch.Model
     | ListWidget MetaData
     | StringWidget MetaData Value
-    | BoolWidget MetaData Value
     | NumberWidget MetaData Value
     | UnknownWidget MetaData Value
     | DelegateWidget MetaData Int
@@ -33,6 +34,7 @@ type WidgetsMsg
 type WidgetMsg
     = FunctionMsg Ui.Widgets.Function.Msg
     | SliderMsg Ui.Widgets.Slider.Msg
+    | SwitchMsg Ui.Widgets.Switch.Msg
 
 
 type alias Node =
@@ -136,11 +138,15 @@ updateWidgetValue v ( widget, node ) =
         NumberWidget meta _ ->
             ( NumberWidget meta v, Cmd.none, [] )
 
-        BoolWidget meta _ ->
-            ( BoolWidget meta v, Cmd.none, [] )
-
         UnknownWidget meta _ ->
             ( UnknownWidget meta v, Cmd.none, [] )
+
+        SwitchWidget m ->
+            let
+                ( newModel, cmd, actions ) =
+                    Ui.Widgets.Switch.updateValue v m
+            in
+            ( SwitchWidget newModel, Cmd.map SwitchMsg cmd, actions )
 
         SliderWidget m ->
             let
@@ -161,9 +167,6 @@ updateWidgetMetaData meta ( widget, node ) =
 
         NumberWidget _ v ->
             ( NumberWidget meta v, Cmd.none, [] )
-
-        BoolWidget _ v ->
-            ( BoolWidget meta v, Cmd.none, [] )
 
         UnknownWidget _ v ->
             ( UnknownWidget meta v, Cmd.none, [] )
@@ -193,6 +196,13 @@ updateWidgetMetaData meta ( widget, node ) =
                     Ui.Widgets.Slider.updateMetaData meta m
             in
             ( SliderWidget newModel, Cmd.map SliderMsg cmd, actions )
+
+        SwitchWidget m ->
+            let
+                ( newModel, cmd, actions ) =
+                    Ui.Widgets.Switch.updateMetaData meta m
+            in
+            ( SwitchWidget newModel, Cmd.map SwitchMsg cmd, actions )
 
 
 simpleTree : Widgets -> String -> (Contracts.Properties -> MetaData) -> List WidgetID -> Widget -> ( WidgetID, Widgets )
