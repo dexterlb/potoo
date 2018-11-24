@@ -235,7 +235,24 @@ handleUiAction m id action =
                 , name = name
                 , argument = argument
                 } (String.fromInt id ++ ":" ++ token)
-
+        Ui.Action.RequestSet (pid, propertyID) value ->
+            case m.allProperties |> fetch pid |> fetch propertyID |> (\x -> x.setter) of
+                Just { name } ->
+                    Api.setterCall m.conn
+                        { target = delegate pid
+                        , name = name
+                        , argument = value
+                        } (pid, propertyID)
+                Nothing -> Cmd.none
+        Ui.Action.RequestGet (pid, propertyID) value ->
+            case m.allProperties |> fetch pid |> fetch propertyID |> (\x -> x.getter) of
+                Just { name } ->
+                    Api.getterCall m.conn
+                        { target = delegate pid
+                        , name = name
+                        , argument = value
+                        } (pid, propertyID)
+                Nothing -> Cmd.none
 
 instantCall : VisualContract -> Cmd Msg
 instantCall vc =

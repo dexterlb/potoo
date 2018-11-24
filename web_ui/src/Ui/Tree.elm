@@ -112,6 +112,13 @@ updateWidget outerMsg ( widget, node ) =
             in
                 ( SliderWidget newModel, Cmd.map SliderMsg cmd, actions )
 
+        ( SwitchMsg msg, SwitchWidget model ) ->
+            let
+                ( newModel, cmd, actions ) =
+                    Ui.Widgets.Switch.update msg model
+            in
+                ( SwitchWidget newModel, Cmd.map SwitchMsg cmd, actions )
+
         _ ->
             Debug.todo "widget message of wrong type"
 

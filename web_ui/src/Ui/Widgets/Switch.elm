@@ -7,7 +7,7 @@ import Contracts exposing (Callee, Value(..), inspectType, typeErrorToString, Ty
 import Ui.Action exposing (..)
 import Ui.MetaData exposing (..)
 
-import Html exposing (Html, div, text, button, input)
+import Html exposing (Html, div, text, button, input, Attribute)
 import Html.Attributes exposing (class)
 import Html.Events exposing (onClick, onInput)
 
@@ -25,7 +25,7 @@ type alias Model =
 
 
 type Msg
-    = NoMsg
+    = Toggle
 
 
 init : MetaData -> Value -> Model
@@ -36,8 +36,12 @@ init meta v =
 
 
 update : Msg -> Model -> ( Model, Cmd Msg, List Action )
-update NoMsg model =
-    ( model, Cmd.none, [] )
+update msg model = case (msg, model.value) of
+    (Toggle, Just b) ->
+        let v = JE.bool (not b) in
+            ( model, Cmd.none, [ RequestSet model.metaData.propData.property v ] )
+    (Toggle, Nothing) ->
+        (model, Cmd.none, [])
 
 
 updateValue : Value -> Model -> ( Model, Cmd Msg, List Action )
@@ -51,13 +55,20 @@ updateMetaData meta model =
 view : (Msg -> msg) -> Model -> List (Html msg) -> Html msg
 view lift m children =
     renderHeaderWithChildren [ class "switch" ] m.metaData children <|
-        [ text (case m.value of
-            Just True  -> "\u{2714}"
-            Just False -> "\u{274c}"
-            Nothing    -> "?"
-        ) ]
+        [ div ([ class "checkbox" ] ++ action lift m)
+            [ text (case m.value of
+                Just True  -> "\u{2714}"
+                Just False -> "\u{274c}"
+                Nothing    -> "?"
+            ) ]
+        ]
 
 getValue : Value -> Maybe Bool
 getValue v = case v of
     SimpleBool b -> Just b
     _            -> Nothing
+
+action : (Msg -> msg) -> Model -> List (Attribute msg)
+action lift m = case m.metaData.propData.hasSetter of
+    False -> []
+    True  -> [ onClick (lift Toggle) ]
