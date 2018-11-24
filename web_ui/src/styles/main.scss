@@ -57,4 +57,23 @@
             }
         }
     }
+
+    &.slider {
+        > .body {
+            .outer {
+                display: inline-block;
+                position: relative;
+                width: 200px;
+                height: 10px;
+                background-color: #cccccc;
+            }
+
+            .inner {
+                display: inline-block;
+                position: absolute;
+                height: 10px;
+                background-color: #ff0000;
+            }
+        }
+    }
 }

@@ -38,4 +38,5 @@ renderWidget lift w children = case w of
     BrokenWidget   m pid              -> renderBrokenWidget   m pid
     FunctionWidget model              -> Function.view (lift << FunctionMsg) model children
     SwitchWidget   model              -> Switch.view   (lift << SwitchMsg  ) model children
+    SliderWidget   model              -> Slider.view   (lift << SliderMsg  ) model children
     _                                 -> renderUnknownWidget   children
