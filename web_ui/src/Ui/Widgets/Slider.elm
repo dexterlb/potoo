@@ -57,7 +57,8 @@ view lift m children =
         case m.value of
             Nothing -> [ div [ class "loading" ] [] ]
             Just v  -> let percent = ((v - m.min) / (m.max - m.min)) * 100 in
-                [ div [ class "outer" ]
+                [ div [ class "value" ] [ text (String.fromFloat v) ]
+                , div [ class "outer" ]
                     [ div [ class "inner", style "width" (String.fromFloat percent ++ "%") ] []
                     ]
                 ]

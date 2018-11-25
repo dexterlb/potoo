@@ -60,6 +60,11 @@
 
     &.slider {
         > .body {
+            .value {
+                display: inline-block;
+                width: 30px;
+            }
+
             .outer {
                 display: inline-block;
                 position: relative;
