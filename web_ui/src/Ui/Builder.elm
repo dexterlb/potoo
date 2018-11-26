@@ -144,7 +144,7 @@ propertyWidget prop metaData =
             case Contracts.getMinMax prop of
                 -- todo: parse type here instead of using barbaric getMinMax
                 Just ( min, max ) ->
-                    SliderWidget <| Ui.Widgets.Slider.init metaData Contracts.Loading { min = min, max = max, step = 0.01, speed = 1 }
+                    SliderWidget <| Ui.Widgets.Slider.init metaData Contracts.Loading { min = min, max = max, step = 0.01, speed = 2 }
 
                 Nothing ->
                     NumberWidget metaData Contracts.Loading

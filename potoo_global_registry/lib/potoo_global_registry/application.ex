@@ -18,15 +18,15 @@ defmodule PotooGlobalRegistry.Application do
           %{
             "description" => "The global registry"
           },
-          [name: :potoo_potoo_global_registry]
+          [name: Application.get_env(:potoo_global_registry, :name, :potoo_global_registry)]
         ]
       ),
-    ] ++ if Application.get_env(:potoo_potoo_global_registry, :no_toys, false) do
+    ] ++ if Application.get_env(:potoo_global_registry, :no_toys, false) do
       []
     else
       [
-        worker(PotooGlobalRegistry.Hello, [:potoo_potoo_global_registry, [name: PotooGlobalRegistry.Hello]]),
-        worker(PotooGlobalRegistry.Clock, [:potoo_potoo_global_registry, [name: PotooGlobalRegistry.Clock]]),
+        worker(PotooGlobalRegistry.Hello, [:potoo_global_registry, [name: PotooGlobalRegistry.Hello]]),
+        worker(PotooGlobalRegistry.Clock, [:potoo_global_registry, [name: PotooGlobalRegistry.Clock]]),
       ]
     end
 

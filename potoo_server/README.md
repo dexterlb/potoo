@@ -10,7 +10,7 @@ by adding `server` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:server, "~> 0.1.0"}
+    {:potoo_server, "~> 0.1.0"}
   ]
 end
 ```

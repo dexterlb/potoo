@@ -145,7 +145,7 @@ defmodule PotooServer.StreamServer.Handler do
   end
 
   defp encode_json(data) do
-    Poison.encode!(jsonify(data), pretty: Application.get_env(:server, :json_pretty, false))
+    Poison.encode!(jsonify(data), pretty: Application.get_env(:potoo_server, :json_pretty, false))
   end
 
   @random_string_chars "0123456789abcdefghijklmnopqrstuvwxyz" |> String.split("")

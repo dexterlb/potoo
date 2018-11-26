@@ -47,7 +47,7 @@ defmodule PotooMqtt do
     end
 
     contract_scheme = Map.fetch!(opts_map, :scheme)
-    server          = Map.fetch!(opts_map, :server)
+    server          = Map.fetch!(opts_map, :potoo_server)
 
     OK.for do
       contract_channel <- Potoo.Channel.start_link()

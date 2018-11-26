@@ -12,9 +12,9 @@ defmodule PotooServer.Router do
                      pass:  ["application/json"],
                      json_decoder: Poison
 
-  if not Application.get_env(:server, :dev_proxy, false) do
+  if not Application.get_env(:potoo_server, :dev_proxy, false) do
     plug Plug.Static.IndexHtml
-    plug Plug.Static, at: "/", from: :server
+    plug Plug.Static, at: "/", from: :potoo_server
   end
 
   plug :dispatch
@@ -31,7 +31,7 @@ defmodule PotooServer.Router do
     conn |> reply_json(Api.call(unjsonify(conn.body_params)))
   end
 
-  if Application.get_env(:server, :dev_proxy, false) do
+  if Application.get_env(:potoo_server, :dev_proxy, false) do
     forward "/", to: ReverseProxy, upstream: ["localhost:8080"]
   else
     match _ do
@@ -48,7 +48,7 @@ defmodule PotooServer.Router do
   end
 
   defp encode_json(data) do
-    Poison.encode!(jsonify(data), pretty: Application.get_env(:server, :json_pretty, false))
+    Poison.encode!(jsonify(data), pretty: Application.get_env(:potoo_server, :json_pretty, false))
   end
 
   def jsonify(data) do

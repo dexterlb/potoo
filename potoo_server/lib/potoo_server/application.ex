@@ -17,7 +17,7 @@ defmodule PotooServer.Application do
       # {PotooServer.Worker, arg},
 
       worker(PidCache, [
-        [{:delegate, Application.fetch_env!(:server, :root_target), 0}],
+        [{:delegate, Application.fetch_env!(:potoo_server, :root_target), 0}],
         [name: PidCache]
       ]),
       {
@@ -25,7 +25,7 @@ defmodule PotooServer.Application do
         name: Cache
       },
       worker(PotooServer.StreamServer.TcpServer, [
-        [port: Application.fetch_env!(:server, :tcp_port)],
+        [port: Application.fetch_env!(:potoo_server, :tcp_port)],
       ]),
 
 
@@ -34,7 +34,7 @@ defmodule PotooServer.Application do
         scheme: :http,
         plug: PotooServer.Router,
         options: [
-          port: Application.fetch_env!(:server, :web_port),
+          port: Application.fetch_env!(:potoo_server, :web_port),
           dispatch: PotooServer.Dispatcher.dispatch
         ]
       }
