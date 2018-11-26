@@ -14,8 +14,9 @@ defmodule PotooGlobalRegistry.Hello do
       })
 
       boing_chan <- Potoo.Channel.start_link()
+      slider_chan <- Potoo.Channel.start_link()
     after
-      %{boing_value: 4, boing_chan: boing_chan}
+      %{boing_value: 4, boing_chan: boing_chan, slider_value: 2, slider_chan: slider_chan}
     end
   end
 
@@ -40,7 +41,7 @@ defmodule PotooGlobalRegistry.Hello do
           argument: nil,
           retval: nil,
           data: %{
-            "description": "Boing!"
+            "description" => "Boing!"
           }
         },
         "ui_tags" => "proxy",
@@ -61,6 +62,32 @@ defmodule PotooGlobalRegistry.Hello do
             "min" => 0,
             "max" => 20,
           }}}
+        },
+      },
+      "slider" => %{
+        "get" => %Potoo.Contract.Function{
+          name: "slider.get",
+          argument: nil,
+          retval: {:type, :float, %{
+            "min" => 0,
+            "max" => 20,
+          }}
+        },
+        "subscribe" => %Potoo.Contract.Function{
+          name: "slider.subscribe",
+          argument: nil,
+          retval: {:channel, {:type, :float, %{
+            "min" => 0,
+            "max" => 20,
+          }}}
+        },
+        "set" => %Potoo.Contract.Function{
+          name: "slider.set",
+          argument: {:type, :float, %{
+            "min" => 0,
+            "max" => 20,
+          }},
+          retval: nil
         },
       }
     }
@@ -92,5 +119,18 @@ defmodule PotooGlobalRegistry.Hello do
 
   def handle_call({"boinger.subscribe", nil}, _, state = %{boing_chan: boing_chan}) do
     {:reply, boing_chan, state}
+  end
+
+  def handle_call({"slider.get", nil}, _, state = %{slider_value: v}) do
+    {:reply, v, state}
+  end
+
+  def handle_call({"slider.set", v}, _, state = %{slider_chan: slider_chan}) do
+    Potoo.Channel.send(slider_chan, v)
+    {:reply, nil, %{state | slider_value: v}}
+  end
+
+  def handle_call({"slider.subscribe", nil}, _, state = %{slider_chan: slider_chan}) do
+    {:reply, slider_chan, state}
   end
 end
