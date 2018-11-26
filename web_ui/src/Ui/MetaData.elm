@@ -12,6 +12,7 @@ type alias MetaData =
     , uiLevel : Int
     , description : String
     , enabled : Bool
+    , uiTags : List String
     , extra : Data
     }
 
@@ -31,6 +32,7 @@ noMetaData =
     , description = ""
     , enabled = True
     , extra = emptyData
+    , uiTags = []
     , propData = noPropData
     }
 
@@ -50,6 +52,9 @@ getMetaData key c pid properties =
         Contracts.StringValue _ ->
             case key of
                 "description" ->
+                    { noMetaData | key = key, uiLevel = 1 }
+
+                "ui_tags" ->
                     { noMetaData | key = key, uiLevel = 1 }
 
                 _ ->
@@ -111,6 +116,13 @@ dataMetaData key d =
             |> Maybe.withDefault (Json.Encode.bool True)
             |> Json.Decode.decodeValue Json.Decode.bool
             |> Result.withDefault True
+    , uiTags =
+        Dict.get "ui_tags" d
+            |> Maybe.withDefault (Json.Encode.string "")
+            |> Json.Decode.decodeValue Json.Decode.string
+            |> Result.withDefault ""
+            |> String.split ","
+            |> List.filter (\x -> x /= "")
     , extra = d
     , propData = noPropData
     }

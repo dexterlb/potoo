@@ -59,5 +59,7 @@ updateMetaData meta model =
 view : (Msg -> msg) -> Model -> List (Html msg) -> Html msg
 view lift m children =
     div ((metaAttributes m.metaData) ++ [ class "button" ]) <|
-        [ button [ onClick (lift Call) ] [ text <| label m.metaData ]
+        [ div [ class "body" ]
+            [ button [ onClick (lift Call) ] [ text <| label m.metaData ]
+            ]
         ]

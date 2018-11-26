@@ -528,37 +528,38 @@ metaData vc name =
                 (Dict.get "ui_level" d |> Maybe.map valueOf |> Maybe.andThen getIntValue |> Maybe.withDefault 0)
                 (Dict.get "description" d |> Maybe.map valueOf |> Maybe.andThen getStringValue |> Maybe.withDefault name)
                 (Dict.get "enabled" d |> Maybe.map valueOf |> Maybe.andThen getBoolValue |> Maybe.withDefault True)
+                []
                 emptyData
 
         VStringValue _ ->
             case isMeta name of
                 True ->
-                    MetaData name noPropData 1 name True emptyData
+                    MetaData name noPropData 1 name True [] emptyData
 
                 False ->
-                    MetaData name noPropData 0 name True emptyData
+                    MetaData name noPropData 0 name True [] emptyData
 
         VBoolValue _ ->
             case isMeta name of
                 True ->
-                    MetaData name noPropData 1 name True emptyData
+                    MetaData name noPropData 1 name True [] emptyData
 
                 False ->
-                    MetaData name noPropData 0 name True emptyData
+                    MetaData name noPropData 0 name True [] emptyData
 
         VIntValue _ ->
             case isMeta name of
                 True ->
-                    MetaData name noPropData 1 name True emptyData
+                    MetaData name noPropData 1 name True [] emptyData
 
                 False ->
-                    MetaData name noPropData 0 name True emptyData
+                    MetaData name noPropData 0 name True [] emptyData
 
         VProperty { contract } ->
             metaData contract name
 
         _ ->
-            MetaData name noPropData 0 name True emptyData
+            MetaData name noPropData 0 name True [] emptyData
 
 
 isMeta : String -> Bool

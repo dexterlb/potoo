@@ -14,19 +14,27 @@ renderHeaderExtra attrs meta body extra =
     ] ++ extra)
 
 metaAttributes : MetaData -> Attributes msg
-metaAttributes { key, description, uiLevel } =
+metaAttributes { key, description, uiLevel, uiTags, enabled } =
     let
         level = case uiLevel of
             0 -> "basic"
             1 -> "average"
             _ -> "advanced"
     in
-        [ class "widget", class ("level-" ++ level) ]
+        [ class "widget"
+        , class ("level-" ++ level)
+        , boolClass "enabled" enabled
+        ] ++ (List.map (\s -> class <| "ui-" ++ s) uiTags)
 
 label : MetaData -> String
 label { key, description } = case description of
     ""   -> key
     _    -> description
+
+boolClass : String -> Bool -> Attribute msg
+boolClass prefix b = class <| prefix ++ "-" ++ (case b of
+    True    -> "yes"
+    False   -> "no")
 
 renderHeader : Attributes msg -> MetaData -> List (Html msg) -> Html msg
 renderHeader attrs m body = renderHeaderExtra attrs m body []

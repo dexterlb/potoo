@@ -43,7 +43,7 @@ defmodule PotooGlobalRegistry.Hello do
             "description": "Boing!"
           }
         },
-        proxy: true,
+        "ui_tags" => "proxy",
       },
       "boinger" => %{
         "get" => %Potoo.Contract.Function{
