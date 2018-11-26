@@ -21,6 +21,7 @@ import Styles
 import Ui
 import Ui.Action
 import Ui.MetaData exposing (..)
+import Animation
 import Url exposing (Url)
 import Url.Parser as UP
 import Url.Parser exposing ((</>))
@@ -60,6 +61,7 @@ type alias Model =
     , callResult : Maybe Json.Encode.Value
     , ui : Ui.Model
     , key: Key
+    , animationTime: Float
     }
 
 
@@ -93,6 +95,7 @@ emptyModel url key status =
     , callArgument = Nothing
     , callResult = Nothing
     , ui = Ui.blank
+    , animationTime = 0
     }
 
 type Status
@@ -139,6 +142,7 @@ type Msg
     | UrlChanged Url
     | UrlRequested UrlRequest
     | UiMsg Ui.Msg
+    | Animate Float
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -219,6 +223,9 @@ update msg model =
                     Ui.update (handleUiAction model) UiMsg uiMsg model.ui
             in
             ( { model | ui = newUi }, cmd )
+
+        Animate time -> let diff = time - model.animationTime in
+            ( { model | ui = Ui.animate (time, diff) model.ui, animationTime = time } , Cmd.none )
 
 
 nextPing : Cmd Msg
@@ -491,8 +498,11 @@ updateUiProperty prop ( m, x ) =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions _ =
-    Api.subscriptions SocketMessage
+subscriptions _ = Sub.batch
+    [ Api.subscriptions SocketMessage
+    , Animation.times   Animate
+    ]
+
 
 
 

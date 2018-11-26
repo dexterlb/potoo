@@ -30,3 +30,9 @@ app.ports.outgoing.subscribe((msg: any) => {
         console.log('unable to handle port message', msg);
     }
 });
+
+function animate(time: number) {
+    app.ports.rawTimes.send(time / 1000);
+    requestAnimationFrame(animate);
+}
+requestAnimationFrame(animate);

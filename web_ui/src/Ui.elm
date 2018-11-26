@@ -1,4 +1,4 @@
-module Ui exposing (Action, Model, Msg, blank, build, getValue, update, updateProperty, pushResult, view)
+module Ui exposing (Action, Model, Msg, blank, build, getValue, update, updateProperty, animate, pushResult, view)
 
 import Contracts exposing (Contract, Pid, Properties, PropertyID, fetch)
 import Dict exposing (Dict)
@@ -73,6 +73,9 @@ updateProperty liftAction liftMsg ( pid, id ) properties m =
             updateWidgetsMetaData liftAction liftMsg parentID properties widgets
     in
     ( { m | widgets = widgets2 }, Cmd.batch [ cmd, cmd2 ] )
+
+animate : (Float, Float) -> Model -> Model
+animate time m = { m | widgets = animateWidgets time m.widgets }
 
 pushResult : (WidgetID -> Action -> Cmd m) -> (Msg -> m) -> WidgetID -> Ui.Action.ActionResult -> Model -> (Model, Cmd m)
 pushResult liftAction liftMsg id result m =

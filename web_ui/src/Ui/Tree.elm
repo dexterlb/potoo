@@ -83,6 +83,9 @@ updateWidgetsMetaData liftAction liftMsg id properties widgets =
     updateWidgetMetaData meta (getWidget id widgets) |> liftUpdateResult id widgets (liftAction id) liftMsg
 
 
+animateWidgets : (Float, Float) -> Widgets -> Widgets
+animateWidgets time widgets = mapToWidgets (animateWidget time) widgets
+
 liftUpdateResult : WidgetID -> Widgets -> (Action -> Cmd m) -> (WidgetsMsg -> m) -> ( Widget, Cmd WidgetMsg, List Action ) -> ( Widgets, Cmd m )
 liftUpdateResult id widgets liftAction liftMsg ( widget, cmd, actions ) =
     let
@@ -121,6 +124,11 @@ updateWidget outerMsg ( widget, node ) =
 
         _ ->
             Debug.todo "widget message of wrong type"
+
+animateWidget : (Float, Float) -> Widget -> Widget
+animateWidget time widget = case widget of
+    SliderWidget model -> SliderWidget <| Ui.Widgets.Slider.animate time model
+    _ -> widget
 
 pushResultToWidget : ActionResult -> ( Widget, Node ) -> ( Widget, Cmd WidgetMsg, List Action )
 pushResultToWidget result ( widget, node ) =
@@ -242,6 +250,9 @@ replaceWidget id f ( widgets, last ) =
 setWidget : WidgetID -> Widget -> Widgets -> Widgets
 setWidget id w ( widgets, last ) =
     ( Dict.update id (Maybe.map (\( _, n ) -> ( w, n ))) widgets, last )
+
+mapToWidgets : (Widget -> Widget) -> Widgets -> Widgets
+mapToWidgets f (widgets, last) = (Dict.map (\k (w, n) -> (f w, n)) widgets, last)
 
 
 noWidgets : Widgets
