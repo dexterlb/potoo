@@ -6,6 +6,7 @@ import Ui.Tree exposing (..)
 
 import Ui.Widgets.Simple exposing (..)
 import Ui.Widgets.Function as Function
+import Ui.Widgets.Button   as Button
 import Ui.Widgets.Slider   as Slider
 import Ui.Widgets.Switch   as Switch
 
@@ -37,6 +38,7 @@ renderWidget lift w children = case w of
     DelegateWidget m pid              -> renderDelegateWidget m pid children
     BrokenWidget   m pid              -> renderBrokenWidget   m pid
     FunctionWidget model              -> Function.view (lift << FunctionMsg) model children
+    ButtonWidget   model              -> Button.view   (lift << ButtonMsg) model children
     SwitchWidget   model              -> Switch.view   (lift << SwitchMsg  ) model children
     SliderWidget   model              -> Slider.view   (lift << SliderMsg  ) model children
     _                                 -> renderUnknownWidget   children

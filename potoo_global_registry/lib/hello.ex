@@ -39,7 +39,11 @@ defmodule PotooGlobalRegistry.Hello do
           name: "boing",
           argument: nil,
           retval: nil,
+          data: %{
+            "description": "Boing!"
+          }
         },
+        proxy: true,
       },
       "boinger" => %{
         "get" => %Potoo.Contract.Function{

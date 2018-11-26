@@ -1,10 +1,11 @@
 module Ui.Builder exposing (parentMap, propertyMap, toTree)
 
-import Contracts exposing (Contract, Pid, Properties, PropertyID, fetch, makeCallee)
+import Contracts exposing (Contract, Pid, Properties, PropertyID, fetch, makeCallee, Type(..))
 import Dict exposing (Dict)
 import Ui.MetaData exposing (..)
 import Ui.Tree exposing (..)
 import Ui.Widgets.Function
+import Ui.Widgets.Button
 import Ui.Widgets.Slider
 import Ui.Widgets.Switch
 
@@ -48,15 +49,23 @@ toTree_ c key pid contracts properties widgets =
                 Ui.Widgets.Switch.init metaData <| Contracts.SimpleBool x)
 
         Contracts.Function { argument, name, retval, data } ->
-            simpleTree widgets
-                key
-                metaMaker
-                []
-                (FunctionWidget <|
-                    Ui.Widgets.Function.init
+            let
+                widget = case (argument, retval) of
+                    (TNil, TNil) -> ButtonWidget <| Ui.Widgets.Button.init
                         metaData
                         { argument = argument, name = name, retval = retval, pid = pid }
-                )
+                    _ ->
+                        (FunctionWidget <|
+                            Ui.Widgets.Function.init
+                                metaData
+                                { argument = argument, name = name, retval = retval, pid = pid }
+                        )
+            in
+                simpleTree widgets
+                    key
+                    metaMaker
+                    []
+                    widget
 
         Contracts.Delegate { destination, data } ->
             let

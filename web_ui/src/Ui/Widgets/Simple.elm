@@ -7,28 +7,36 @@ import Html.Attributes exposing (class)
 type alias Attributes msg = List (Attribute msg)
 
 renderHeaderExtra : Attributes msg -> MetaData -> List (Html msg) -> List (Html msg) -> Html msg
-renderHeaderExtra attrs { key, description, uiLevel } body extra =
-    let name = case description of
-            ""      -> key
-            desc    -> desc
-    in let
+renderHeaderExtra attrs meta body extra =
+    div (metaAttributes meta ++ attrs) ([
+        div [ class "header" ] [ text <| label meta],
+        div [ class "body"   ] body
+    ] ++ extra)
+
+metaAttributes : MetaData -> Attributes msg
+metaAttributes { key, description, uiLevel } =
+    let
         level = case uiLevel of
             0 -> "basic"
             1 -> "average"
             _ -> "advanced"
     in
-        div ([ class "widget", class ("level-" ++ level) ] ++ attrs) ([
-            div [ class "header" ] [ text name ],
-            div [ class "body"   ] body
-        ] ++ extra)
+        [ class "widget", class ("level-" ++ level) ]
+
+label : MetaData -> String
+label { key, description } = case description of
+    ""   -> key
+    _    -> description
 
 renderHeader : Attributes msg -> MetaData -> List (Html msg) -> Html msg
 renderHeader attrs m body = renderHeaderExtra attrs m body []
 
 renderHeaderWithChildren : Attributes msg -> MetaData -> List (Html msg) -> List (Html msg) -> Html msg
 renderHeaderWithChildren attrs m children body = renderHeaderExtra attrs m body
-    [ div [ class "children" ] (childify children) ]
+    [ renderChildren children ]
 
+renderChildren : List (Html msg) -> Html msg
+renderChildren children = div [ class "children" ] (childify children)
 
 childify : List (Html msg) -> List (Html msg)
 childify children =

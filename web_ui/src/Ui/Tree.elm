@@ -6,6 +6,7 @@ import Dict exposing (Dict)
 import Ui.Action exposing (..)
 import Ui.MetaData exposing (..)
 import Ui.Widgets.Function
+import Ui.Widgets.Button
 import Ui.Widgets.Slider
 import Ui.Widgets.Switch
 
@@ -16,6 +17,7 @@ type alias Widgets =
 
 type Widget
     = FunctionWidget Ui.Widgets.Function.Model
+    | ButtonWidget Ui.Widgets.Button.Model
     | SliderWidget Ui.Widgets.Slider.Model
     | SwitchWidget Ui.Widgets.Switch.Model
     | ListWidget MetaData
@@ -33,6 +35,7 @@ type WidgetsMsg
 
 type WidgetMsg
     = FunctionMsg Ui.Widgets.Function.Msg
+    | ButtonMsg Ui.Widgets.Button.Msg
     | SliderMsg Ui.Widgets.Slider.Msg
     | SwitchMsg Ui.Widgets.Switch.Msg
 
@@ -107,6 +110,13 @@ updateWidget outerMsg ( widget, node ) =
                     Ui.Widgets.Function.update msg model
             in
                 ( FunctionWidget newModel, Cmd.map FunctionMsg cmd, actions )
+
+        ( ButtonMsg msg, ButtonWidget model ) ->
+            let
+                ( newModel, cmd, actions ) =
+                    Ui.Widgets.Button.update msg model
+            in
+                ( ButtonWidget newModel, Cmd.map ButtonMsg cmd, actions )
 
         ( SliderMsg msg, SliderWidget model ) ->
             let
@@ -204,6 +214,13 @@ updateWidgetMetaData meta ( widget, node ) =
                     Ui.Widgets.Function.updateMetaData meta m
             in
             ( FunctionWidget newModel, Cmd.map FunctionMsg cmd, actions )
+
+        ButtonWidget m ->
+            let
+                ( newModel, cmd, actions ) =
+                    Ui.Widgets.Button.updateMetaData meta m
+            in
+            ( ButtonWidget newModel, Cmd.map ButtonMsg cmd, actions )
 
         SliderWidget m ->
             let
