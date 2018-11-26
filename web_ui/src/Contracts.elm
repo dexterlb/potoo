@@ -123,37 +123,6 @@ type Value
     | Loading
 
 
-type VisualContract
-    = VStringValue String
-    | VIntValue Int
-    | VFloatValue Float
-    | VBoolValue Bool
-    | VConnectedDelegate
-        { contract : VisualContract
-        , destination : Int
-        , data : Data
-        }
-    | VBrokenDelegate
-        { destination : Int
-        , data : Data
-        }
-    | VFunction
-        { argument : Type
-        , name : String
-        , retval : Type
-        , data : Data
-        , pid : Int
-        }
-    | VMapContract (Dict String VisualContract)
-    | VListContract (List VisualContract)
-    | VProperty
-        { pid : Int
-        , propertyID : Int
-        , value : Property
-        , contract : VisualContract
-        }
-
-
 delegate : Pid -> DelegateStruct
 delegate p =
     { destination = p, data = Dict.empty }
@@ -447,80 +416,6 @@ tUnknownDecoder =
         Json.Decode.value
 
 
-toVisual : Int -> Dict Int Contract -> Properties -> VisualContract
-toVisual pid contracts properties =
-    case Dict.get pid contracts of
-        Just contract ->
-            toVisual_ contract pid contracts properties
-
-        Nothing ->
-            VBrokenDelegate
-                { destination = pid
-                , data = Dict.fromList []
-                }
-
-
-toVisual_ : Contract -> Int -> Dict Int Contract -> Properties -> VisualContract
-toVisual_ c pid contracts properties =
-    case c of
-        StringValue s ->
-            VStringValue s
-
-        IntValue i ->
-            VIntValue i
-
-        BoolValue i ->
-            VBoolValue i
-
-        FloatValue f ->
-            VFloatValue f
-
-        Function { argument, name, retval, data } ->
-            VFunction
-                { argument = argument
-                , name = name
-                , retval = retval
-                , data = data
-                , pid = pid
-                }
-
-        Delegate { destination, data } ->
-            case Dict.get destination contracts of
-                Just contract ->
-                    VConnectedDelegate
-                        { contract = toVisual_ contract destination contracts properties
-                        , data = data
-                        , destination = destination
-                        }
-
-                Nothing ->
-                    VBrokenDelegate
-                        { data = data
-                        , destination = destination
-                        }
-
-        MapContract d ->
-            Dict.map (\_ contract -> toVisual_ contract pid contracts properties) d
-                |> VMapContract
-
-        ListContract l ->
-            List.map (\contract -> toVisual_ contract pid contracts properties) l
-                |> VListContract
-
-        PropertyKey propertyID contract ->
-            properties
-                |> fetch pid
-                |> fetch propertyID
-                |> (\property ->
-                        VProperty
-                            { pid = pid
-                            , propertyID = propertyID
-                            , value = property
-                            , contract = toVisual_ contract pid contracts properties
-                            }
-                   )
-
-
 inspectType : Type -> String
 inspectType givenType =
     case givenType of
@@ -791,43 +686,6 @@ propertifyMap l data =
             ( ( hk, contract ) :: newTail, newData2 )
 
 
-valueOf : VisualContract -> VisualContract
-valueOf vc =
-    case vc of
-        VStringValue _ ->
-            vc
-
-        VIntValue _ ->
-            vc
-
-        VFloatValue _ ->
-            vc
-
-        VBoolValue _ ->
-            vc
-
-        VProperty { value } ->
-            case value.value of
-                Just (SimpleInt x) ->
-                    VIntValue x
-
-                Just (SimpleString x) ->
-                    VStringValue x
-
-                Just (SimpleFloat x) ->
-                    VFloatValue x
-
-                Just (SimpleBool x) ->
-                    VBoolValue x
-
-                _ ->
-                    vc
-
-        _ ->
-            vc
-
-
-
 -- todo: make those work on deep types
 
 
@@ -878,46 +736,6 @@ firstJust l =
             firstJust t
 
 
-getIntValue : VisualContract -> Maybe Int
-getIntValue c =
-    case c of
-        VIntValue i ->
-            Just i
-
-        _ ->
-            Nothing
-
-
-getBoolValue : VisualContract -> Maybe Bool
-getBoolValue c =
-    case c of
-        VBoolValue b ->
-            Just b
-
-        _ ->
-            Nothing
-
-
-getStringValue : VisualContract -> Maybe String
-getStringValue c =
-    case c of
-        VStringValue i ->
-            Just i
-
-        _ ->
-            Nothing
-
-
-getFloatValue : VisualContract -> Maybe Float
-getFloatValue c =
-    case c of
-        VFloatValue i ->
-            Just i
-
-        _ ->
-            Nothing
-
-
 emptyData : Data
 emptyData =
     Dict.empty
@@ -942,22 +760,6 @@ type TypeError
     | CannotCoerce JE.Value Type
     | NotSupported String
     | KeysDiffer (List String) (List String)
---     = TNil
---     | TInt
---     | TFloat
---     | TAtom
---     | TString
---     | TBool
---     | TLiteral String
---     | TType Type Data
---     | TDelegate
---     | TChannel Type
---     | TUnion Type Type
---     | TList Type
---     | TMap Type Type
---     | TTuple (List Type)
---     | TStruct (Dict String Type)
---     | TUnknown String
 
 typeErrorToString : TypeError -> String
 typeErrorToString err = case err of
