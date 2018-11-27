@@ -150,6 +150,13 @@ pushResultToWidget result ( widget, node ) =
             in
                 ( FunctionWidget newModel, Cmd.map FunctionMsg cmd, actions )
 
+        ButtonWidget model ->
+            let
+                ( newModel, cmd, actions ) =
+                    Ui.Widgets.Button.pushResult result model
+            in
+                ( ButtonWidget newModel, Cmd.map ButtonMsg cmd, actions )
+
         _ ->
             Debug.todo "widget of wrong type"
 

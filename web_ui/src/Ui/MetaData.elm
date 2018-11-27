@@ -48,34 +48,7 @@ noPropData =
 
 getMetaData : String -> Contract -> Pid -> Properties -> MetaData
 getMetaData key c pid properties =
-    case c of
-        Contracts.StringValue _ ->
-            case key of
-                "description" ->
-                    { noMetaData | key = key, uiLevel = 1 }
-
-                "ui_tags" ->
-                    { noMetaData | key = key, uiLevel = 1 }
-
-                _ ->
-                    { noMetaData | key = key }
-
-        Contracts.BoolValue _ ->
-            case key of
-                "enabled" ->
-                    { noMetaData | key = key, uiLevel = 1 }
-
-                _ ->
-                    { noMetaData | key = key }
-
-        Contracts.IntValue _ ->
-            case key of
-                "ui_level" ->
-                    { noMetaData | key = key, uiLevel = 1 }
-
-                _ ->
-                    { noMetaData | key = key }
-
+    demoteMeta key <| case c of
         Contracts.PropertyKey propertyID _ ->
             let
                 { getter, setter, subscriber } =
@@ -96,6 +69,13 @@ getMetaData key c pid properties =
 
         _ ->
             extractData c pid properties |> dataMetaData key
+
+demoteMeta : String -> MetaData -> MetaData
+demoteMeta key meta =
+    if List.member key ["enabled", "ui_level", "description", "ui_tags"] then
+        { meta | uiLevel = 1 }
+    else
+        meta
 
 
 dataMetaData : String -> Data -> MetaData
