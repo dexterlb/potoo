@@ -6,7 +6,7 @@ defmodule Mix.Tasks.BuildWeb do
   def run(_) do
     # this is a major hack. fixme.
     f = __ENV__.file
-    System.cmd("sh", [
+    {_, 0} = System.cmd("sh", [
       "-c", "
            cd \"$(dirname '#{f}')\"/../../.. \
         && mkdir -p priv/static \
