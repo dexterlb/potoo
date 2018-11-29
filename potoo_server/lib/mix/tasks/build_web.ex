@@ -10,10 +10,12 @@ defmodule Mix.Tasks.BuildWeb do
       "-c", "
            cd \"$(dirname '#{f}')\"/../../.. \
         && mkdir -p priv/static \
-        && pushd ../web_ui \
+        && { pushd ../web_ui || pushd ../../web_ui/web_ui; } \
+        && web_ui=$(pwd) \
+        && npm run install-deps \
         && npm run make \
         && popd \
-        && cp -rfvT ../web_ui/dist priv/static
+        && cp -rfvT \"$web_ui\"/dist priv/static
       "
       ], into: IO.stream(:stdio, :line)
     )
