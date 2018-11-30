@@ -32,7 +32,8 @@ defmodule PotooGlobalRegistry.Hello do
         }},
         retval: :string,
         data: %{
-          "description" => "Performs a greeting"
+          "description" => "Performs a greeting",
+          "ui_tags" => "order:1"
         }
       },
       "boing" => %{
@@ -44,7 +45,7 @@ defmodule PotooGlobalRegistry.Hello do
             "description" => "Boing!"
           }
         },
-        "ui_tags" => "proxy",
+        "ui_tags" => "proxy,order:3",
       },
       "boinger" => %{
         "get" => %Potoo.Contract.Function{
@@ -63,6 +64,7 @@ defmodule PotooGlobalRegistry.Hello do
             "max" => 20,
           }}}
         },
+        "ui_tags" => "order:4"
       },
       "slider" => %{
         "get" => %Potoo.Contract.Function{
@@ -89,7 +91,8 @@ defmodule PotooGlobalRegistry.Hello do
           }},
           retval: nil
         },
-      }
+        "ui_tags" => "order:5",
+      },
     }
 
   }

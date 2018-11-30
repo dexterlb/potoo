@@ -200,7 +200,7 @@ getNumberTag k m = getTag k m |> Maybe.andThen (\tag -> case tag of
 
 uiLevel : MetaData -> Float
 uiLevel m = getNumberTag "level" m.uiTags |> Maybe.withDefault
-    (if List.member m.key ["enabled", "description", "ui_tags"] then
+    (if List.member m.key ["enabled", "description", "ui_tags", "get", "set", "subscribe"] then
         1
      else
         0

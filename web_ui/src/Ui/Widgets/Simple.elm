@@ -1,8 +1,8 @@
 module Ui.Widgets.Simple exposing (..)
 
-import Ui.MetaData exposing (MetaData, noMetaData, uiTagsToStrings, uiLevel)
+import Ui.MetaData exposing (MetaData, noMetaData, uiTagsToStrings, uiLevel, getNumberTag)
 import Html exposing (Html, div, text, Attribute)
-import Html.Attributes exposing (class)
+import Html.Attributes exposing (class, style)
 
 type alias Attributes msg = List (Attribute msg)
 
@@ -21,7 +21,12 @@ metaAttributes ({ key, description, uiTags, enabled } as meta)=
         [ class "widget"
         , class ("level-" ++ level)
         , boolClass "enabled" enabled
-        ] ++ (List.map (\s -> class <| "ui-" ++ s) <| uiTagsToStrings uiTags)
+        ]
+        ++ (getNumberTag "order" uiTags |> (\order -> case order of
+                Just o  -> [ style "order" (String.fromFloat o) ]
+                Nothing -> []
+            ))
+        ++ (List.map (\s -> class <| "ui-" ++ s) <| uiTagsToStrings uiTags)
 
 label : MetaData -> String
 label { key, description } = case description of
@@ -44,8 +49,7 @@ renderChildren : List (Html msg) -> Html msg
 renderChildren children = div [ class "children" ] (childify children)
 
 childify : List (Html msg) -> List (Html msg)
-childify children =
-    List.map (\child -> div [ class "child" ] [ child ]) children
+childify children = children -- do nothing for now
 
 renderStringWidget : MetaData -> String -> List (Html msg) -> Html msg
 renderStringWidget m v children = renderHeaderWithChildren [ class "string-value" ] m children <|
@@ -63,7 +67,7 @@ renderBoolWidget m b children = renderHeaderWithChildren [ class "bool-value" ] 
     ) ]
 
 renderListWidget   : MetaData -> List (Html msg) -> Html msg
-renderListWidget m children = renderHeader [ class "list" ] m <| childify children
+renderListWidget m children = renderHeaderWithChildren [ class "list" ] m children []
 
 renderDelegateWidget : MetaData -> Int -> List (Html msg) -> Html msg
 renderDelegateWidget m _ children = renderHeader [ class "connected-delegate" ] m <|

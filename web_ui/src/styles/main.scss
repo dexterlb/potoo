@@ -19,10 +19,6 @@
         }
     }
 
-    .children {
-        display: none;
-    }
-
     .enabled-no {
         pointer-events: none;
     }
@@ -99,6 +95,11 @@
             margin-left: 0px;
         }
     }
+}
+
+.children {
+    display: flex;
+    flex-direction: column;
 }
 
 .enabled-no {
