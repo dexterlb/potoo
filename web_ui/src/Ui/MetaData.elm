@@ -172,10 +172,6 @@ parseUiTagValue s = case String.toFloat s of
     Just  f -> NumberTag f
     Nothing -> StringTag s
 
-splitUpTo : Int -> String -> String -> List String
-splitUpTo n sep s = let parts = String.split sep s in
-    (List.take (n - 1) parts) ++ [String.join sep (List.drop (n - 1) parts)]
-
 uiTagsToStrings : UiTags -> List String
 uiTagsToStrings tags = tags |> Dict.toList |> List.map uiTagToString
 
@@ -205,3 +201,16 @@ uiLevel m = getNumberTag "level" m.uiTags |> Maybe.withDefault
      else
         0
     )
+
+splitUpTo : Int -> String -> String -> List String
+splitUpTo n sep s =
+    let
+        parts = String.split sep s
+    in let
+        left  = List.take (n - 1) parts
+        right = List.drop (n - 1) parts
+    in
+        left ++ (case right of
+            [] -> []
+            _  -> [String.join sep right]
+        )
