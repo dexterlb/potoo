@@ -1,6 +1,6 @@
 module Ui.Widgets.Simple exposing (..)
 
-import Ui.MetaData exposing (MetaData, noMetaData)
+import Ui.MetaData exposing (MetaData, noMetaData, uiTagsToStrings, uiLevel)
 import Html exposing (Html, div, text, Attribute)
 import Html.Attributes exposing (class)
 
@@ -14,17 +14,14 @@ renderHeaderExtra attrs meta body extra =
     ] ++ extra)
 
 metaAttributes : MetaData -> Attributes msg
-metaAttributes { key, description, uiLevel, uiTags, enabled } =
+metaAttributes ({ key, description, uiTags, enabled } as meta)=
     let
-        level = case uiLevel of
-            0 -> "basic"
-            1 -> "average"
-            _ -> "advanced"
+        level = if uiLevel meta >= 1.0 then "advanced" else "basic"
     in
         [ class "widget"
         , class ("level-" ++ level)
         , boolClass "enabled" enabled
-        ] ++ (List.map (\s -> class <| "ui-" ++ s) uiTags)
+        ] ++ (List.map (\s -> class <| "ui-" ++ s) <| uiTagsToStrings uiTags)
 
 label : MetaData -> String
 label { key, description } = case description of

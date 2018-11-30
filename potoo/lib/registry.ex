@@ -94,7 +94,7 @@ defmodule Potoo.Registry do
           },
           data: %{
             "description" => "Registers a new service into the registry",
-            "ui_level" => 2
+            "ui_tags" => "level:2"
           }
         },
         "deregister" => %Potoo.Contract.Function{
@@ -111,7 +111,7 @@ defmodule Potoo.Registry do
           },
           data: %{
             "description" => "Deregisters a service from the registry",
-            "ui_level" => 2
+            "ui_tags" => "level:2"
           }
         },
         "services" => services

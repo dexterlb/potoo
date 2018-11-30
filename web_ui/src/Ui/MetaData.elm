@@ -1,4 +1,4 @@
-module Ui.MetaData exposing (MetaData, PropData, dataMetaData, getMetaData, noMetaData, noPropData)
+module Ui.MetaData exposing (..)
 
 import Contracts exposing (Contract, Data, Pid, Properties, PropertyID, emptyData, fetch)
 import Dict exposing (Dict)
@@ -9,12 +9,18 @@ import Json.Encode
 type alias MetaData =
     { key : String
     , propData : PropData
-    , uiLevel : Int
     , description : String
     , enabled : Bool
-    , uiTags : List String
+    , uiTags : UiTags
     , extra : Data
     }
+
+type alias UiTags = Dict String UiTagValue
+
+type UiTagValue
+    = Tag
+    | StringTag String
+    | NumberTag Float
 
 
 type alias PropData =
@@ -28,11 +34,10 @@ type alias PropData =
 noMetaData : MetaData
 noMetaData =
     { key = ""
-    , uiLevel = 0
     , description = ""
     , enabled = True
     , extra = emptyData
-    , uiTags = []
+    , uiTags = Dict.empty
     , propData = noPropData
     }
 
@@ -48,7 +53,7 @@ noPropData =
 
 getMetaData : String -> Contract -> Pid -> Properties -> MetaData
 getMetaData key c pid properties =
-    demoteMeta key <| case c of
+    case c of
         Contracts.PropertyKey propertyID _ ->
             let
                 { getter, setter, subscriber } =
@@ -70,22 +75,10 @@ getMetaData key c pid properties =
         _ ->
             extractData c pid properties |> dataMetaData key
 
-demoteMeta : String -> MetaData -> MetaData
-demoteMeta key meta =
-    if List.member key ["enabled", "ui_level", "description", "ui_tags"] then
-        { meta | uiLevel = 1 }
-    else
-        meta
-
 
 dataMetaData : String -> Data -> MetaData
 dataMetaData key d =
     { key = key
-    , uiLevel =
-        Dict.get "ui_level" d
-            |> Maybe.withDefault (Json.Encode.int 0)
-            |> Json.Decode.decodeValue Json.Decode.int
-            |> Result.withDefault 0
     , description =
         Dict.get "description" d
             |> Maybe.withDefault (Json.Encode.string "")
@@ -103,6 +96,9 @@ dataMetaData key d =
             |> Result.withDefault ""
             |> String.split ","
             |> List.filter (\x -> x /= "")
+            |> List.map parseUiTag
+            |> Dict.fromList
+
     , extra = d
     , propData = noPropData
     }
@@ -165,3 +161,47 @@ extractValue properties pid c =
 
         _ ->
             Json.Encode.null
+
+parseUiTag : String -> (String, UiTagValue)
+parseUiTag s = case splitUpTo 2 ":" s of
+    [k, v] -> (k, parseUiTagValue v)
+    _ -> (s, Tag)
+
+parseUiTagValue : String -> UiTagValue
+parseUiTagValue s = case String.toFloat s of
+    Just  f -> NumberTag f
+    Nothing -> StringTag s
+
+splitUpTo : Int -> String -> String -> List String
+splitUpTo n sep s = let parts = String.split sep s in
+    (List.take (n - 1) parts) ++ [String.join sep (List.drop (n - 1) parts)]
+
+uiTagsToStrings : UiTags -> List String
+uiTagsToStrings tags = tags |> Dict.toList |> List.map uiTagToString
+
+uiTagToString : (String, UiTagValue) -> String
+uiTagToString (k, v) = case v of
+    Tag         -> k
+    StringTag s -> k ++ ":" ++ s
+    NumberTag n -> k ++ ":" ++ (String.fromFloat n)
+
+getTag : String -> UiTags -> Maybe UiTagValue
+getTag k m = Dict.get k m
+
+getStringTag : String -> UiTags -> Maybe String
+getStringTag k m = getTag k m |> Maybe.andThen (\tag -> case tag of
+    StringTag s -> Just s
+    _           -> Nothing)
+
+getNumberTag : String -> UiTags -> Maybe Float
+getNumberTag k m = getTag k m |> Maybe.andThen (\tag -> case tag of
+    NumberTag n -> Just n
+    _           -> Nothing)
+
+uiLevel : MetaData -> Float
+uiLevel m = getNumberTag "level" m.uiTags |> Maybe.withDefault
+    (if List.member m.key ["enabled", "description", "ui_tags"] then
+        1
+     else
+        0
+    )
