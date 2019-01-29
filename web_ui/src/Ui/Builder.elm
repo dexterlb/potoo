@@ -141,12 +141,12 @@ propertyWidget : Contracts.Property -> MetaData -> Widget
 propertyWidget prop metaData =
     case Contracts.stripType prop.propertyType of
         Contracts.TFloat ->
-            case Contracts.getMinMax prop of
+            case (metaData.valueMeta.min, metaData.valueMeta.max) of
                 -- todo: parse type here instead of using barbaric getMinMax
-                Just ( min, max ) ->
-                    SliderWidget <| Ui.Widgets.Slider.init metaData Contracts.Loading { min = min, max = max, step = 0.01, speed = 2 }
+                (Just _, Just _) ->
+                    SliderWidget <| Ui.Widgets.Slider.init metaData Contracts.Loading
 
-                Nothing ->
+                _ ->
                     NumberWidget metaData Contracts.Loading
 
         Contracts.TInt ->

@@ -1,6 +1,6 @@
 module Ui.MetaData exposing (..)
 
-import Contracts exposing (Contract, Data, Pid, Properties, PropertyID, emptyData, fetch)
+import Contracts exposing (Contract, Data, Pid, Properties, PropertyID, emptyData, fetch, getTypeFields)
 import Dict exposing (Dict)
 import Json.Decode
 import Json.Encode
@@ -13,6 +13,7 @@ type alias MetaData =
     , enabled : Bool
     , uiTags : UiTags
     , extra : Data
+    , valueMeta : ValueMeta
     }
 
 type alias UiTags = Dict String UiTagValue
@@ -39,6 +40,7 @@ noMetaData =
     , extra = emptyData
     , uiTags = Dict.empty
     , propData = noPropData
+    , valueMeta = emptyValueMeta
     }
 
 
@@ -100,6 +102,14 @@ dataMetaData key d =
             |> Dict.fromList
 
     , extra = d
+    , valueMeta =
+        { min = Dict.get "min" d |> Maybe.andThen Contracts.numericValue
+        , max = Dict.get "max" d |> Maybe.andThen Contracts.numericValue
+        , decimals = Dict.get "decimals" d |> Maybe.andThen Contracts.intValue
+        , stops = Dict.get "stops" d |> Maybe.andThen Contracts.floatListValue
+        , speed = Dict.get "speed" d |> Maybe.andThen Contracts.numericValue
+        , step = Dict.get "step" d |> Maybe.andThen Contracts.numericValue
+        }
     , propData = noPropData
     }
 
@@ -116,8 +126,13 @@ extractData c pid properties =
         Contracts.Delegate { data } ->
             data
 
-        Contracts.PropertyKey _ contract ->
-            extractData contract pid properties
+        Contracts.PropertyKey propertyID contract ->
+            let
+                prop = properties |> fetch pid |> fetch propertyID
+                contractData = extractData contract pid properties
+                typeData = getTypeFields prop.propertyType
+            in
+                Dict.union contractData typeData
 
         _ ->
             emptyData
@@ -214,3 +229,22 @@ splitUpTo n sep s =
             [] -> []
             _  -> [String.join sep right]
         )
+
+type alias ValueMeta =
+    { min : Maybe Float
+    , max : Maybe Float
+    , decimals : Maybe Int
+    , stops : Maybe (List Float)
+    , speed: Maybe Float
+    , step: Maybe Float
+    }
+
+emptyValueMeta : ValueMeta
+emptyValueMeta =
+    { min  = Nothing
+    , max  = Nothing
+    , decimals  = Nothing
+    , stops  = Nothing
+    , speed = Nothing
+    , step = Nothing
+    }

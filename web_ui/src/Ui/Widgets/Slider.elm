@@ -13,6 +13,8 @@ import Html.Attributes as Attrs
 import Html.Events exposing (onClick, onInput)
 
 import Json.Encode as JE
+import Maybe exposing (withDefault)
+import Round exposing (round)
 
 type alias Model =
     { metaData:     MetaData
@@ -21,10 +23,6 @@ type alias Model =
     , lastUpdate:   Float
     , dirty:        Bool
     , displayRatio: Float
-    , min:          Float
-    , max:          Float
-    , step:         Float
-    , speed:        Float
     }
 
 
@@ -32,19 +30,21 @@ type Msg
     = Set Float
 
 
-init : MetaData -> Value -> { min : Float, max : Float, step : Float, speed : Float } -> Model
-init meta v { min, max, step, speed } =
+init : MetaData -> Value -> Model
+init meta v =
     { metaData      = meta
     , value         = getValue v
     , userValue     = -1
     , lastUpdate    = -42
     , dirty         = False
-    , min           = min
-    , max           = max
-    , step          = step
-    , speed         = speed
-    , displayRatio  = min
+    , displayRatio  = withDefault 0   meta.valueMeta.min
     }
+
+getMin          { metaData } = withDefault 0   metaData.valueMeta.min
+getMax          { metaData } = withDefault 1   metaData.valueMeta.max
+getStep         { metaData } = withDefault 0.1 metaData.valueMeta.step
+getSpeed        { metaData } = withDefault 2   metaData.valueMeta.speed
+getDecimals     { metaData } = withDefault 5   metaData.valueMeta.decimals
 
 update : Msg -> Model -> ( Model, Cmd Msg, List Action )
 update msg model = case msg of
@@ -79,9 +79,9 @@ animateRatio : (Float, Float) -> Model -> Model
 animateRatio (_, diff) model = case model.value of
     Just v  ->
         let
-            ratio = (v - model.min) / (model.max - model.min)
+            ratio = (v - getMin model) / (getMax model - getMin model)
         in
-            { model | displayRatio = animateValue model.speed diff ratio model.displayRatio }
+            { model | displayRatio = animateValue (getSpeed model) diff ratio model.displayRatio }
     Nothing -> model
 
 getValue : Value -> Maybe Float
@@ -95,7 +95,7 @@ view lift m children =
         case m.value of
             Nothing -> [ div [ class "loading" ] [] ]
             Just v  -> let percent = m.displayRatio * 100 in
-                [ div [ class "value" ] [ text (String.fromFloat v) ]
+                [ div [ class "value" ] [ text (round (getDecimals m) v) ]
                 , div [ class "outer" ]
                     [ div [ class "inner", style "width" (String.fromFloat percent ++ "%") ] []
                     ]
@@ -104,9 +104,9 @@ view lift m children =
                     True  ->
                         [ input
                             [ Attrs.type_ "range"
-                            , Attrs.min  (m.min  |> String.fromFloat)
-                            , Attrs.max  (m.max  |> String.fromFloat)
-                            , Attrs.step (m.step |> String.fromFloat)
+                            , Attrs.min  (getMin  m |> String.fromFloat)
+                            , Attrs.max  (getMax  m |> String.fromFloat)
+                            , Attrs.step (getStep m |> String.fromFloat)
                             , Attrs.value <| String.fromFloat m.userValue
                             , onInput
                                 (\s ->

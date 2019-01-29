@@ -103,14 +103,7 @@ type alias Property =
     , setter : Maybe FunctionStruct
     , subscriber : Maybe FunctionStruct
     , propertyType : Type
-    , meta : PropertyMeta
     , value : Maybe Value
-    }
-
-
-type alias PropertyMeta =
-    { min : Maybe Float
-    , max : Maybe Float
     }
 
 
@@ -555,7 +548,6 @@ checkProperty fields =
                 , subscriber = subscriber
                 , propertyType = retval
                 , value = Nothing
-                , meta = getPropertyMeta fields (getTypeFields retval)
                 }
 
 
@@ -581,22 +573,6 @@ checkPropertyConsistency prop =
         False ->
             Nothing
 
-
-getPropertyMeta : Dict String Contract -> Data -> PropertyMeta
-getPropertyMeta fields typeFields =
-    { min =
-        firstJust
-            [ Dict.get "min" fields |> Maybe.andThen numericContract
-            , Dict.get "min" typeFields |> Maybe.andThen numericValue
-            ]
-    , max =
-        firstJust
-            [ Dict.get "max" fields |> Maybe.andThen numericContract
-            , Dict.get "max" typeFields |> Maybe.andThen numericValue
-            ]
-    }
-
-
 numericContract : Contract -> Maybe Float
 numericContract c =
     case c of
@@ -613,6 +589,16 @@ numericContract c =
 numericValue : Json.Encode.Value -> Maybe Float
 numericValue v =
     Json.Decode.decodeValue Json.Decode.float v
+        |> Result.toMaybe
+
+intValue : Json.Encode.Value -> Maybe Int
+intValue v =
+    Json.Decode.decodeValue Json.Decode.int v
+        |> Result.toMaybe
+
+floatListValue : Json.Encode.Value -> Maybe (List Float)
+floatListValue v =
+    Json.Decode.decodeValue (Json.Decode.list Json.Decode.float) v
         |> Result.toMaybe
 
 
@@ -739,21 +725,6 @@ firstJust l =
 emptyData : Data
 emptyData =
     Dict.empty
-
-
-getMinMax : Property -> Maybe ( Float, Float )
-getMinMax prop =
-    case prop.meta.min of
-        Nothing ->
-            Nothing
-
-        Just min ->
-            case prop.meta.max of
-                Nothing ->
-                    Nothing
-
-                Just max ->
-                    Just ( min, max )
 
 type TypeError
     = NoError
