@@ -224,6 +224,9 @@ getNumberTag k m = getTag k m |> Maybe.andThen (\tag -> case tag of
     NumberTag n -> Just n
     _           -> Nothing)
 
+getBoolTag : String -> UiTags -> Bool
+getBoolTag s t = getStringTag s t |> Maybe.map (\_ -> True) |> Maybe.withDefault False
+
 uiLevel : MetaData -> Float
 uiLevel m = getNumberTag "level" m.uiTags |> Maybe.withDefault
     (if List.member m.key ["enabled", "description", "ui_tags", "get", "set", "subscribe", "stops", "decimals"] then

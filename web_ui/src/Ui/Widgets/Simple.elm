@@ -8,10 +8,9 @@ type alias Attributes msg = List (Attribute msg)
 
 renderHeaderExtra : Attributes msg -> MetaData -> List (Html msg) -> List (Html msg) -> Html msg
 renderHeaderExtra attrs meta body extra =
-    div (metaAttributes meta ++ attrs) ([
-        div [ class "header" ] [ text <| label meta],
-        div [ class "body"   ] body
-    ] ++ extra)
+    div (metaAttributes meta ++ attrs) (
+        [ div [ class "body"   ] ((div [ class "header" ] [ text <| label meta]) :: body)
+        ] ++ extra)
 
 metaAttributes : MetaData -> Attributes msg
 metaAttributes ({ key, description, uiTags, enabled } as meta)=
