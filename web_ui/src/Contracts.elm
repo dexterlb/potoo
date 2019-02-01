@@ -586,22 +586,6 @@ numericContract c =
             Nothing
 
 
-numericValue : Json.Encode.Value -> Maybe Float
-numericValue v =
-    Json.Decode.decodeValue Json.Decode.float v
-        |> Result.toMaybe
-
-intValue : Json.Encode.Value -> Maybe Int
-intValue v =
-    Json.Decode.decodeValue Json.Decode.int v
-        |> Result.toMaybe
-
-floatListValue : Json.Encode.Value -> Maybe (List Float)
-floatListValue v =
-    Json.Decode.decodeValue (Json.Decode.list Json.Decode.float) v
-        |> Result.toMaybe
-
-
 getFunction : Contract -> Maybe FunctionStruct
 getFunction c =
     case c of

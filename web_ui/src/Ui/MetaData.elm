@@ -103,16 +103,26 @@ dataMetaData key d =
 
     , extra = d
     , valueMeta =
-        { min = Dict.get "min" d |> Maybe.andThen Contracts.numericValue
-        , max = Dict.get "max" d |> Maybe.andThen Contracts.numericValue
-        , decimals = Dict.get "decimals" d |> Maybe.andThen Contracts.intValue
-        , stops = Dict.get "stops" d |> Maybe.andThen Contracts.floatListValue
-        , speed = Dict.get "speed" d |> Maybe.andThen Contracts.numericValue
-        , step = Dict.get "step" d |> Maybe.andThen Contracts.numericValue
+        { min = Dict.get "min" d |> Maybe.andThen (parseValue Json.Decode.float)
+        , max = Dict.get "max" d |> Maybe.andThen (parseValue Json.Decode.float)
+        , decimals = Dict.get "decimals" d |> Maybe.andThen (parseValue Json.Decode.int)
+        , stops = Dict.get "stops" d
+            |> Maybe.andThen ((\x -> parseValue (Json.Decode.dict Json.Decode.string) x))
+            |> Maybe.map Dict.toList
+            |> Maybe.map (List.map (\(k, v) -> (String.toFloat k |> Maybe.withDefault 0, v)))
+            |> Maybe.map List.sort
+            |> Maybe.map List.reverse
+            |> Maybe.withDefault []
+        , speed = Dict.get "speed" d |> Maybe.andThen (parseValue Json.Decode.float)
+        , step = Dict.get "step" d |> Maybe.andThen (parseValue Json.Decode.float)
         }
     , propData = noPropData
     }
 
+parseValue : Json.Decode.Decoder v -> Json.Decode.Value -> Maybe v
+parseValue dec v =
+    Json.Decode.decodeValue dec v
+        |> Result.toMaybe
 
 extractData : Contract -> Int -> Properties -> Data
 extractData c pid properties =
@@ -174,8 +184,13 @@ extractValue properties pid c =
                 _ ->
                     Json.Encode.null
 
-        _ ->
-            Json.Encode.null
+        Contracts.ListContract subcontracts ->
+            Json.Encode.list (extractValue properties pid) subcontracts
+
+        Contracts.MapContract subcontracts ->
+            Json.Encode.dict (\k -> k) (extractValue properties pid) subcontracts
+
+        _ -> Json.Encode.null
 
 parseUiTag : String -> (String, UiTagValue)
 parseUiTag s = case splitUpTo 2 ":" s of
@@ -211,7 +226,7 @@ getNumberTag k m = getTag k m |> Maybe.andThen (\tag -> case tag of
 
 uiLevel : MetaData -> Float
 uiLevel m = getNumberTag "level" m.uiTags |> Maybe.withDefault
-    (if List.member m.key ["enabled", "description", "ui_tags", "get", "set", "subscribe"] then
+    (if List.member m.key ["enabled", "description", "ui_tags", "get", "set", "subscribe", "stops", "decimals"] then
         1
      else
         0
@@ -234,7 +249,7 @@ type alias ValueMeta =
     { min : Maybe Float
     , max : Maybe Float
     , decimals : Maybe Int
-    , stops : Maybe (List Float)
+    , stops : List (Float, String)
     , speed: Maybe Float
     , step: Maybe Float
     }
@@ -244,7 +259,7 @@ emptyValueMeta =
     { min  = Nothing
     , max  = Nothing
     , decimals  = Nothing
-    , stops  = Nothing
+    , stops  = []
     , speed = Nothing
     , step = Nothing
     }

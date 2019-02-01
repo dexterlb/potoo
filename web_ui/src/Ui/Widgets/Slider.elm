@@ -46,6 +46,16 @@ getStep         { metaData } = withDefault 0.1 metaData.valueMeta.step
 getSpeed        { metaData } = withDefault 2   metaData.valueMeta.speed
 getDecimals     { metaData } = withDefault 5   metaData.valueMeta.decimals
 
+getStop : Model -> Float -> Maybe String
+getStop { metaData } v = findStop v metaData.valueMeta.stops
+
+findStop : Float -> List (Float, String) -> Maybe String
+findStop v l = case l of
+    [] -> Nothing
+    (stop, name)::rest -> case v >= stop of
+        True  -> Just name
+        False -> findStop v rest
+
 update : Msg -> Model -> ( Model, Cmd Msg, List Action )
 update msg model = case msg of
     Set f ->
@@ -91,7 +101,7 @@ getValue v = case v of
 
 view : (Msg -> msg) -> Model -> List (Html msg) -> Html msg
 view lift m children =
-    renderHeaderWithChildren [ class "slider" ] m.metaData children <|
+    renderHeaderWithChildren [ class "slider", stopClass m ] m.metaData children <|
         case m.value of
             Nothing -> [ div [ class "loading" ] [] ]
             Just v  -> let percent = m.displayRatio * 100 in
@@ -118,6 +128,11 @@ view lift m children =
                             ] []
                         ]
                 )
+
+stopClass : Model -> Attribute msg
+stopClass m = case m.value |> Maybe.andThen (\_ -> getStop m (getMin m + (getMax m - getMin m) * m.displayRatio)) of
+    Just name -> class ("stop-" ++ name)
+    Nothing   -> class ("no-stop")
 
 animateValue : Float -> Float -> Float -> Float -> Float
 animateValue speed diff new old = let delta = speed * diff + 0.2 * (abs (new - old)) in

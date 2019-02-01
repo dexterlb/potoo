@@ -67,6 +67,13 @@
     }
 
     &.slider {
+        &.stop-s0 {
+            > .body {
+                .inner {
+                    background-color: #00ff00;
+                }
+            }
+        }
         > .body {
             .value {
                 display: inline-block;
