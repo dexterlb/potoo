@@ -99,6 +99,12 @@ getValue v = case v of
     SimpleFloat f -> Just f
     _             -> Nothing
 
+calcRatio : Model -> Float -> Float
+calcRatio m f = (f - (getMin m)) / ((getMax m) - (getMin m))
+
+calcPercent : Model -> Float -> Float
+calcPercent m f = (calcRatio m f) * 100
+
 view : (Msg -> msg) -> Model -> List (Html msg) -> Html msg
 view lift m children =
     renderHeaderWithChildren [ class "slider", stopClass m ] m.metaData children <|
@@ -106,9 +112,7 @@ view lift m children =
             Nothing -> [ div [ class "loading" ] [] ]
             Just v  -> let percent = m.displayRatio * 100 in
                 [ div [ class "value" ] [ text (round (getDecimals m) v) ]
-                , div [ class "outer" ]
-                    [ div [ class "inner", style "width" (String.fromFloat percent ++ "%") ] []
-                    ]
+                , div [ class "outer" ] (renderStopRects m)
                 ] ++ (case m.metaData.propData.hasSetter of
                     False -> []
                     True  ->
@@ -129,10 +133,40 @@ view lift m children =
                         ]
                 )
 
+renderStopRects : Model -> List (Html msg)
+renderStopRects m
+    = (List.reverse ((getMax m, "foo") :: m.metaData.valueMeta.stops))
+    |> List.map2 (\(v1, n1) (v2, _) -> (v1, v2, n1)) ((getMin m, "nostop")::(List.reverse m.metaData.valueMeta.stops))
+    |> List.map (\(left, right, name) ->
+        let
+            leftRatio  = calcRatio m left
+            rightRatio = calcRatio m right
+        in let
+            innerRatio = clamp 0 1 <| (m.displayRatio - leftRatio) / (rightRatio - leftRatio)
+        in let
+            leftPercent  = leftRatio  * 100
+            rightPercent = rightRatio * 100
+            innerPercent = innerRatio * 100
+        in
+            div [ if m.displayRatio * 100 < leftPercent then
+                    class "below"
+                  else if m.displayRatio * 100 >= rightPercent then
+                    class "above"
+                  else
+                    class "inside"
+                , class ("stoprec-" ++ name)
+                , class "stoprec"
+                , style "width" (String.fromFloat (rightPercent - leftPercent) ++ "%")
+                , style "left"  (String.fromFloat                 leftPercent  ++ "%")
+                ]
+                [ div [ class "inner", style "width" (String.fromFloat innerPercent ++ "%") ] []
+                ]
+        )
+
 stopClass : Model -> Attribute msg
 stopClass m = case m.value |> Maybe.andThen (\_ -> getStop m (getMin m + (getMax m - getMin m) * m.displayRatio)) of
     Just name -> class ("stop-" ++ name)
-    Nothing   -> class ("no-stop")
+    Nothing   -> class ("stop-nostop")
 
 animateValue : Float -> Float -> Float -> Float -> Float
 animateValue speed diff new old = let delta = speed * diff + 0.2 * (abs (new - old)) in

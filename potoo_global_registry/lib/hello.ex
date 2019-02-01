@@ -64,7 +64,13 @@ defmodule PotooGlobalRegistry.Hello do
             "max" => 20,
           }}}
         },
-        "ui_tags" => "order:4"
+        "ui_tags" => "order:4",
+        "stops" => %{
+          0 => "init",
+          5 => "first",
+          15 => "second",
+        },
+        "decimals" => 0,
       },
       "slider" => %{
         "get" => %Potoo.Contract.Function{
@@ -92,6 +98,7 @@ defmodule PotooGlobalRegistry.Hello do
           retval: nil
         },
         "ui_tags" => "order:5",
+        "decimals" => 1,
       },
     }
 

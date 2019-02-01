@@ -67,13 +67,6 @@
     }
 
     &.slider {
-        &.stop-s0 {
-            > .body {
-                .inner {
-                    background-color: #00ff00;
-                }
-            }
-        }
         > .body {
             .value {
                 display: inline-block;
@@ -88,11 +81,21 @@
                 background-color: #cccccc;
             }
 
+            .stoprec {
+                position: absolute;
+                height: 10px;
+            }
+
+            .stoprec-nostop {
+                .inner {
+                    background-color: #e89f40;
+                }
+            }
+
             .inner {
                 display: inline-block;
                 position: absolute;
                 height: 10px;
-                background-color: #ff0000;
             }
         }
     }
@@ -103,6 +106,35 @@
         }
     }
 }
+
+.slider {
+    > .body {
+        .outer {
+            border: 1px solid black;
+        }
+        .stoprec-init {
+            .inner {
+                background-color: green;
+            }
+        }
+        .stoprec-first {
+            .inner {
+                background-color: yellow;
+            }
+        }
+        .stoprec-second {
+            .inner {
+                background-color: red;
+            }
+        }
+
+        .stoprec {
+            border-right: 1px solid black;
+        }
+    }
+}
+
+
 
 .children {
     display: flex;
