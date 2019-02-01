@@ -44,6 +44,7 @@ getMin          { metaData } = withDefault 0   metaData.valueMeta.min
 getMax          { metaData } = withDefault 1   metaData.valueMeta.max
 getStep         { metaData } = withDefault 0.1 metaData.valueMeta.step
 getSpeed        { metaData } = withDefault 2   metaData.valueMeta.speed
+getExpSpeed     { metaData } = withDefault 0.2 metaData.valueMeta.expSpeed
 getDecimals     { metaData } = withDefault 5   metaData.valueMeta.decimals
 
 getStop : Model -> Float -> Maybe String
@@ -91,7 +92,7 @@ animateRatio (_, diff) model = case model.value of
         let
             ratio = (v - getMin model) / (getMax model - getMin model)
         in
-            { model | displayRatio = animateValue (getSpeed model) diff ratio model.displayRatio }
+            { model | displayRatio = animateValue (getSpeed model) (getExpSpeed model) diff ratio model.displayRatio }
     Nothing -> model
 
 getValue : Value -> Maybe Float
@@ -168,8 +169,8 @@ stopClass m = case m.value |> Maybe.andThen (\_ -> getStop m (getMin m + (getMax
     Just name -> class ("stop-" ++ name)
     Nothing   -> class ("stop-nostop")
 
-animateValue : Float -> Float -> Float -> Float -> Float
-animateValue speed diff new old = let delta = speed * diff + 0.2 * (abs (new - old)) in
+animateValue : Float -> Float -> Float -> Float -> Float -> Float
+animateValue speed expSpeed diff new old = let delta = speed * diff + expSpeed * (abs (new - old)) in
     case new > old of
         True  -> min new (old + delta)
         False -> max new (old - delta)

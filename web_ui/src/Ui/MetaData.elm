@@ -114,6 +114,7 @@ dataMetaData key d =
             |> Maybe.map List.reverse
             |> Maybe.withDefault []
         , speed = Dict.get "speed" d |> Maybe.andThen (parseValue Json.Decode.float)
+        , expSpeed = Dict.get "exp_speed" d |> Maybe.andThen (parseValue Json.Decode.float)
         , step = Dict.get "step" d |> Maybe.andThen (parseValue Json.Decode.float)
         }
     , propData = noPropData
@@ -229,7 +230,7 @@ getBoolTag s t = getStringTag s t |> Maybe.map (\_ -> True) |> Maybe.withDefault
 
 uiLevel : MetaData -> Float
 uiLevel m = getNumberTag "level" m.uiTags |> Maybe.withDefault
-    (if List.member m.key ["enabled", "description", "ui_tags", "get", "set", "subscribe", "stops", "decimals"] then
+    (if List.member m.key ["enabled", "description", "ui_tags", "get", "set", "subscribe", "stops", "decimals", "speed", "exp_speed"] then
         1
      else
         0
@@ -254,6 +255,7 @@ type alias ValueMeta =
     , decimals : Maybe Int
     , stops : List (Float, String)
     , speed: Maybe Float
+    , expSpeed: Maybe Float
     , step: Maybe Float
     }
 
@@ -264,5 +266,6 @@ emptyValueMeta =
     , decimals  = Nothing
     , stops  = []
     , speed = Nothing
+    , expSpeed = Nothing
     , step = Nothing
     }
