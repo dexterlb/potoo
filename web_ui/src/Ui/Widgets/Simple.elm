@@ -1,8 +1,9 @@
 module Ui.Widgets.Simple exposing (..)
 
-import Ui.MetaData exposing (MetaData, noMetaData, uiTagsToStrings, uiLevel, getFloatTag)
-import Html exposing (Html, div, text, Attribute)
+import Ui.MetaData exposing (MetaData, noMetaData, uiTagsToStrings, uiLevel, getFloatTag, getStringTag, getIntTag)
+import Html exposing (Html, div, text, Attribute, span)
 import Html.Attributes exposing (class, style)
+import Round exposing (round)
 
 type alias Attributes msg = List (Attribute msg)
 
@@ -56,7 +57,17 @@ renderStringWidget m v children = renderHeaderWithChildren [ class "string-value
 
 renderNumberWidget : MetaData -> Float -> List (Html msg) -> Html msg
 renderNumberWidget m v children = renderHeaderWithChildren [ class "number-value" ] m children <|
-    [ text (String.fromFloat v) ]
+    [ renderNumberValue m v ]
+
+renderNumberValue : MetaData -> Float -> Html msg
+renderNumberValue m v = div [ class "value" ] <|
+    [ span [ class "value-number" ]
+        [ text <| Maybe.withDefault (String.fromFloat v)
+               <| Maybe.map (\d -> round d v) <| getIntTag "decimals" m.uiTags ]
+    ] ++ (case getStringTag "units" m.uiTags of
+        Nothing -> []
+        (Just units) -> [ span [ class "value-units", class "units" ] [ text units ] ]
+    )
 
 renderBoolWidget : MetaData -> Bool -> List (Html msg) -> Html msg
 renderBoolWidget m b children = renderHeaderWithChildren [ class "bool-value" ] m children <|

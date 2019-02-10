@@ -1,20 +1,19 @@
 module Ui.Widgets.Slider exposing (Model, Msg(..), init, update, updateMetaData, updateValue, view, animate)
 
-import Ui.Widgets.Simple exposing (renderHeaderWithChildren)
+import Ui.Widgets.Simple exposing (renderHeaderWithChildren, renderNumberValue)
 
 import Contracts exposing (Value(..))
 import Ui.Action exposing (..)
 import Ui.MetaData exposing (..)
 
 
-import Html exposing (Html, div, text, button, input, Attribute)
+import Html exposing (Html, div, text, button, input, span, Attribute)
 import Html.Attributes exposing (class, style)
 import Html.Attributes as Attrs
 import Html.Events exposing (onClick, onInput)
 
 import Json.Encode as JE
 import Maybe exposing (withDefault)
-import Round exposing (round)
 
 type alias Model =
     { metaData:     MetaData
@@ -42,6 +41,7 @@ init meta v =
 
 getMin          { metaData } = withDefault 0   metaData.valueMeta.min
 getMax          { metaData } = withDefault 1   metaData.valueMeta.max
+getUnits        { metaData } = getStringTag "units" metaData.uiTags
 getStep         { metaData } = withDefault 0.1 <| getFloatTag "step"      metaData.uiTags
 getSpeed        { metaData } = withDefault 2   <| getFloatTag "speed"     metaData.uiTags
 getExpSpeed     { metaData } = withDefault 0.2 <| getFloatTag "exp_speed" metaData.uiTags
@@ -112,7 +112,7 @@ view lift m children =
         case m.value of
             Nothing -> [ div [ class "loading" ] [] ]
             Just v  -> let percent = m.displayRatio * 100 in
-                [ div [ class "value" ] [ text (round (getDecimals m) v) ]
+                [ renderNumberValue m.metaData v
                 , div [ class "outer" ] (renderStopRects m)
                 ] ++ (case m.metaData.propData.hasSetter of
                     False -> []
@@ -133,6 +133,7 @@ view lift m children =
                             ] []
                         ]
                 )
+
 
 renderStopRects : Model -> List (Html msg)
 renderStopRects m
