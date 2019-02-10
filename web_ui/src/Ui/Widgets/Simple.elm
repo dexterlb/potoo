@@ -1,6 +1,6 @@
 module Ui.Widgets.Simple exposing (..)
 
-import Ui.MetaData exposing (MetaData, noMetaData, uiTagsToStrings, uiLevel, getNumberTag)
+import Ui.MetaData exposing (MetaData, noMetaData, uiTagsToStrings, uiLevel, getFloatTag)
 import Html exposing (Html, div, text, Attribute)
 import Html.Attributes exposing (class, style)
 
@@ -21,7 +21,7 @@ metaAttributes ({ key, description, uiTags, enabled } as meta)=
         , class ("level-" ++ level)
         , boolClass "enabled" enabled
         ]
-        ++ (getNumberTag "order" uiTags |> (\order -> case order of
+        ++ (getFloatTag "order" uiTags |> (\order -> case order of
                 Just o  -> [ style "order" (String.fromFloat o) ]
                 Nothing -> []
             ))

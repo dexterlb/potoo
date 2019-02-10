@@ -42,10 +42,10 @@ init meta v =
 
 getMin          { metaData } = withDefault 0   metaData.valueMeta.min
 getMax          { metaData } = withDefault 1   metaData.valueMeta.max
-getStep         { metaData } = withDefault 0.1 metaData.valueMeta.step
-getSpeed        { metaData } = withDefault 2   metaData.valueMeta.speed
-getExpSpeed     { metaData } = withDefault 0.2 metaData.valueMeta.expSpeed
-getDecimals     { metaData } = withDefault 5   metaData.valueMeta.decimals
+getStep         { metaData } = withDefault 0.1 <| getFloatTag "step"      metaData.uiTags
+getSpeed        { metaData } = withDefault 2   <| getFloatTag "speed"     metaData.uiTags
+getExpSpeed     { metaData } = withDefault 0.2 <| getFloatTag "exp_speed" metaData.uiTags
+getDecimals     { metaData } = withDefault 5   <| getIntTag   "decimals"  metaData.uiTags
 
 getStop : Model -> Float -> Maybe String
 getStop { metaData } v = findStop v metaData.valueMeta.stops

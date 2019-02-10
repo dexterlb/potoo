@@ -105,7 +105,6 @@ dataMetaData key d =
     , valueMeta =
         { min = Dict.get "min" d |> Maybe.andThen (parseValue Json.Decode.float)
         , max = Dict.get "max" d |> Maybe.andThen (parseValue Json.Decode.float)
-        , decimals = Dict.get "decimals" d |> Maybe.andThen (parseValue Json.Decode.int)
         , stops = Dict.get "stops" d
             |> Maybe.andThen ((\x -> parseValue (Json.Decode.dict Json.Decode.string) x))
             |> Maybe.map Dict.toList
@@ -113,9 +112,6 @@ dataMetaData key d =
             |> Maybe.map List.sort
             |> Maybe.map List.reverse
             |> Maybe.withDefault []
-        , speed = Dict.get "speed" d |> Maybe.andThen (parseValue Json.Decode.float)
-        , expSpeed = Dict.get "exp_speed" d |> Maybe.andThen (parseValue Json.Decode.float)
-        , step = Dict.get "step" d |> Maybe.andThen (parseValue Json.Decode.float)
         }
     , propData = noPropData
     }
@@ -220,17 +216,22 @@ getStringTag k m = getTag k m |> Maybe.andThen (\tag -> case tag of
     StringTag s -> Just s
     _           -> Nothing)
 
-getNumberTag : String -> UiTags -> Maybe Float
-getNumberTag k m = getTag k m |> Maybe.andThen (\tag -> case tag of
+getFloatTag : String -> UiTags -> Maybe Float
+getFloatTag k m = getTag k m |> Maybe.andThen (\tag -> case tag of
     NumberTag n -> Just n
+    _           -> Nothing)
+
+getIntTag : String -> UiTags -> Maybe Int
+getIntTag k m = getTag k m |> Maybe.andThen (\tag -> case tag of
+    NumberTag n -> Just <| round n
     _           -> Nothing)
 
 getBoolTag : String -> UiTags -> Bool
 getBoolTag s t = getStringTag s t |> Maybe.map (\_ -> True) |> Maybe.withDefault False
 
 uiLevel : MetaData -> Float
-uiLevel m = getNumberTag "level" m.uiTags |> Maybe.withDefault
-    (if List.member m.key ["enabled", "description", "ui_tags", "get", "set", "subscribe", "stops", "decimals", "speed", "exp_speed"] then
+uiLevel m = getFloatTag "level" m.uiTags |> Maybe.withDefault
+    (if List.member m.key ["enabled", "description", "ui_tags", "get", "set", "subscribe", "stops"] then
         1
      else
         0
@@ -252,20 +253,12 @@ splitUpTo n sep s =
 type alias ValueMeta =
     { min : Maybe Float
     , max : Maybe Float
-    , decimals : Maybe Int
     , stops : List (Float, String)
-    , speed: Maybe Float
-    , expSpeed: Maybe Float
-    , step: Maybe Float
     }
 
 emptyValueMeta : ValueMeta
 emptyValueMeta =
     { min  = Nothing
     , max  = Nothing
-    , decimals  = Nothing
     , stops  = []
-    , speed = Nothing
-    , expSpeed = Nothing
-    , step = Nothing
     }
