@@ -162,6 +162,7 @@ renderStopRects m
                 , style "left"  (String.fromFloat                 leftPercent  ++ "%")
                 ]
                 [ div [ class "inner", style "width" (String.fromFloat innerPercent ++ "%") ] []
+                , div [ class "stop-value" ] [ renderNumberValue m.metaData right ]
                 ]
         )
 
