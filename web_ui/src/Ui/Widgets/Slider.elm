@@ -22,6 +22,8 @@ type alias Model =
     , lastUpdate:   Float
     , dirty:        Bool
     , displayRatio: Float
+    , peakRatio:    Float
+    , lastPeakTime: Float
     }
 
 
@@ -37,6 +39,8 @@ init meta v =
     , lastUpdate    = -42
     , dirty         = False
     , displayRatio  = withDefault 0   meta.valueMeta.min
+    , peakRatio     = 0
+    , lastPeakTime  = -42
     }
 
 getMin          { metaData } = withDefault 0   metaData.valueMeta.min
@@ -46,6 +50,7 @@ getStep         { metaData } = withDefault 0.1 <| getFloatTag "step"      metaDa
 getSpeed        { metaData } = withDefault 2   <| getFloatTag "speed"     metaData.uiTags
 getExpSpeed     { metaData } = withDefault 0.2 <| getFloatTag "exp_speed" metaData.uiTags
 getDecimals     { metaData } = withDefault 5   <| getIntTag   "decimals"  metaData.uiTags
+getGrid         { metaData } =                    getFloatTag "grid"  metaData.uiTags
 
 getStop : Model -> Float -> Maybe String
 getStop { metaData } v = findStop v metaData.valueMeta.stops
@@ -72,7 +77,7 @@ updateMetaData meta model =
     ( { model | metaData = meta }, Cmd.none, [] )
 
 animate : (Float, Float) -> Model -> Model
-animate t = animateLastUpdate t >> animateRatio t >> animateUserValue t
+animate t = animateLastUpdate t >> animateRatio t >> animateUserValue t >> animatePeak t
 
 animateLastUpdate : (Float, Float) -> Model -> Model
 animateLastUpdate (time, _) model = case model.dirty of
@@ -95,6 +100,13 @@ animateRatio (_, diff) model = case model.value of
             { model | displayRatio = animateValue (getSpeed model) (getExpSpeed model) diff ratio model.displayRatio }
     Nothing -> model
 
+animatePeak : (Float, Float) -> Model -> Model
+animatePeak (time, diff) model = case model.displayRatio > model.peakRatio of
+    True  -> { model | peakRatio = model.displayRatio, lastPeakTime = time }
+    False -> case model.lastPeakTime + 2.0 < time of
+        False  -> model
+        True   -> { model | peakRatio = animateValue 0.01 0 diff model.displayRatio model.peakRatio }
+
 getValue : Value -> Maybe Float
 getValue v = case v of
     SimpleFloat f -> Just f
@@ -103,17 +115,14 @@ getValue v = case v of
 calcRatio : Model -> Float -> Float
 calcRatio m f = (f - (getMin m)) / ((getMax m) - (getMin m))
 
-calcPercent : Model -> Float -> Float
-calcPercent m f = (calcRatio m f) * 100
-
 view : (Msg -> msg) -> Model -> List (Html msg) -> Html msg
 view lift m children =
     renderHeaderWithChildren [ class "slider", stopClass m ] m.metaData children <|
         case m.value of
             Nothing -> [ div [ class "loading" ] [] ]
-            Just v  -> let percent = m.displayRatio * 100 in
+            Just v  ->
                 [ renderNumberValue m.metaData v
-                , div [ class "outer" ] (renderStopRects m)
+                , div [ class "outer" ] ((renderStopRects m) ++ renderGrid m)
                 ] ++ (case m.metaData.propData.hasSetter of
                     False -> []
                     True  ->
@@ -145,26 +154,55 @@ renderStopRects m
             rightRatio = calcRatio m right
         in let
             innerRatio = clamp 0 1 <| (m.displayRatio - leftRatio) / (rightRatio - leftRatio)
-        in let
-            leftPercent  = leftRatio  * 100
-            rightPercent = rightRatio * 100
-            innerPercent = innerRatio * 100
+            peakRatio  = clamp 0 1 <| (m.peakRatio    - leftRatio) / (rightRatio - leftRatio)
         in
-            div [ if m.displayRatio * 100 < leftPercent then
+            div [ if m.displayRatio < leftRatio then
                     class "below"
-                  else if m.displayRatio * 100 >= rightPercent then
+                  else if m.displayRatio >= rightRatio then
                     class "above"
                   else
                     class "inside"
+                , if m.peakRatio < leftRatio then
+                    class "peak-below"
+                  else if m.peakRatio >= rightRatio then
+                    class "peak-above"
+                  else
+                    class "peak-inside"
                 , class ("stoprec-" ++ name)
                 , class "stoprec"
-                , style "width" (String.fromFloat (rightPercent - leftPercent) ++ "%")
-                , style "left"  (String.fromFloat                 leftPercent  ++ "%")
+                , percentWidth <| rightRatio - leftRatio
+                , percentStyle "left" leftRatio
                 ]
-                [ div [ class "inner", style "width" (String.fromFloat innerPercent ++ "%") ] []
-                , div [ class "stop-value" ] [ renderNumberValue m.metaData right ]
+                [ div [ class "inner", percentWidth innerRatio ] []
+                , div [ class "peak",  percentWidth peakRatio  ] []
+                , div [ class "stop-value-left"  ] [ renderNumberValue m.metaData left ]
+                , div [ class "stop-value-right" ] [ renderNumberValue m.metaData right ]
+                , div [ class "stop-info" ] []
                 ]
         )
+
+renderGrid : Model -> List (Html msg)
+renderGrid m = case getGrid m of
+    Nothing   -> []
+    Just grid ->
+        [ div [ class "grid" ] <| List.map (renderGridRect m) <| linspace grid (getMin m) (getMax m) ]
+
+renderGridRect : Model -> Float -> Html msg
+renderGridRect m v = div
+    [ class "grid-rect", percentWidth (v / (getMax m - getMin m)) ]
+    [ ]
+
+linspace : Float -> Float -> Float -> List Float
+linspace delta start end = linspaceN (floor <| (end - start) / delta) start end
+
+linspaceN : Int -> Float -> Float -> List Float
+linspaceN n start end = List.map (\i -> i * ((end - start) / (toFloat n - 1))) <| List.map toFloat <| List.range 1 (n-1)
+
+percentWidth : Float -> Attribute msg
+percentWidth = percentStyle "width"
+
+percentStyle : String -> Float -> Attribute msg
+percentStyle name ratio = style name <| String.fromFloat (ratio * 100) ++ "%"
 
 stopClass : Model -> Attribute msg
 stopClass m = case m.value |> Maybe.andThen (\_ -> getStop m (getMin m + (getMax m - getMin m) * m.displayRatio)) of
