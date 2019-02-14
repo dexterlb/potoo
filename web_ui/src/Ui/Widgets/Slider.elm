@@ -97,7 +97,7 @@ animateRatio (_, diff) model = case model.value of
         let
             ratio = (v - getMin model) / (getMax model - getMin model)
         in
-            { model | displayRatio = animateValue (getSpeed model) (getExpSpeed model) diff ratio model.displayRatio }
+            { model | displayRatio = clamp 0 1 <| animateValue (getSpeed model) (getExpSpeed model) diff ratio model.displayRatio }
     Nothing -> model
 
 animatePeak : (Float, Float) -> Model -> Model
@@ -105,7 +105,7 @@ animatePeak (time, diff) model = case model.displayRatio > model.peakRatio of
     True  -> { model | peakRatio = model.displayRatio, lastPeakTime = time }
     False -> case model.lastPeakTime + 2.0 < time of
         False  -> model
-        True   -> { model | peakRatio = animateValue 0.01 0 diff model.displayRatio model.peakRatio }
+        True   -> { model | peakRatio = animateValue 0.05 0 diff model.displayRatio model.peakRatio }
 
 getValue : Value -> Maybe Float
 getValue v = case v of
@@ -162,9 +162,9 @@ renderStopRects m
                     class "above"
                   else
                     class "inside"
-                , if m.peakRatio < leftRatio then
+                , if m.peakRatio <= leftRatio then
                     class "peak-below"
-                  else if m.peakRatio >= rightRatio then
+                  else if m.peakRatio > rightRatio then
                     class "peak-above"
                   else
                     class "peak-inside"

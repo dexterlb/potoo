@@ -42,7 +42,7 @@ getContract conn target =
             [ string "get_and_subscribe_contract"
             , object
                 [ ( "target", delegateEncoder target )
-                , ( "token", object [ ( "msg", string "got_contract" ), ( "target", delegateEncoder target ) ] )
+                , ( "token", object [ ( "msg", string "got_contract" ), ( "pid", int target.destination ) ] )
                 ]
             , object [ ( "msg", string "got_contract" ), ( "pid", int target.destination ) ]
             ]
@@ -201,8 +201,8 @@ responseByTokenDecoder t =
         ChannelResultToken token ->
             JD.map (ChannelResult token) channelDecoder
 
-        SubscribedChannelToken token ->
-            JD.succeed <| SubscribedChannel token
+        SubscribedChannelToken prop ->
+            JD.succeed <| SubscribedChannel prop
 
         UnsafeCallResultToken tokenString ->
             JD.map (UnsafeCallResult tokenString) JD.value
@@ -224,7 +224,10 @@ tokenDecoder =
                         JD.map ChannelResultToken <| JD.field "token" JD.value
 
                     "subscribed_channel" ->
-                        JD.map SubscribedChannelToken <| JD.field "token" JD.value
+                        JD.field "token" <|
+                            JD.map2 (\pid id -> SubscribedChannelToken ( pid, id ))
+                                (JD.field "pid" JD.int)
+                                (JD.field "id" JD.int)
 
                     "property_setter_status" ->
                         JD.map2 (\pid id -> PropertySetterStatusToken ( pid, id ))
@@ -246,7 +249,7 @@ type Token
     | ValueResultToken ( Int, Int )
     | UnsafeCallResultToken String
     | ChannelResultToken Json.Encode.Value
-    | SubscribedChannelToken Json.Encode.Value
+    | SubscribedChannelToken ( Int, Int )
     | PropertySetterStatusToken ( Int, Int )
 
 
@@ -255,7 +258,7 @@ type Response
     | ValueResult ( Int, Int ) Json.Encode.Value
     | UnsafeCallResult String Json.Encode.Value
     | ChannelResult Json.Encode.Value Channel
-    | SubscribedChannel Json.Encode.Value
+    | SubscribedChannel ( Int, Int )
     | PropertySetterStatus ( Int, Int ) Json.Encode.Value
     | Pong
     | Hello

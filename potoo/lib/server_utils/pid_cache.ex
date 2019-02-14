@@ -27,6 +27,10 @@ defmodule Potoo.ServerUtils.PidCache do
     end
   end
 
+  def get(cache_pid, target = {t, name}) when is_atom(name) do
+    get(cache_pid, {t, GenServer.whereis(name)})
+  end
+
   def get(cache_pid, target = {_, pid_or_id}) when is_pid(pid_or_id) or is_integer(pid_or_id) do
     GenServer.call(cache_pid, {:get, target})
   end

@@ -247,8 +247,15 @@ handleResponse m resp =
         ChannelResult token chan ->
             ( m, subscribe m.conn chan token )
 
-        SubscribedChannel token ->
-            ( Debug.log (Json.Encode.encode 0 token) m, Cmd.none )
+        SubscribedChannel ( pid, propertyID ) ->
+            case m.allProperties |> fetch pid |> fetch propertyID |> (\x -> x.getter) of
+                Just { name } -> (m,
+                    Api.getterCall m.conn
+                        { target = delegate pid
+                        , name = name
+                        , argument = Json.Encode.null
+                        } (pid, propertyID) )
+                Nothing -> (m, Cmd.none)
 
         PropertySetterStatus _ status ->
             ( Debug.log ("property setter status: " ++ Json.Encode.encode 0 status) m, Cmd.none )
