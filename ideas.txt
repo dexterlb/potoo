@@ -10,6 +10,7 @@
 - values with a "set" callable under them are properties
 - each callable has a topic with 2 subtopics: call and reply
 - special "void" return type which means the callable won't reply
+- maybe use a binary format for messages which is easily serialisable from embedded targets (msgpack?)
 
 - 2 possible approaches:
     * simple approach
