@@ -11,6 +11,9 @@
 - each callable has a topic with 2 subtopics: call and reply
 - special "void" return type which means the callable won't reply
 - maybe use a binary format for messages which is easily serialisable from embedded targets (msgpack?)
+- BONUS: mqtt transports (mosquitto) already have websocket implementations.
+  thus, a jabbascript gui could be built directly without requiring any
+  server code.
 
 - 2 possible approaches:
     * simple approach
