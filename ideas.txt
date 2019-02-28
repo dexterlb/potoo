@@ -1,3 +1,35 @@
+***** POTOO 2 DRAFT *****
+*************************
+
+- a protocol over mqtt, not software
+- specify a standard for types and contracts
+- services connect and publish their contract with retain + lwt deletion
+- light (written in something like go?) websocket <-> mqtt gateway
+- 3 basic types in contracts: constants, values, callables
+- each value has a topic on which updates will be sent (with retain)
+- values with a "set" callable under them are properties
+- each callable has a topic with 2 subtopics: call and reply
+- special "void" return type which means the callable won't reply
+
+- 2 possible approaches:
+    * simple approach
+        - no registries
+        - no paths, handles or names other than topics themselves
+        - all contracts live in a separate root, e.g. _contract/<topic> is the contract
+          for the service which lives under <topic>
+        - contract structure represents topic structure
+        - a service publishes its contract with retain under topic/contract
+        - child services simply have this topic as a prefix to theirs.
+        - to subscribe to an entire subtree, just subscribe to _contract/<root>/#
+    * potoo1-ish approach
+        - have registries as before
+        - paths in topics don't really matter.
+        - every value has a topic on which updates will be sent (with retain)
+        - every callable has a call topic and reply topic
+        - additional type (delegate) which holds the contract topic of the child
+
+*************************
+
 - elixir code:
 
 defcontract do
