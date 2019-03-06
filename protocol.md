@@ -53,7 +53,7 @@ automated discovery of services.
 Types may also have a `"_meta"` field which is a JSON object containing
 metadata.
 
-Basic type names: `void`, `nil`, `bool`, `int`, `float`, `string`
+Basic type names: `void`, `null`, `bool`, `int`, `float`, `string`
 
 ### Contract fields
 A contract is just a JSON document with a recursive stucture - a contract is one
@@ -61,7 +61,7 @@ of the following:
 
 | Contract           | JSON                              |
 | ------------------ | --------------------------------- |
-| constant           | `nil`, `true`, `false`, an int, a float or a string |
+| constant           | `null`, `true`, `false`, an int, a float or a string |
 | value              | `{ "_t": "value", "type": <type>, "subcontract": <contract> }` |
 | callable           | `{ "_t": "callable", "argument": <type>, "retval": <type>, "subcontract": <contract> }` |
 | map                | a map without a `"_t"` key whose values are contracts |
