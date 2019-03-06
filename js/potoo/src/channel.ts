@@ -6,6 +6,10 @@ export class Channel<T> {
     }
 
     public send(value: T) {
+        if (this.subscribers.length == 0) {
+            console.log('the message ', value, ' is sent in an empty forest with nobody around. ',
+                'Did it even exist?')
+        }
         this.subscribers.forEach(callback => callback(value))
     }
 }
