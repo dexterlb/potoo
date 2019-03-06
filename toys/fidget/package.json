@@ -3,7 +3,10 @@
   "version": "1.0.0",
   "description": "Example service for Potoo",
   "main": "index.js",
-  "dependencies": {},
+  "dependencies": {
+    "@types/paho-mqtt": "^1.0.4",
+    "paho-mqtt": "^1.1.0"
+  },
   "devDependencies": {
     "@types/node": "^10.12.9",
     "@types/ws": "^6.0.1",

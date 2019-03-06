@@ -1,5 +1,6 @@
 import {Contract} from './contracts';
 import * as mqtt from './mqtt';
+export * from './mqtt';
 
 export function foo() : string {
     return 'this is the foo';
@@ -13,14 +14,10 @@ export class Connection {
 
     async connect() : Promise<void> {
         await this.mqtt_client.connect({
-            on_connect:    this.on_connect,
             on_disconnect: this.on_disconnect,
             on_message:    this.on_message,
             will_message:  this.publish_contract_message(null),
         })
-    }
-
-    private on_connect() {
         console.log('connect')
     }
 
@@ -39,6 +36,7 @@ export class Connection {
     private publish_contract_message(contract: Contract): mqtt.Message {
         return {
             topic:   "_contract/${this.root}",
+            retain:  true,
             payload: JSON.stringify(contract)
         }
     }

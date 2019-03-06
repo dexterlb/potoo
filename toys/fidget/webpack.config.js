@@ -3,7 +3,7 @@ var path = require("path");
 module.exports = {
   mode: 'development',
 
-  devtool: 'inline-source-map',
+  devtool: 'cheap-eval-source-map',
   entry: {
     app: [
       './src/index.ts'
@@ -61,8 +61,15 @@ module.exports = {
   },
 
   devServer: {
-    inline: true,
-    stats: { colors: true },
+      inline: false,
+      hot: false,
+      stats: { colors: true },
+      proxy: {
+          '/ws': {
+              target: 'ws://localhost:1880',
+              ws: true
+            }
+      }
   },
 
 
