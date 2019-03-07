@@ -1,45 +1,49 @@
-export type Type = TBasic | TLiteral | TUnion
+export type Type = TBasic | TLiteral | TUnion | TStruct | TMap
 
 type TBasic = TVoid | TNull | TBool | TInt | TFloat | TString
 
-interface TVoid   { _t: "type-basic", name: "void",  _meta?: object }
-interface TNull   { _t: "type-basic", name: "null",  _meta?: object }
-interface TBool   { _t: "type-basic", name: "bool",  _meta?: object }
-interface TInt    { _t: "type-basic", name: "int",   _meta?: object }
-interface TFloat  { _t: "type-basic", name: "float", _meta?: object }
-interface TString { _t: "type-basic", name: "float", _meta?: object }
+interface TVoid   { _t: "type-basic", name: "void",   _meta?: MetaData }
+interface TNull   { _t: "type-basic", name: "null",   _meta?: MetaData }
+interface TBool   { _t: "type-basic", name: "bool",   _meta?: MetaData }
+interface TInt    { _t: "type-basic", name: "int",    _meta?: MetaData }
+interface TFloat  { _t: "type-basic", name: "float",  _meta?: MetaData }
+interface TString { _t: "type-basic", name: "string", _meta?: MetaData }
 
 interface TLiteral {
     _t: "type-literal",
     value: any,
-    _meta: object,
+    _meta?: MetaData,
 }
 
 interface TUnion {
     _t: "type-union",
     alts: Type[],
-    _meta: object,
+    _meta?: MetaData,
 }
 
 interface TMap {
     _t: "type-map",
     key: Type,
     value: Type,
-    _meta: object,
+    _meta?: MetaData,
 }
 
 interface TList {
     _t: "type-list",
     value: Type,
-    _meta: object,
+    _meta?: MetaData,
 }
 
 interface TStruct {
     _t: "type-struct",
     fields: StructFields,
-    _meta: object,
+    _meta?: MetaData,
 }
 
 interface StructFields {
     [key: string]: Type;
+}
+
+interface MetaData {
+    [key: string]: number | string | boolean | null | MetaData
 }

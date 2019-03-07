@@ -3,6 +3,65 @@ require('./index.html');
 import * as potoo from 'potoo';
 import * as MQTT from 'paho-mqtt';
 
+function make_contract() : potoo.ServiceContract {
+    let boingval = new potoo.Channel<number>(3)
+    let sliderval = new potoo.Channel<number>(4)
+
+    return {
+        "description": "A service which provides a greeting.",
+        "methods": {
+            "hello": {
+                _t: "callable",
+                argument: {_t: "type-struct", fields: { item: {_t: "type-basic", name: "string", _meta: {description: "item to greet"}} } },
+                retval: {_t: "type-basic", name: "string"},
+                handler: (arg: any) => "hello, ${arg.item}!",
+                subcontract: {
+                    "description": "Performs a greeting",
+                    "ui_tags": "order:1",
+                },
+            },
+            "boing": {
+                _t: "callable",
+                argument: {_t: "type-basic", name: "null"},
+                retval:   {_t: "type-basic", name: "void"},
+                handler: (_: any) => boingval.send((boingval.get() + 1) % 20),
+                subcontract: {
+                    "description": "Boing!",
+                    "ui_tags": "order:3",
+                }
+            },
+            "boinger": {
+                _t: "value",
+                type: {_t: "type-basic", name: "float", _meta: {min: 0, max: 20}},
+                channel: boingval,
+                subcontract: {
+                    "ui_tags": "order:4,decimals:0",
+                    "stops": {
+                        "0": "init",
+                        "5": "first",
+                        "15": "second",
+                    },
+                }
+            },
+            "slider": {
+                _t: "value",
+                type: {_t: "type-basic", name: "float", _meta: {min: 0, max: 20}},
+                channel: sliderval,
+                subcontract: {
+                    "set": {
+                        _t: "callable",
+                        argument: {_t: "type-basic", name: "float"},
+                        retval:   {_t: "type-basic", name: "void"},
+                        handler: (val: any) => sliderval.send(val as number),
+                        subcontract: { },
+                    },
+                    "ui_tags": "order:5,decimals:1",
+                }
+            },
+        }
+    }
+}
+
 async function stuff() {
     let paho = new MQTT.Client('ws://' + location.hostname + ':' + Number(location.port) + '/ws', "clientId");
     let client = {
@@ -33,6 +92,7 @@ async function stuff() {
 
     let conn = new potoo.Connection(client, '/fidget')
     await conn.connect()
+    conn.update_contract(make_contract())
 }
 
 document.body.innerHTML = potoo.foo();

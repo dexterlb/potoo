@@ -1,4 +1,6 @@
-import {Contract} from './contracts';
+import {Contract, ServiceContract} from './contracts';
+export {Contract, ServiceContract} from './contracts';
+export * from './channel'
 import * as mqtt from './mqtt';
 export * from './mqtt';
 
@@ -7,7 +9,9 @@ export function foo() : string {
 }
 
 export class Connection {
-    constructor(private mqtt_client: mqtt.Client, private root: string) {
+    private reply_topic: string
+    constructor(private mqtt_client: mqtt.Client, private root: string, private service_root: string = "") {
+        this.reply_topic = random_string(15)
     }
 
     private root_topic: string
@@ -19,6 +23,10 @@ export class Connection {
             will_message:  this.publish_contract_message(null),
         })
         console.log('connect')
+    }
+
+    async update_contract(contract: ServiceContract) {
+        console.log('must publish ', contract)
     }
 
     private on_disconnect() {
@@ -40,4 +48,14 @@ export class Connection {
             payload: JSON.stringify(contract)
         }
     }
+}
+
+function random_string(n: number) {
+    var text = "";
+    var chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+
+    for (var i = 0; i < n; i++)
+        text += chars.charAt(Math.floor(Math.random() * chars.length));
+
+    return text;
 }
