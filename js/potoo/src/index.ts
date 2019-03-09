@@ -1,9 +1,9 @@
-import {Contract, RawContract, Value, Callable, traverse, encode, isValue, isCallable} from './contracts';
+import {Contract, RawContract, Value, Callable, Call, traverse, encode, isValue, isCallable} from './contracts';
 export {Contract, RawContract} from './contracts';
 export * from './channel'
 import * as mqtt from './mqtt';
 export * from './mqtt';
-import {typecheck} from './types'
+import {typecheck, is_void} from './types'
 
 export function foo() : string {
     return 'this is the foo';
@@ -81,13 +81,29 @@ export class Connection {
 
     private on_message(message: mqtt.Message) {
         if (message.topic in this.callable_index) {
-            console.log('shall call: ', message.topic)
+            let c = this.callable_index[message.topic]
+            // TODO: insert typecheck with the io-ts library here.
+            let request = JSON.parse(message.payload) as Call
+            typecheck(c.argument, request.argument)
+            let result = c.handler(request.argument)
+            typecheck(c.retval, result)
+            if (!is_void(c.retval)) {
+                this.publish_reply(request.topic, request.token, result)
+            }
             return
         }
         console.log('unknown message: ', message)
     }
 
-    private publish_value(topic: mqtt.Topic, c: Value, v: any) {
+    private publish_reply(topic: mqtt.Topic, token: string, result: any): void {
+        this.mqtt_client.publish({
+            topic: mqtt.join_topics('_reply', topic),
+            retain: false,
+            payload: JSON.stringify({token: token, result: result}),
+        })
+    }
+
+    private publish_value(topic: mqtt.Topic, c: Value, v: any): void {
         typecheck(v, c.type)
         this.mqtt_client.publish({
             topic: topic,

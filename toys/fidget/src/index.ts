@@ -21,7 +21,7 @@ function make_contract() : potoo.Contract {
                 _t: "callable",
                 argument: {_t: "type-struct", fields: { item: {_t: "type-basic", name: "string", _meta: {description: "item to greet"}} } },
                 retval: {_t: "type-basic", name: "string"},
-                handler: (arg: any) => "hello, ${arg.item}!",
+                handler: (arg: any) => `hello, ${arg.item}!`,
                 subcontract: {
                     "description": "Performs a greeting",
                     "ui_tags": "order:1",
@@ -81,7 +81,7 @@ async function stuff() {
         connect: (config: potoo.ConnectConfig) : Promise<void> => new Promise((resolve, reject) => {
             paho.onConnectionLost = (err) => {
                 config.on_disconnect()
-                console.log("disconnected! error: ${err.errorMessage}")
+                console.log(`disconnected! error: ${err.errorMessage}`)
             }
             paho.onMessageArrived = (m) => config.on_message({
                 topic: m.destinationName,

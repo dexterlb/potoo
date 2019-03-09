@@ -48,6 +48,10 @@ interface MetaData {
     [key: string]: number | string | boolean | null | MetaData
 }
 
+export function is_void(t: Type): boolean {
+    return t._t == 'type-basic' && t.name == 'void'
+}
+
 export function typecheck(x: any, t: Type): boolean {
     console.log('please implement typecheck')
     return true

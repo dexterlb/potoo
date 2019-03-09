@@ -58,6 +58,12 @@ export interface RawCallable extends CallableDescr {
     subcontract: RawMapContract,
 }
 
+export interface Call {
+    topic: string,
+    token: string,
+    argument: any,
+}
+
 export function traverse(c: Contract, f: (c: Contract, topic: Topic) => void) {
     traverse_helper(c, f, [])
 }
