@@ -79,7 +79,10 @@ async function stuff() {
     let paho = new MQTT.Client('ws://' + location.hostname + ':' + Number(location.port) + '/ws', "clientId");
     let client = {
         connect: (config: potoo.ConnectConfig) : Promise<void> => new Promise((resolve, reject) => {
-            paho.onConnectionLost = config.on_disconnect
+            paho.onConnectionLost = (err) => {
+                config.on_disconnect()
+                console.log("disconnected! error: ${err.errorMessage}")
+            }
             paho.onMessageArrived = (m) => config.on_message({
                 topic: m.destinationName,
                 payload: m.payloadString,

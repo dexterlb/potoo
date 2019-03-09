@@ -19,8 +19,8 @@ export class Connection {
 
     async connect(): Promise<void> {
         await this.mqtt_client.connect({
-            on_disconnect: this.on_disconnect,
-            on_message:    this.on_message,
+            on_disconnect: () => this.on_disconnect(),
+            on_message:    (msg: mqtt.Message) => this.on_message(msg),
             will_message:  this.publish_contract_message(null),
         })
         console.log('connect')
@@ -30,44 +30,67 @@ export class Connection {
         callback: (v: any) => void,
         value: Value,
     } } = {}
+    private callable_index: { [topic: string]: Callable } = {}
 
-    private service_channel_subscriptions: { [topic: string]: (v: any) => void } = {}
+
     async update_contract(contract: Contract) {
         this.destroy_service()
-        traverse(contract, (c, topic) => {
+        traverse(contract, (c, subtopic) => {
             if (isValue(c)) {
+                let topic = this.service_topic('_value', subtopic)
                 let f = (v: any) => this.publish_value(topic, c, v)
-                this.service_value_index[this.service_topic(topic)] = {
+                this.service_value_index[topic] = {
                     callback: f,
                     value: c,
                 }
+
                 c.channel.subscribe(f)
+                return
+            }
+            if (isCallable(c)) {
+                let topic = this.service_topic('_call', subtopic)
+                this.callable_index[topic] = c
+                this.mqtt_client.subscribe(topic)
+                return
             }
         })
 
         this.publish_contract(contract)
+
+        this.force_publish_all_values()
     }
 
-    private destroy_service() {
+    private force_publish_all_values(): void {
         Object.keys(this.service_value_index).forEach(topic => {
-            let v = this.service_value_index[topic].value
-            v.channel.unsubscribe(this.service_value_index[topic].callback)
+            let v = this.service_value_index[topic]
+            v.callback(v.value.channel.get())
         })
     }
 
-    private on_disconnect() {
+    private destroy_service(): void {
+        Object.keys(this.service_value_index).forEach(topic => {
+            let v = this.service_value_index[topic]
+            v.value.channel.unsubscribe(v.callback)
+        })
+    }
+
+    private on_disconnect(): void {
         this.destroy_service()
         console.log('disconnect')
     }
 
     private on_message(message: mqtt.Message) {
-        console.log('message: ', message)
+        if (message.topic in this.callable_index) {
+            console.log('shall call: ', message.topic)
+            return
+        }
+        console.log('unknown message: ', message)
     }
 
     private publish_value(topic: mqtt.Topic, c: Value, v: any) {
         typecheck(v, c.type)
         this.mqtt_client.publish({
-            topic: this.service_topic('_value', topic),
+            topic: topic,
             retain: true,
             payload: JSON.stringify(v),
         })
