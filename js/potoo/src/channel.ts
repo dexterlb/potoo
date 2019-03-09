@@ -1,10 +1,14 @@
 export class Channel<T> {
-    private subscribers: Subscriber<T>[]
+    private subscribers: Subscriber<T>[] = []
 
     constructor(private value: T) {}
 
     public subscribe(callback: Subscriber<T>) {
         this.subscribers.push(callback)
+    }
+
+    public unsubscribe(callback: Subscriber<T>) {
+        this.subscribers.filter(other => !Object.is(other, callback))
     }
 
     public send(value: T) {

@@ -3,7 +3,7 @@ require('./index.html');
 import * as potoo from 'potoo';
 import * as MQTT from 'paho-mqtt';
 
-function make_contract() : potoo.ServiceContract {
+function make_contract() : potoo.Contract {
     let boingval = new potoo.Channel<number>(3)
     let sliderval = new potoo.Channel<number>(4)
 

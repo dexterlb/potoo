@@ -47,3 +47,8 @@ interface StructFields {
 interface MetaData {
     [key: string]: number | string | boolean | null | MetaData
 }
+
+export function typecheck(x: any, t: Type): boolean {
+    console.log('please implement typecheck')
+    return true
+}

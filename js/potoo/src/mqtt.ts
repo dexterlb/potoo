@@ -1,7 +1,9 @@
+export type Topic = string
+
 export interface Client {
     connect: (config: ConnectConfig) => Promise<void>,
     publish: (message: Message)      => void,
-    subscribe: (filter: string)      => Promise<void>,
+    subscribe: (filter: Topic)       => Promise<void>,
 }
 
 export interface ConnectConfig {
@@ -11,7 +13,23 @@ export interface ConnectConfig {
 }
 
 export interface Message {
-    topic: string,
+    topic: Topic,
     payload: string,
     retain: boolean,
+}
+
+export function join_topic_list(topics: Array<Topic>): Topic {
+    return topics.reduce(join_topics, '')
+}
+
+export function join_topics(a: Topic, b: Topic): Topic {
+    a = trim_topic(a)
+    b = trim_topic(b)
+    if (a == '') return b;
+    if (b == '') return a;
+    return a + '/' + b
+}
+
+export function trim_topic(t: Topic): Topic {
+    return t.replace(/^\/+|\/+$/g, '')
 }

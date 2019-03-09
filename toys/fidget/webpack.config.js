@@ -3,7 +3,7 @@ var path = require("path");
 module.exports = {
   mode: 'development',
 
-  devtool: 'cheap-eval-source-map',
+  devtool: 'source-map',
   entry: {
     app: [
       './src/index.ts'
