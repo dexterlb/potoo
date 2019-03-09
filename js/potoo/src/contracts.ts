@@ -71,7 +71,7 @@ function traverse_helper(c: Contract, f: (c: Contract, topic: Topic) => void, pa
     if (typeof c == 'object') {
         for (let key in c) {
             path.push(key)
-            traverse(c[key], f)
+            traverse_helper(c[key], f, path)
             path.pop()
         }
     }

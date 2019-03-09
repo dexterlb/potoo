@@ -3,9 +3,16 @@ require('./index.html');
 import * as potoo from 'potoo';
 import * as MQTT from 'paho-mqtt';
 
+function show_time(chan: potoo.Channel<string>) {
+    chan.send((new Date()).toLocaleString())
+    setTimeout(() => show_time(chan), 999)
+}
+
 function make_contract() : potoo.Contract {
-    let boingval = new potoo.Channel<number>(3)
+    let boingval  = new potoo.Channel<number>(3)
     let sliderval = new potoo.Channel<number>(4)
+    let timechan  = new potoo.Channel<string>("never")
+    show_time(timechan)
 
     return {
         "description": "A service which provides a greeting.",
@@ -57,6 +64,12 @@ function make_contract() : potoo.Contract {
                     },
                     "ui_tags": "order:5,decimals:1",
                 }
+            },
+            "clock": {
+                _t: "value",
+                type: { _t: "type-basic", name: "string" },
+                subcontract: { "description": "current time" },
+                channel: timechan,
             },
         }
     }
