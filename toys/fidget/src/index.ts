@@ -75,8 +75,8 @@ function make_contract() : potoo.Contract {
     }
 }
 
-async function stuff() {
-    let paho = new MQTT.Client('ws://' + location.hostname + ':' + Number(location.port) + '/ws', "clientId");
+async function connect(): Promise<potoo.Connection> {
+    let paho = new MQTT.Client('ws://' + location.hostname + ':' + Number(location.port) + '/ws', "fidget_" + random_string(8));
     let client = {
         connect: (config: potoo.ConnectConfig) : Promise<void> => new Promise((resolve, reject) => {
             paho.onConnectionLost = (err) => {
@@ -108,8 +108,44 @@ async function stuff() {
 
     let conn = new potoo.Connection(client, '/fidget')
     await conn.connect()
+    return conn
+}
+
+async function server(): Promise<void> {
+    document.title += ': server'
+    let conn = await connect()
     conn.update_contract(make_contract())
 }
 
-document.body.innerHTML = potoo.foo();
-stuff().then(() => console.log('wooo')).catch((err) => console.log('err ', err));
+async function client(): Promise<void> {
+    document.title += ': client'
+    let conn = await connect()
+}
+
+async function do_stuff(f: () => Promise<void>) {
+    document.body.innerHTML = 'read your motherfucking console';
+    f().then(() => console.log('wooo')).catch((err) => console.log('err ', err));
+}
+
+function click(id: string, f: () => Promise<void>) {
+    let el = document.getElementById(id)
+    if (el) {
+        el.onclick = () => do_stuff(f)
+    } else {
+        console.log('invalid id: ', id)
+    }
+}
+
+function random_string(n: number) {
+    var text = ""
+    var chars = "abcdefghijklmnopqrstuvwxyz0123456789"
+
+    for (var i = 0; i < n; i++) {
+        text += chars.charAt(Math.floor(Math.random() * chars.length))
+    }
+
+    return text;
+}
+
+click('client-btn', client)
+click('server-btn', server)
