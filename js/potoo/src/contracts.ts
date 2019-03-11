@@ -47,7 +47,7 @@ export interface Value extends ValueDescr {
 
 export interface Callable extends CallableDescr {
     subcontract: MapContract,
-    handler: (argument: any) => any
+    handler: Handler
 }
 
 export interface RawValue extends ValueDescr {
@@ -64,6 +64,15 @@ export interface Call {
     argument: any,
 }
 
+export interface CallResponse {
+    token: string,
+    result: any,
+}
+
+export interface Handler {
+    (argument: any): Promise<any>
+}
+
 export function traverse(c: Contract, f: (c: Contract, topic: Topic) => void) {
     traverse_helper(c, f, [])
 }
@@ -71,7 +80,7 @@ export function traverse(c: Contract, f: (c: Contract, topic: Topic) => void) {
 function traverse_helper(c: Contract, f: (c: Contract, topic: Topic) => void, path: Array<string>) {
     f(c, make_topic(path))
     if (isValue(c) || isCallable(c)) {
-        traverse(c.subcontract, f)
+        traverse_helper(c.subcontract, f, path)
         return
     }
     if (typeof c == 'object') {
@@ -81,6 +90,34 @@ function traverse_helper(c: Contract, f: (c: Contract, topic: Topic) => void, pa
             path.pop()
         }
     }
+}
+
+export interface DecodeOptions {
+    valueChannel: (v: RawValue) => Channel<any>,
+    callHandler: (c: RawCallable) => Handler,
+}
+
+export function decode(c: RawContract, o: DecodeOptions): Contract {
+    if (isValue(c)) {
+        return { _t: c._t, type: c.type, subcontract: decode_map(c.subcontract, o),
+                 channel: o.valueChannel(c) }
+    }
+    if (isCallable(c)) {
+        return { _t: c._t, argument: c.argument, retval: c.retval, subcontract: decode_map(c.subcontract, o),
+                 handler: o.callHandler(c) }
+    }
+    if (c != null && typeof c == 'object') {
+        return decode_map(c, o)
+    }
+    return c
+}
+
+function decode_map(c: RawMapContract, o: DecodeOptions): MapContract {
+    let result: { [key: string]: Contract } = {}
+    for (let key in c) {
+        result[key] = decode(c[key], o)
+    }
+    return result
 }
 
 export function encode(c: Contract): RawContract {

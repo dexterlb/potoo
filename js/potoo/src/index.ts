@@ -1,18 +1,35 @@
-import {Contract, RawContract, Value, Callable, Call, traverse, encode, isValue, isCallable} from './contracts';
+import {Contract, RawContract, Value, RawCallable, Callable, Call, CallResponse, traverse, encode, decode, isValue, isCallable} from './contracts';
 export {Contract, RawContract} from './contracts';
+import {Channel} from './channel'
 export * from './channel'
 import * as mqtt from './mqtt';
 export * from './mqtt';
 import {typecheck, is_void} from './types'
 
-export function foo() : string {
-    return 'this is the foo';
+export interface ConnectionOptions {
+    mqtt_client: mqtt.Client,
+    root: mqtt.Topic,
+    service_root?: mqtt.Topic,
+    on_contract?: (topic: mqtt.Topic, contract: Contract) => void,
+    call_timeout?: number,
 }
 
 export class Connection {
     private reply_topic: string
-    constructor(private mqtt_client: mqtt.Client, private root: string, private service_root: string = "") {
-        this.reply_topic = random_string(15)
+
+    private mqtt_client: mqtt.Client
+    private root: mqtt.Topic
+    private service_root: mqtt.Topic
+    private on_contract: (topic: mqtt.Topic, contract: Contract) => void
+    private call_timeout: number
+
+    constructor(options: ConnectionOptions) {
+        this.reply_topic  = random_string(16)
+        this.mqtt_client  = options.mqtt_client
+        this.root         = options.root
+        this.service_root = options.service_root || ""
+        this.on_contract  = options.on_contract  || ((t, c) => {})
+        this.call_timeout = options.call_timeout || 5000
     }
 
     private root_topic: string
@@ -23,6 +40,7 @@ export class Connection {
             on_message:    (msg: mqtt.Message) => this.on_message(msg),
             will_message:  this.publish_contract_message(null),
         })
+        this.mqtt_client.subscribe(mqtt.join_topics('_reply', this.reply_topic))
         console.log('connect')
     }
 
@@ -30,11 +48,12 @@ export class Connection {
         callback: (v: any) => void,
         value: Value,
     } } = {}
-    private callable_index: { [topic: string]: Callable } = {}
+    private service_callable_index: { [topic: string]: Callable } = {}
 
 
     async update_contract(contract: Contract) {
         this.destroy_service()
+        let side_effects: Array<Promise<void>> = []
         traverse(contract, (c, subtopic) => {
             if (isValue(c)) {
                 let topic = this.service_topic('_value', subtopic)
@@ -49,11 +68,13 @@ export class Connection {
             }
             if (isCallable(c)) {
                 let topic = this.service_topic('_call', subtopic)
-                this.callable_index[topic] = c
-                this.mqtt_client.subscribe(topic)
+                this.service_callable_index[topic] = c
+                side_effects.push(this.mqtt_client.subscribe(topic))
                 return
             }
         })
+
+        await Promise.all(side_effects)
 
         this.publish_contract(contract)
 
@@ -80,19 +101,118 @@ export class Connection {
     }
 
     private on_message(message: mqtt.Message) {
-        if (message.topic in this.callable_index) {
-            let c = this.callable_index[message.topic]
+        if (message.topic in this.service_callable_index) {
+            let c = this.service_callable_index[message.topic]
             // TODO: insert typecheck with the io-ts library here.
             let request = JSON.parse(message.payload) as Call
             typecheck(c.argument, request.argument)
-            let result = c.handler(request.argument)
-            typecheck(c.retval, result)
-            if (!is_void(c.retval)) {
-                this.publish_reply(request.topic, request.token, result)
-            }
+            c.handler(request.argument).then(result => {
+                typecheck(c.retval, result)
+                if (!is_void(c.retval)) {
+                    this.publish_reply(request.topic, request.token, result)
+                }
+            }).catch(err => {
+                console.log('error while processing call to ', message.topic, ': ', err)
+            })
             return
         }
+
+        if (message.topic == mqtt.join_topics('_reply', this.reply_topic)) {
+            // TODO: insert typecheck with the io-ts library here.
+            let response = JSON.parse(message.payload) as CallResponse
+            if (!(response.token in this.active_calls)) {
+                console.log('someone responded to an unknown call: ', response.token)
+                return
+            }
+            this.active_calls[response.token].resolve(response.result)
+            delete this.active_calls[response.token]
+            return
+        }
+
+        let contract_topic = mqtt.strip_topic('_contract', message.topic)
+        if (contract_topic != null) {
+            let raw_contract = JSON.parse(message.payload) as RawContract
+            // TODO: insert typecheck with the io-ts library here.
+            this.incoming_contract(contract_topic, raw_contract)
+            return
+        }
+
         console.log('unknown message: ', message)
+    }
+
+    public async get_contracts(topic: mqtt.Topic) {
+        await this.mqtt_client.subscribe(this.client_topic('_contract', topic))
+    }
+
+    private contract_index: { [topic: string]: Contract } = {}
+    private callable_index: { [topic: string]: Callable } = {}
+    private value_index: { [topic: string]: Value } = {}
+    private incoming_contract(topic: mqtt.Topic, raw: RawContract) {
+        this.destroy_contract(topic)
+        let contract = decode(raw, {
+            valueChannel: c => new Channel<any>(undefined),   // TODO: construct an actual default value
+            callHandler: c => async x => undefined,
+        })
+
+        if (contract != null) {
+            this.contract_index[topic] = contract
+            traverse(contract, (c, subtopic) => {
+                if (isValue(c)) {
+                    this.value_index[mqtt.join_topics(topic, subtopic)] = c
+                    return
+                }
+                if (isCallable(c)) {
+                    let full_topic = mqtt.join_topics(topic, subtopic)
+                    this.callable_index[full_topic] = c
+                    c.handler = arg => this.perform_call(c, full_topic, arg)
+                    return
+                }
+            })
+        }
+
+        console.log('new contract at ', topic, ': ', contract, ', index: ', {
+            contract: this.contract_index,
+            callable: this.callable_index,
+            value: this.value_index,
+        })
+
+        this.on_contract(topic, contract)
+    }
+
+    private active_calls: { [token: string]: Promiser<any> } = {}
+    private perform_call(c: RawCallable, topic: mqtt.Topic, arg: any): Promise<any> {
+        typecheck(arg, c.argument)
+        return new Promise<any>((resolve, reject) => {
+            let token = random_string(16)
+
+            this.mqtt_client.publish({
+                topic: this.client_topic('_call', topic),
+                retain: false,
+                payload: JSON.stringify({topic: this.reply_topic, token: token, argument: arg}),
+            })
+
+            let resolve_result = (result: any) => {
+                typecheck(result, c.retval)
+                resolve(result)
+            }
+            this.active_calls[token] = {resolve: resolve_result, reject: reject}
+            setTimeout(() => {
+                if (token in this.active_calls) {
+                    delete this.active_calls[token]
+                    reject(new Error('timeout'))
+                }
+            }, this.call_timeout)
+        })
+    }
+
+    private destroy_contract(topic: mqtt.Topic) {
+        if (!(topic in this.contract_index)) {
+            return
+        }
+        traverse(this.contract_index[topic], (c, subtopic) => {
+            delete this.callable_index[mqtt.join_topics(topic, subtopic)]
+            delete this.value_index[mqtt.join_topics(topic, subtopic)]
+        })
     }
 
     private publish_reply(topic: mqtt.Topic, token: string, result: any): void {
@@ -127,6 +247,20 @@ export class Connection {
     private service_topic(prefix: mqtt.Topic, suffix: mqtt.Topic = ""): mqtt.Topic {
         return mqtt.join_topic_list([prefix, this.root, this.service_root, suffix])
     }
+
+    private client_topic(prefix: mqtt.Topic, suffix: mqtt.Topic = ""): mqtt.Topic {
+        return mqtt.join_topic_list([prefix, this.root, suffix])
+    }
+}
+
+interface Subscription {
+    persistent: boolean,
+    channel: Channel<any>,
+}
+
+interface Promiser<T> {
+    resolve: (v: T)     => void,
+    reject:  (err: any) => void,
 }
 
 function random_string(n: number) {

@@ -33,3 +33,16 @@ export function join_topics(a: Topic, b: Topic): Topic {
 export function trim_topic(t: Topic): Topic {
     return t.replace(/^\/+|\/+$/g, '')
 }
+
+export function strip_topic(prefix: Topic, t: Topic): Topic | null {
+    prefix = trim_topic(prefix)
+    t = trim_topic(t)
+    if (prefix == t) {
+        return ''
+    }
+    prefix += '/'
+    if (t.startsWith(prefix)) {
+        return t.substring(prefix.length)
+    }
+    return null
+}

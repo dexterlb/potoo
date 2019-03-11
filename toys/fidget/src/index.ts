@@ -21,7 +21,7 @@ function make_contract() : potoo.Contract {
                 _t: "callable",
                 argument: {_t: "type-struct", fields: { item: {_t: "type-basic", name: "string", _meta: {description: "item to greet"}} } },
                 retval: {_t: "type-basic", name: "string"},
-                handler: (arg: any) => `hello, ${arg.item}!`,
+                handler: async (arg: any) => `hello, ${arg.item}!`,
                 subcontract: {
                     "description": "Performs a greeting",
                     "ui_tags": "order:1",
@@ -31,7 +31,7 @@ function make_contract() : potoo.Contract {
                 _t: "callable",
                 argument: {_t: "type-basic", name: "null"},
                 retval:   {_t: "type-basic", name: "void"},
-                handler: (_: any) => boingval.send((boingval.get() + 1) % 20),
+                handler: async (_: any) => boingval.send((boingval.get() + 1) % 20),
                 subcontract: {
                     "description": "Boing!",
                     "ui_tags": "order:3",
@@ -59,7 +59,7 @@ function make_contract() : potoo.Contract {
                         _t: "callable",
                         argument: {_t: "type-basic", name: "float"},
                         retval:   {_t: "type-basic", name: "void"},
-                        handler: (val: any) => sliderval.send(val as number),
+                        handler: async (val: any) => sliderval.send(val as number),
                         subcontract: { },
                     },
                     "ui_tags": "order:5,decimals:1",
@@ -75,7 +75,7 @@ function make_contract() : potoo.Contract {
     }
 }
 
-async function connect(): Promise<potoo.Connection> {
+async function connect(root: string): Promise<potoo.Connection> {
     let paho = new MQTT.Client('ws://' + location.hostname + ':' + Number(location.port) + '/ws', "fidget_" + random_string(8));
     let client = {
         connect: (config: potoo.ConnectConfig) : Promise<void> => new Promise((resolve, reject) => {
@@ -106,20 +106,34 @@ async function connect(): Promise<potoo.Connection> {
         }),
     }
 
-    let conn = new potoo.Connection(client, '/fidget')
+    let conn = new potoo.Connection({
+        mqtt_client: client,
+        root: root,
+        on_contract: on_contract
+    })
     await conn.connect()
     return conn
 }
 
+declare global {
+    interface Window { contracts: { [topic: string]: potoo.Contract }; }
+}
+
+window.contracts = {}
+function on_contract(topic: string, contract: potoo.Contract) {
+    window.contracts[topic] = contract;
+}
+
 async function server(): Promise<void> {
     document.title += ': server'
-    let conn = await connect()
+    let conn = await connect('/fidget')
     conn.update_contract(make_contract())
 }
 
 async function client(): Promise<void> {
     document.title += ': client'
-    let conn = await connect()
+    let conn = await connect('/')
+    conn.get_contracts('#')
 }
 
 async function do_stuff(f: () => Promise<void>) {
