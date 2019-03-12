@@ -22,6 +22,7 @@ export class Connection {
     private service_root: mqtt.Topic
     private on_contract: (topic: mqtt.Topic, contract: Contract) => void
     private call_timeout: number
+    private dummyChan: Channel<any>
 
     constructor(options: ConnectionOptions) {
         this.reply_topic  = random_string(16)
@@ -40,7 +41,7 @@ export class Connection {
             on_message:    (msg: mqtt.Message) => this.on_message(msg),
             will_message:  this.publish_contract_message(null),
         })
-        this.mqtt_client.subscribe(mqtt.join_topics('_reply', this.reply_topic))
+        await this.mqtt_client.subscribe(mqtt.join_topics('_reply', this.reply_topic))
         console.log('connect')
     }
 
@@ -63,7 +64,7 @@ export class Connection {
                     value: c,
                 }
 
-                c.channel.subscribe(f)
+                side_effects.push(c.channel.subscribe(f))
                 return
             }
             if (isCallable(c)) {
@@ -101,6 +102,14 @@ export class Connection {
     }
 
     private on_message(message: mqtt.Message) {
+        if (message.topic in this.value_index) {
+            let v = this.value_index[message.topic]
+            let value = JSON.parse(message.payload)
+            typecheck(v.type, value)
+            v.channel.send(value)
+            return
+        }
+
         if (message.topic in this.service_callable_index) {
             let c = this.service_callable_index[message.topic]
             // TODO: insert typecheck with the io-ts library here.
@@ -150,19 +159,27 @@ export class Connection {
     private incoming_contract(topic: mqtt.Topic, raw: RawContract) {
         this.destroy_contract(topic)
         let contract = decode(raw, {
-            valueChannel: c => new Channel<any>(undefined),   // TODO: construct an actual default value
+            valueChannel: c => this.dummyChan,
             callHandler: c => async x => undefined,
         })
 
         if (contract != null) {
             this.contract_index[topic] = contract
             traverse(contract, (c, subtopic) => {
+                let full_topic = this.client_topic('_value', mqtt.join_topics(topic, subtopic))
                 if (isValue(c)) {
-                    this.value_index[mqtt.join_topics(topic, subtopic)] = c
+                    c.channel = new Channel<any>(undefined, {   // TODO: construct an actual default value
+                        on_first_subscribed: async () => {
+                            await this.mqtt_client.subscribe(full_topic)
+                        },
+                        on_last_unsubscribed: async () => {},
+                        on_subscribed: async () => {},
+                        on_unsubscribed: async () => {},
+                    })
+                    this.value_index[full_topic] = c
                     return
                 }
                 if (isCallable(c)) {
-                    let full_topic = mqtt.join_topics(topic, subtopic)
                     this.callable_index[full_topic] = c
                     c.handler = arg => this.perform_call(c, full_topic, arg)
                     return

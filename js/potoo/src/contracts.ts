@@ -6,6 +6,7 @@ export type RawContract     = Constant
                             | RawValue
                             | RawCallable
                             | RawMapContract
+
 export type Contract        = Constant
                             | Value
                             | Callable

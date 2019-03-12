@@ -1,14 +1,26 @@
 export class Channel<T> {
     private subscribers: Subscriber<T>[] = []
 
-    constructor(private value: T) {}
+    constructor(private value: T, private options?: ChannelOptions) {}
 
-    public subscribe(callback: Subscriber<T>) {
+    public async subscribe(callback: Subscriber<T>): Promise<void> {
+        if (this.options) {
+            if (this.subscribers.length == 0) {
+                await this.options.on_first_subscribed()
+            }
+            await this.options.on_subscribed()
+        }
         this.subscribers.push(callback)
     }
 
-    public unsubscribe(callback: Subscriber<T>) {
+    public async unsubscribe(callback: Subscriber<T>): Promise<void> {
         this.subscribers.filter(other => !Object.is(other, callback))
+        if (this.options) {
+            if (this.subscribers.length == 0) {
+                await this.options.on_last_unsubscribed()
+            }
+            await this.options.on_unsubscribed()
+        }
     }
 
     public send(value: T) {
@@ -26,3 +38,10 @@ export class Channel<T> {
 }
 
 type Subscriber<T> = (value: T) => void
+
+interface ChannelOptions {
+    on_first_subscribed: () => Promise<void>,
+    on_last_unsubscribed: () => Promise<void>,
+    on_subscribed: () => Promise<void>,
+    on_unsubscribed: () => Promise<void>,
+}

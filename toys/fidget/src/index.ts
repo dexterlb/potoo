@@ -83,11 +83,15 @@ async function connect(root: string): Promise<potoo.Connection> {
                 config.on_disconnect()
                 console.log(`disconnected! error: ${err.errorMessage}`)
             }
-            paho.onMessageArrived = (m) => config.on_message({
-                topic: m.destinationName,
-                payload: m.payloadString,
-                retain: m.retained,
-            })
+            paho.onMessageArrived = (m) => {
+                let msg = {
+                    topic: m.destinationName,
+                    payload: m.payloadString,
+                    retain: m.retained,
+                }
+                console.log(' [in] ', msg.topic, ': ', msg.payload)
+                config.on_message(msg)
+            }
             let will = new MQTT.Message(config.will_message.payload)
             will.destinationName = config.will_message.topic
             will.retained        = config.will_message.retain
@@ -97,8 +101,12 @@ async function connect(root: string): Promise<potoo.Connection> {
                 onFailure: (err) => reject(err.errorMessage),
             })
         }),
-        publish:   (msg: potoo.Message) => paho.send(msg.topic, msg.payload, 0, msg.retain),
+        publish:   (msg: potoo.Message) => {
+            console.log('[out] ', msg.topic, ': ', msg.payload)
+            paho.send(msg.topic, msg.payload, 0, msg.retain)
+        },
         subscribe: (filter: string) : Promise<void> => new Promise((resolve, reject) => {
+            console.log('[sub] ', filter)
             paho.subscribe(filter, {
                 onSuccess: (con) => resolve(),
                 onFailure: (err) => reject(err.errorMessage),
