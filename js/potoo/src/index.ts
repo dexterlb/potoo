@@ -166,17 +166,18 @@ export class Connection {
         if (contract != null) {
             this.contract_index[topic] = contract
             traverse(contract, (c, subtopic) => {
-                let full_topic = this.client_topic('_value', mqtt.join_topics(topic, subtopic))
+                let full_topic = mqtt.join_topics(topic, subtopic)
                 if (isValue(c)) {
-                    c.channel = new Channel<any>(undefined, {   // TODO: construct an actual default value
+                    let value_topic = this.client_topic('_value', full_topic)
+                    c.channel = new Channel<any>({
                         on_first_subscribed: async () => {
-                            await this.mqtt_client.subscribe(full_topic)
+                            await this.mqtt_client.subscribe(value_topic)
                         },
                         on_last_unsubscribed: async () => {},
                         on_subscribed: async () => {},
                         on_unsubscribed: async () => {},
                     })
-                    this.value_index[full_topic] = c
+                    this.value_index[value_topic] = c
                     return
                 }
                 if (isCallable(c)) {

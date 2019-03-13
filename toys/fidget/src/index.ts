@@ -9,9 +9,9 @@ function show_time(chan: potoo.Channel<string>) {
 }
 
 function make_contract() : potoo.Contract {
-    let boingval  = new potoo.Channel<number>(3)
-    let sliderval = new potoo.Channel<number>(4)
-    let timechan  = new potoo.Channel<string>("never")
+    let boingval  = new potoo.Channel<number>().send(4)
+    let sliderval = new potoo.Channel<number>().send(5)
+    let timechan  = new potoo.Channel<string>()
     show_time(timechan)
 
     return {
@@ -31,7 +31,7 @@ function make_contract() : potoo.Contract {
                 _t: "callable",
                 argument: {_t: "type-basic", name: "null"},
                 retval:   {_t: "type-basic", name: "void"},
-                handler: async (_: any) => boingval.send((boingval.get() + 1) % 20),
+                handler: async (_: any) => boingval.send((await boingval.get() + 1) % 20),
                 subcontract: {
                     "description": "Boing!",
                     "ui_tags": "order:3",
