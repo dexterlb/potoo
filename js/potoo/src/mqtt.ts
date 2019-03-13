@@ -4,12 +4,13 @@ export interface Client {
     connect: (config: ConnectConfig) => Promise<void>,
     publish: (message: Message)      => void,
     subscribe: (filter: Topic)       => Promise<void>,
+    unsubscribe: (filter: Topic)     => Promise<void>,
 }
 
 export interface ConnectConfig {
     on_disconnect:   () => void,
     on_message:      (message: Message) => void,
-    will_message:    Message,
+    will_message?:    Message,
 }
 
 export interface Message {

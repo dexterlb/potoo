@@ -20,6 +20,7 @@ export class Connection {
     private mqtt_client: mqtt.Client
     private root: mqtt.Topic
     private service_root: mqtt.Topic
+    private is_service: boolean = false
     private on_contract: (topic: mqtt.Topic, contract: Contract) => void
     private call_timeout: number
     private dummyChan: Channel<any>
@@ -28,7 +29,10 @@ export class Connection {
         this.reply_topic  = random_string(16)
         this.mqtt_client  = options.mqtt_client
         this.root         = options.root
-        this.service_root = options.service_root || ""
+        if (options.service_root != undefined) {
+            this.service_root = options.service_root
+            this.is_service = true
+        }
         this.on_contract  = options.on_contract  || ((t, c) => {})
         this.call_timeout = options.call_timeout || 5000
     }
@@ -36,11 +40,14 @@ export class Connection {
     private root_topic: string
 
     async connect(): Promise<void> {
-        await this.mqtt_client.connect({
+        let config: mqtt.ConnectConfig = {
             on_disconnect: () => this.on_disconnect(),
             on_message:    (msg: mqtt.Message) => this.on_message(msg),
-            will_message:  this.publish_contract_message(null),
-        })
+        }
+        if (this.is_service) {
+            config.will_message = this.publish_contract_message(null)
+        }
+        await this.mqtt_client.connect(config)
         await this.mqtt_client.subscribe(mqtt.join_topics('_reply', this.reply_topic))
         console.log('connect')
     }
@@ -53,6 +60,9 @@ export class Connection {
 
 
     async update_contract(contract: Contract) {
+        if (!this.is_service) {
+            throw new Error('cannot publish contract without service root')
+        }
         this.destroy_service()
         let side_effects: Array<Promise<void>> = []
         traverse(contract, (c, subtopic) => {
@@ -79,14 +89,18 @@ export class Connection {
 
         this.publish_contract(contract)
 
-        this.force_publish_all_values()
+        await this.force_publish_all_values()
     }
 
-    private force_publish_all_values(): void {
+    private async force_publish_all_values(): Promise<void> {
+        let side_effects: Array<Promise<void>> = []
         Object.keys(this.service_value_index).forEach(topic => {
             let v = this.service_value_index[topic]
-            v.callback(v.value.channel.get())
+            side_effects.push((async () => {
+                v.callback(await v.value.channel.get())
+            })())
         })
+        await Promise.all(side_effects)
     }
 
     private destroy_service(): void {
@@ -107,6 +121,9 @@ export class Connection {
             let value = JSON.parse(message.payload)
             typecheck(v.type, value)
             v.channel.send(value)
+            if (message.topic in this.persistent_value_index) {
+                this.persistent_value_index[message.topic].send(value)
+            }
             return
         }
 
@@ -153,9 +170,48 @@ export class Connection {
         await this.mqtt_client.subscribe(this.client_topic('_contract', topic))
     }
 
+    public value(topic: string, persistent: boolean = false): Channel<any> | null {
+        let value_topic = this.client_topic('_value', topic)
+        if (persistent) {
+            if (!(value_topic in this.persistent_value_index)) {
+                this.persistent_value_index[value_topic] = this.make_value_channel(value_topic)
+            }
+            return this.persistent_value_index[value_topic]
+        } else {
+            if (value_topic in this.value_index) {
+                return this.value_index[value_topic].channel
+            }
+            return null
+        }
+    }
+
+    public call(topic: string, argument: any): Promise<any> {
+        if (!(topic in this.callable_index)) {
+            return Promise.reject("topic ${topic} not available for call")
+        }
+        return this.callable_index[topic].handler(argument)
+    }
+
+    private make_value_channel(value_topic: string): Channel<any>{
+        return new Channel<any>({
+            on_first_subscribed: async () => {
+                await this.mqtt_client.subscribe(value_topic)
+            },
+            on_last_unsubscribed: async () => {
+                if (value_topic in this.persistent_value_index) {
+                    return
+                }
+                this.mqtt_client.unsubscribe(value_topic)
+            },
+            on_subscribed: async () => {},
+            on_unsubscribed: async () => {},
+        })
+    }
+
     private contract_index: { [topic: string]: Contract } = {}
     private callable_index: { [topic: string]: Callable } = {}
     private value_index: { [topic: string]: Value } = {}
+    private persistent_value_index: { [topic: string]: Channel<any> } = {}
     private incoming_contract(topic: mqtt.Topic, raw: RawContract) {
         this.destroy_contract(topic)
         let contract = decode(raw, {
@@ -169,14 +225,7 @@ export class Connection {
                 let full_topic = mqtt.join_topics(topic, subtopic)
                 if (isValue(c)) {
                     let value_topic = this.client_topic('_value', full_topic)
-                    c.channel = new Channel<any>({
-                        on_first_subscribed: async () => {
-                            await this.mqtt_client.subscribe(value_topic)
-                        },
-                        on_last_unsubscribed: async () => {},
-                        on_subscribed: async () => {},
-                        on_unsubscribed: async () => {},
-                    })
+                    c.channel = this.make_value_channel(value_topic)
                     this.value_index[value_topic] = c
                     return
                 }
@@ -208,6 +257,11 @@ export class Connection {
                 retain: false,
                 payload: JSON.stringify({topic: this.reply_topic, token: token, argument: arg}),
             })
+
+            if (is_void(c.retval)) {
+                resolve()
+                return
+            }
 
             let resolve_result = (result: any) => {
                 typecheck(result, c.retval)
@@ -251,7 +305,7 @@ export class Connection {
     }
 
     private publish_contract(contract: Contract) {
-        this.mqtt_client.publish(this.publish_contract_message(contract))
+        return this.mqtt_client.publish(this.publish_contract_message(contract))
     }
 
     private publish_contract_message(contract: Contract): mqtt.Message {

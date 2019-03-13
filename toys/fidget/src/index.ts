@@ -75,7 +75,7 @@ function make_contract() : potoo.Contract {
     }
 }
 
-async function connect(root: string): Promise<potoo.Connection> {
+async function connect(root: string, service_root?: string): Promise<potoo.Connection> {
     let paho = new MQTT.Client('ws://' + location.hostname + ':' + Number(location.port) + '/ws', "fidget_" + random_string(8));
     let client = {
         connect: (config: potoo.ConnectConfig) : Promise<void> => new Promise((resolve, reject) => {
@@ -92,14 +92,18 @@ async function connect(root: string): Promise<potoo.Connection> {
                 console.log(' [in] ', msg.topic, ': ', msg.payload)
                 config.on_message(msg)
             }
-            let will = new MQTT.Message(config.will_message.payload)
-            will.destinationName = config.will_message.topic
-            will.retained        = config.will_message.retain
-            paho.connect({
+            let conn_data: MQTT.ConnectionOptions = {
                 onSuccess: (con) => resolve(),
-                willMessage: will,
                 onFailure: (err) => reject(err.errorMessage),
-            })
+            }
+            if (config.will_message) {
+                let will = new MQTT.Message(config.will_message.payload)
+                will.destinationName = config.will_message.topic
+                will.retained        = config.will_message.retain
+                conn_data.willMessage = will
+            }
+            console.log('[con]')
+            paho.connect(conn_data)
         }),
         publish:   (msg: potoo.Message) => {
             console.log('[out] ', msg.topic, ': ', msg.payload)
@@ -112,11 +116,19 @@ async function connect(root: string): Promise<potoo.Connection> {
                 onFailure: (err) => reject(err.errorMessage),
             })
         }),
+        unsubscribe: (filter: string) : Promise<void> => new Promise((resolve, reject) => {
+            console.log('[uns] ', filter)
+            paho.unsubscribe(filter, {
+                onSuccess: (con) => resolve(),
+                onFailure: (err) => reject(err.errorMessage),
+            })
+        }),
     }
 
     let conn = new potoo.Connection({
         mqtt_client: client,
         root: root,
+        service_root: service_root,
         on_contract: on_contract
     })
     await conn.connect()
@@ -124,7 +136,7 @@ async function connect(root: string): Promise<potoo.Connection> {
 }
 
 declare global {
-    interface Window { contracts: { [topic: string]: potoo.Contract }; }
+    interface Window { contracts: { [topic: string]: potoo.Contract }; potoo: potoo.Connection }
 }
 
 window.contracts = {}
@@ -134,13 +146,15 @@ function on_contract(topic: string, contract: potoo.Contract) {
 
 async function server(): Promise<void> {
     document.title += ': server'
-    let conn = await connect('/fidget')
+    let conn = await connect('/fidget', "")
+    window.potoo = conn
     conn.update_contract(make_contract())
 }
 
 async function client(): Promise<void> {
     document.title += ': client'
     let conn = await connect('/')
+    window.potoo = conn
     conn.get_contracts('#')
 }
 
