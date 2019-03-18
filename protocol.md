@@ -48,6 +48,7 @@ automated discovery of services.
 | union type      | `{ "_t": "type-union", "alts": [ <type> ... <type> ] }` |
 | map type        | `{ "_t": "type-map", "key": <type>, "value": <type> }` |
 | list type       | `{ "_t": "type-list", "value": <type> }` |
+| tuple type      | `{ "_t": "type-tuple", "fields": <list of types> }` |
 | struct type     | `{ "_t": "type-struct", "fields": <map from field names to types> }` |
 
 Types may also have a `"_meta"` field which is a JSON object containing

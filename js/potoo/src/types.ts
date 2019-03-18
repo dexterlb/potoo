@@ -40,6 +40,16 @@ interface TStruct {
     _meta?: MetaData,
 }
 
+interface TTuple {
+    _t: "type-tuple",
+    fields: TupleFields,
+    _meta?: MetaData,
+}
+
+interface TupleFields {
+    [idx: number]: Type;
+}
+
 interface StructFields {
     [key: string]: Type;
 }
