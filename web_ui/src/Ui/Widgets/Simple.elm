@@ -76,9 +76,6 @@ renderBoolWidget m b children = renderHeaderWithChildren [ class "bool-value" ] 
         False -> "\u{274c}"
     ) ]
 
-renderListWidget   : MetaData -> List (Html msg) -> Html msg
-renderListWidget m children = renderHeaderWithChildren [ class "list" ] m children []
-
 renderDelegateWidget : MetaData -> Int -> List (Html msg) -> Html msg
 renderDelegateWidget m _ children = renderHeader [ class "connected-delegate" ] m <|
     (childify children)
