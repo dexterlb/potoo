@@ -1,6 +1,6 @@
 module Ui.Tree exposing (..)
 
-import Contracts exposing (Callee, Data, Pid, PropertyID, Type, Value, fetch)
+import Contracts exposing (Callee, Data, PropertyID, Property, Type, Value, fetch)
 import Debug
 import Dict exposing (Dict)
 import Ui.Action exposing (..)
@@ -44,7 +44,7 @@ type WidgetMsg
 
 type alias Node =
     { key : String
-    , metaMaker : Contracts.Properties -> MetaData
+    , metaMaker : Contracts.ContractProperties -> MetaData
     , children : List WidgetID
     }
 
@@ -71,7 +71,7 @@ updateWidgetsValue liftAction liftMsg id value widgets =
     updateWidgetValue value (getWidget id widgets) |> liftUpdateResult id widgets (liftAction id) liftMsg
 
 
-updateWidgetsMetaData : (WidgetID -> Action -> Cmd m) -> (WidgetsMsg -> m) -> WidgetID -> Contracts.Properties -> Widgets -> ( Widgets, Cmd m )
+updateWidgetsMetaData : (WidgetID -> Action -> Cmd m) -> (WidgetsMsg -> m) -> WidgetID -> Contracts.ContractProperties -> Widgets -> ( Widgets, Cmd m )
 updateWidgetsMetaData liftAction liftMsg id properties widgets =
     let
         widget =
@@ -250,7 +250,7 @@ updateWidgetMetaData meta ( widget, node ) =
             ( SwitchWidget newModel, Cmd.map SwitchMsg cmd, actions )
 
 
-simpleTree : Widgets -> String -> (Contracts.Properties -> MetaData) -> List WidgetID -> Widget -> ( WidgetID, Widgets )
+simpleTree : Widgets -> String -> (Contracts.ContractProperties -> MetaData) -> List WidgetID -> Widget -> ( WidgetID, Widgets )
 simpleTree initialWidgets key metaMaker children widget =
     let
         node =

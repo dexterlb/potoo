@@ -32,10 +32,11 @@ type TypeDescr
 
 type Contract
     = Constant Value
-    | MapContract (Dict String Contract)
-    | Function Callee Contract
-    | PropertyKey Property Contract
+    | MapContract Children
+    | Function Callee Children
+    | PropertyKey Property Children
 
+type alias Children = Dict String Contract
 
 
 -- need better names for those
@@ -98,7 +99,7 @@ contractDecoder =
         , boolValueDecoder
         , floatValueDecoder
         , objectDecoder
-        , Json.Decode.lazy (\_ -> mapDecoder)
+        , Json.Decode.lazy (\_ -> mapContractDecoder)
         ]
 
 
@@ -143,20 +144,21 @@ propertyDecoder : Decoder Contract
 propertyDecoder =
     Json.Decode.map2 makeProperty
         (field "type" typeDecoder)
-        (field "subcontract" contractDecoder)
+        (field "subcontract" mapDecoder)
 
 functionDecoder : Decoder Contract
 functionDecoder =
     Json.Decode.map3 makeFunction
         (field "argument" typeDecoder)
         (field "retval" typeDecoder)
-        (field "subcontract" contractDecoder)
+        (field "subcontract" mapDecoder)
 
 
-mapDecoder : Decoder Contract
-mapDecoder =
-    Json.Decode.map MapContract <|
-        dict (Json.Decode.lazy (\_ -> contractDecoder))
+mapContractDecoder : Decoder Contract
+mapContractDecoder = Json.Decode.map MapContract mapDecoder
+
+mapDecoder : Decoder Children
+mapDecoder = dict (Json.Decode.lazy (\_ -> contractDecoder))
 
 
 dataDecoder : Decoder Data
@@ -164,12 +166,12 @@ dataDecoder =
     dict Json.Decode.value
 
 
-makeProperty : Type -> Contract -> Contract
+makeProperty : Type -> Children -> Contract
 makeProperty t subcontract = PropertyKey
     { path = "", propertyType = t, setter = Nothing }
     subcontract
 
-makeFunction : Type -> Type -> Contract -> Contract
+makeFunction : Type -> Type -> Children -> Contract
 makeFunction argument retval subcontract =
     Function
         { argument = argument
@@ -407,42 +409,44 @@ propertify_ path contract properties =
     case contract of
         MapContract d ->
             let
-                ( subcontractList, newProperties1 ) =
+                ( subcontractList, newProperties ) =
                     propertifyMap path (Dict.toList d) properties
 
                 subcontract =
                     MapContract <| Dict.fromList subcontractList
             in
-                ( subcontract, newProperties1 )
+                ( subcontract, newProperties )
 
         Function f subcontract ->
             let
-                ( newSubcontract, newProperties ) = propertify_ path subcontract properties
+                ( subcontractList, newProperties ) =
+                    propertifyMap path (Dict.toList subcontract) properties
             in
-                ( Function { f | path = path } newSubcontract, newProperties )
+                ( Function { f | path = path } (Dict.fromList subcontractList), newProperties )
 
 
         PropertyKey prop subcontract ->
             let
-                (newSubcontract, newProperties) = propertify_ path subcontract properties
+                ( subcontractList, newProperties ) =
+                    propertifyMap path (Dict.toList subcontract) properties
                 newerProperties =
                     Dict.insert path Loading newProperties
+            in let
+                subcontractDict = Dict.fromList subcontractList
             in
                 ( PropertyKey
-                    { prop | path = path, setter = makeSetter prop newSubcontract }
-                    newSubcontract
+                    { prop | path = path, setter = makeSetter prop subcontractDict }
+                    subcontractDict
                 , newProperties )
 
         Constant c -> ( Constant c, properties )
 
 
 
-makeSetter : Property -> Contract -> Maybe Callee
-makeSetter { propertyType } subcontract = case subcontract of
-    MapContract d ->
-        Dict.get "set" d |> Maybe.andThen getFunction
+makeSetter : Property -> Children -> Maybe Callee
+makeSetter { propertyType } children =
+    Dict.get "set" children |> Maybe.andThen getFunction
         |> Maybe.andThen (checkSetterType propertyType)
-    _ -> Nothing
 
 
 checkSetterType : Type -> Callee -> Maybe Callee

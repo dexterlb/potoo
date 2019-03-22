@@ -1,6 +1,6 @@
 module Ui.Renderer exposing (renderChildren, renderUi, renderWidget)
 
-import Contracts exposing (Properties, Value(..))
+import Contracts exposing (Value(..))
 import Html exposing (Html, div, text)
 import Ui.Tree exposing (..)
 

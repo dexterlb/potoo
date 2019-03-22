@@ -65,7 +65,9 @@ findStop v l = case l of
 update : Msg -> Model -> ( Model, Cmd Msg, List Action )
 update msg model = case msg of
     Set f ->
-        ( { model | userValue = f, dirty = True }, Cmd.none, [ RequestSet model.metaData.propData.property (JE.float f) ])
+        ( { model | userValue = f, dirty = True }, Cmd.none, case model.metaData.property of
+            Just prop -> [ RequestSet prop (JE.float f) ]
+            Nothing   -> [])
 
 
 updateValue : Value -> Model -> ( Model, Cmd Msg, List Action )
@@ -123,7 +125,7 @@ view lift m children =
             Just v  ->
                 [ renderNumberValue m.metaData v
                 , div [ class "outer" ] ((renderStopRects m) ++ renderGrid m)
-                ] ++ (case m.metaData.propData.hasSetter of
+                ] ++ (case hasSetter m.metaData of
                     False -> []
                     True  ->
                         [ input

@@ -1,6 +1,6 @@
 module Ui.MetaData exposing (..)
 
-import Contracts exposing (Contract, Data, ContractProperties, Property, emptyData, fetch, getTypeFields, Value(..))
+import Contracts exposing (Contract, Children, Data, ContractProperties, Property, emptyData, fetch, getTypeFields, Value(..))
 import Dict exposing (Dict)
 import Json.Decode
 import Json.Encode
@@ -96,15 +96,14 @@ parseValue dec v =
 extractData : Contract -> ContractProperties -> Data
 extractData c properties =
     case c of
-        Contracts.MapContract d ->
-            Dict.map (\_ value -> extractValue properties value) d
+        Contracts.MapContract d -> extractDataDict d properties
 
         Contracts.Function _ subcontract ->
-            extractData subcontract properties
+            extractDataDict subcontract properties
 
-        Contracts.PropertyKey prop contract ->
+        Contracts.PropertyKey prop subcontract ->
             let
-                contractData = extractData contract properties
+                contractData = extractDataDict subcontract properties
                 typeData = getTypeFields prop.propertyType
             in
                 Dict.union contractData typeData
@@ -112,6 +111,8 @@ extractData c properties =
         _ ->
             emptyData
 
+extractDataDict : Children -> ContractProperties -> Data
+extractDataDict d properties = Dict.map (\_ value -> extractValue properties value) d
 
 extractValue : ContractProperties -> Contract -> Json.Encode.Value
 extractValue properties c =
@@ -227,3 +228,10 @@ emptyValueMeta =
     , max  = Nothing
     , stops  = []
     }
+
+hasSetter : MetaData -> Bool
+hasSetter { property } = case property of
+    Nothing -> False
+    Just { setter } -> case setter of
+        Just _ -> True
+        _      -> False
