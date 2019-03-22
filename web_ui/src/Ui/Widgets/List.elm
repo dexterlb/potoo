@@ -54,8 +54,14 @@ view lift m children = case m.mode of
         renderHeaderWithChildren [ class "list-tabbed" ] m.metaData
             (selectTab n children) (renderTabs lift m children)
 
+renderTabs : (Msg -> msg) -> Model -> List (Html msg) -> List (Html msg)
+renderTabs lift m children = List.map (renderTab lift m) children
+
+renderTab : (Msg -> msg) -> Model -> Html msg -> Html msg
+renderTab lift m child = div [ class "tab" ] [ child ]
+
 selectTab : Int -> List (Html msg) -> List (Html msg)
-selectTab n l =
+selectTab n l = List.take 1 <| List.drop n l
 
 makeMode : MetaData -> Mode
 makeMode meta = case getBoolTag "tabbed" meta.uiTags of
