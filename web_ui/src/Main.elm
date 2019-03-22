@@ -44,15 +44,12 @@ main =
 
 type alias Model =
     { messages : List String
-    , conn : Conn
     , mode : Mode
     , url : Url
-    , contracts : Dict Int Contract
-    , allProperties : Properties
-    , fetchingContracts : Set Int
+    , contract : Contract
+    , allProperties : ContractProperties
     , status : Status
     , ui : Ui.Model
-    , key: Key
     , animationTime: Float
     }
 
@@ -115,7 +112,7 @@ connectionUrl { host, port_ } =
 
 
 type Msg
-    = SocketMessage Api.Msg
+    = ApiResponse Api.Response
     | SendPing
     | UrlChanged Url
     | UrlRequested UrlRequest
@@ -126,9 +123,9 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        SocketMessage (Ok (_, resp)) ->
+        ApiResponse (Ok (_, resp)) ->
             handleResponse model resp
-        SocketMessage (Err err) ->
+        ApiResponse (Err err) ->
             let
                 errMsg = Debug.log "error" <|
                     "unable to parse response: " ++ err
@@ -200,71 +197,39 @@ handleUiAction m id action =
 handleResponse : Model -> Response -> ( Model, Cmd Msg )
 handleResponse m resp =
     case resp of
-        GotContract pid contract ->
+        GotContract contract ->
             updateUiCmd <|
                 let
                     ( newContract, properties ) =
                         propertify contract
 
-                    ( newModel, newCommand ) =
-                        checkMissing newContract
-                            { m
-                                | allProperties = Dict.insert pid properties m.allProperties
-                                , contracts = Dict.insert pid newContract m.contracts
-                                , fetchingContracts = Set.remove pid m.fetchingContracts
-                            }
+                    newModel =
+                        { m
+                            | allProperties = properties
+                            , contract = newContract
+                        }
                 in
-                ( newModel
-                , Cmd.batch
-                    [ subscribeProperties m.conn pid properties
-                    , newCommand
-                    ]
-                )
+                    ( newModel subscribeProperties properties )
 
-        UnsafeCallResult token value ->
-            case String.split ":" token of
-                [ h, t ] -> case String.toInt h of
-                    Just id -> pushUiResult id (Ui.Action.CallResult value t) m
-                    _ -> ( m, Cmd.none )
-                _ -> ( m, Cmd.none )
+        CallResult jtoken value ->
+            case Json.Decode.decodeValue Json.Decode.string jtoken of
+                Ok token ->
+                    case String.split ":" token of
+                        [ h, t ] -> case String.toInt h of
+                            Just id -> pushUiResult id (Ui.Action.CallResult value t) m
+                            _ -> ( m, Cmd.none )
+                        _ -> ( m, Cmd.none )
+                Err _ -> ( m, Cmd.none )
 
-        ValueResult ( pid, propertyID ) value ->
-            updateUiProperty ( pid, propertyID ) <|
+        GotValue path value ->
+            updateUiProperty path <|
                 ( { m
                     | allProperties =
                         m.allProperties
-                            |> Dict.update pid
-                                (Maybe.map <|
-                                    Dict.update propertyID
-                                        (Maybe.map <|
-                                            setValue value
-                                        )
-                                )
+                            |> Dict.update path (Maybe.map <| setValue value)
                   }
                 , Cmd.none
                 )
-
-        ChannelResult token chan ->
-            ( m, subscribe m.conn chan token )
-
-        SubscribedChannel ( pid, propertyID ) ->
-            case m.allProperties |> fetch pid |> fetch propertyID |> (\x -> x.getter) of
-                Just { name } -> (m,
-                    Api.getterCall m.conn
-                        { target = delegate pid
-                        , name = name
-                        , argument = Json.Encode.null
-                        } (pid, propertyID) )
-                Nothing -> (m, Cmd.none)
-
-        PropertySetterStatus _ status ->
-            ( Debug.log ("property setter status: " ++ Json.Encode.encode 0 status) m, Cmd.none )
-
-        Pong ->
-            ( m, Cmd.none )
-
-        Hello ->
-            ( emptyModel m.url m.key JollyGood, Api.getContract m.conn (delegate 0) )
 
         Connected ->
             ( emptyModel m.url m.key JollyGood, Cmd.none )
@@ -272,34 +237,18 @@ handleResponse m resp =
         Disconnected ->
             ( { m | status = Reconnecting }, Cmd.none )
 
+        other -> ( m, Debug.log "received unknown response." Cmd.none )
 
-subscribeProperties : Conn -> Pid -> ContractProperties -> Cmd Msg
-subscribeProperties conn pid properties =
-    Dict.toList properties
-        |> List.map (subscribeProperty conn pid)
+
+subscribeProperties : ContractProperties -> Cmd Msg
+subscribeProperties properties =
+    Dict.keys properties
+        |> List.map subscribeProperty
         |> Cmd.batch
 
 
-subscribeProperty : Conn -> Pid -> ( PropertyID, Property ) -> Cmd Msg
-subscribeProperty conn pid ( id, prop ) =
-    case prop.subscriber of
-        Nothing ->
-            Cmd.none
-
-        Just setter ->
-            Cmd.batch
-                [ subscriberCall conn
-                    { target = delegate pid, name = setter.name, argument = Json.Encode.null }
-                    ( pid, id )
-                , case prop.getter of
-                    Nothing ->
-                        Cmd.none
-
-                    Just getter ->
-                        getterCall conn
-                            { target = delegate pid, name = getter.name, argument = Json.Encode.null }
-                            ( pid, id )
-                ]
+subscribeProperty : PropertyID -> Cmd Msg
+subscribeProperty path = api <| Subscribe path
 
 
 setValue : Json.Encode.Value -> Property -> Property
@@ -314,7 +263,7 @@ setValue v prop =
 
 decodeValue : Json.Encode.Value -> Property -> Result Json.Decode.Error Value
 decodeValue v prop = Json.Decode.decodeValue
-    (case stripType prop.propertyType of
+    (case prop.propertyType.t of
         TFloat ->
             Json.Decode.float
                 |> Json.Decode.map SimpleFloat
@@ -330,38 +279,6 @@ decodeValue v prop = Json.Decode.decodeValue
         _ ->
             Json.Decode.fail "unknown property type"
     ) v
-
-
-checkMissing : Contract -> Model -> ( Model, Cmd Msg )
-checkMissing c m =
-    let
-        missing =
-            Set.diff (delegatePids c |> Set.fromList) m.fetchingContracts
-
-        newModel =
-            { m | fetchingContracts = Set.union m.fetchingContracts missing }
-
-        command =
-            missing |> Set.toList |> List.map delegate |> List.map (Api.getContract m.conn) |> Cmd.batch
-    in
-    ( newModel, command )
-
-
-delegatePids : Contract -> List Int
-delegatePids contract =
-    case contract of
-        MapContract d ->
-            Dict.values d
-                |> List.concatMap delegatePids
-
-        ListContract l ->
-            l |> List.concatMap delegatePids
-
-        Delegate { destination } ->
-            [ destination ]
-
-        _ ->
-            []
 
 
 checkCallInput : String -> Maybe Json.Encode.Value
@@ -392,7 +309,7 @@ pushUiResult id result m =
 
 
 
-updateUiProperty : ( Pid, PropertyID ) -> ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
+updateUiProperty : Topic -> ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
 updateUiProperty prop ( m, x ) =
     let
         ( uiModel, cmd ) =
@@ -407,7 +324,7 @@ updateUiProperty prop ( m, x ) =
 
 subscriptions : Model -> Sub Msg
 subscriptions _ = Sub.batch
-    [ Api.subscriptions SocketMessage
+    [ Api.subscriptions ApiResponse
     , Animation.times   Animate
     ]
 

@@ -1,15 +1,17 @@
-module Api exposing (Request, Response, api, subscriptions)
+module Api exposing (Request(..), Response(..), Token, api, subscriptions)
 
 import Contracts exposing (..)
 import Json.Decode as JD exposing (Decoder)
 import Json.Encode as JE
 import Socket
 
+type alias Token = JE.Value
+
 type Response
     = GotContract Contract
-    | GotValue JE.Value
-    | CallResult String JE.Value
-    | CallError  String JE.Value
+    | GotValue Topic JE.Value
+    | CallResult Token JE.Value
+    | CallError  Token JE.Value
     | Connected
     | Disconnected
     | Unknown JE.Value
@@ -17,7 +19,7 @@ type Response
 type Request
     = Connect { url: String, root: Topic }
     | Subscribe Topic
-    | Call { path: Topic, argument: JE.Value } String
+    | Call { path: Topic, argument: JE.Value } Token
 
 
 
@@ -49,18 +51,20 @@ encodeRequest req = case req of
         [ ("_t", JE.string "call")
         , ("path", JE.string path)
         , ("argument", argument)
-        , ("token", JE.string token)
+        , ("token", token)
         ]
 
 responseDecoder : Decoder Response
 responseDecoder = JD.field "_t" JD.string |> JD.andThen (\t -> case t of
-    "got_contract" -> JD.map GotContract (JD.field "contract" contractDecoder)
-    "got_value"    -> JD.map GotValue    (JD.field "value"    JD.value)
+    "got_contract" -> JD.map  GotContract (JD.field "contract" contractDecoder)
+    "got_value"    -> JD.map2 GotValue
+        (JD.field "path"     JD.string)
+        (JD.field "value"    JD.value)
     "call_result"  -> JD.map2 CallResult
-        (JD.field "token" JD.string)
+        (JD.field "token" JD.value)
         (JD.field "value" JD.value)
     "call_error"   -> JD.map2 CallResult
-        (JD.field "token" JD.string)
+        (JD.field "token" JD.value)
         (JD.field "error" JD.value)
     "connected"    -> JD.succeed Connected
     "disconnected" -> JD.succeed Disconnected
