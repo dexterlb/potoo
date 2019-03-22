@@ -1,6 +1,6 @@
 module Ui.MetaData exposing (..)
 
-import Contracts exposing (Contract, Data, Pid, Properties, PropertyID, emptyData, fetch, getTypeFields)
+import Contracts exposing (Contract, Data, ContractProperties, Property, emptyData, fetch, getTypeFields, Value(..))
 import Dict exposing (Dict)
 import Json.Decode
 import Json.Encode
@@ -8,7 +8,7 @@ import Json.Encode
 
 type alias MetaData =
     { key : String
-    , propData : PropData
+    , property : Maybe Property
     , description : String
     , enabled : Bool
     , uiTags : UiTags
@@ -24,14 +24,6 @@ type UiTagValue
     | NumberTag Float
 
 
-type alias PropData =
-    { hasGetter : Bool
-    , hasSetter : Bool
-    , hasSubscriber : Bool
-    , property : ( Pid, PropertyID )
-    }
-
-
 noMetaData : MetaData
 noMetaData =
     { key = ""
@@ -39,43 +31,23 @@ noMetaData =
     , enabled = True
     , extra = emptyData
     , uiTags = Dict.empty
-    , propData = noPropData
+    , property = Nothing
     , valueMeta = emptyValueMeta
     }
 
 
-noPropData : PropData
-noPropData =
-    { hasGetter = False
-    , hasSetter = False
-    , hasSubscriber = False
-    , property = ( -1, -1 )
-    }
-
-
-getMetaData : String -> Contract -> Pid -> Properties -> MetaData
-getMetaData key c pid properties =
+getMetaData : String -> Contract -> ContractProperties -> MetaData
+getMetaData key c properties =
     case c of
-        Contracts.PropertyKey propertyID _ ->
+        Contracts.PropertyKey prop _ ->
             let
-                { getter, setter, subscriber } =
-                    properties |> fetch pid |> fetch propertyID
-
                 priorData =
-                    extractData c pid properties |> dataMetaData key
+                    extractData c properties |> dataMetaData key
             in
-            let
-                propData =
-                    { hasGetter = getter /= Nothing
-                    , hasSetter = setter /= Nothing
-                    , hasSubscriber = subscriber /= Nothing
-                    , property = ( pid, propertyID )
-                    }
-            in
-            { priorData | propData = propData }
+                { priorData | property = Just prop }
 
         _ ->
-            extractData c pid properties |> dataMetaData key
+            extractData c properties |> dataMetaData key
 
 
 dataMetaData : String -> Data -> MetaData
@@ -113,7 +85,7 @@ dataMetaData key d =
             |> Maybe.map List.reverse
             |> Maybe.withDefault []
         }
-    , propData = noPropData
+    , property = Nothing
     }
 
 parseValue : Json.Decode.Decoder v -> Json.Decode.Value -> Maybe v
@@ -121,22 +93,18 @@ parseValue dec v =
     Json.Decode.decodeValue dec v
         |> Result.toMaybe
 
-extractData : Contract -> Int -> Properties -> Data
-extractData c pid properties =
+extractData : Contract -> ContractProperties -> Data
+extractData c properties =
     case c of
         Contracts.MapContract d ->
-            Dict.map (\_ value -> extractValue properties pid value) d
+            Dict.map (\_ value -> extractValue properties value) d
 
-        Contracts.Function { data } ->
-            data
+        Contracts.Function _ subcontract ->
+            extractData subcontract properties
 
-        Contracts.Delegate { data } ->
-            data
-
-        Contracts.PropertyKey propertyID contract ->
+        Contracts.PropertyKey prop contract ->
             let
-                prop = properties |> fetch pid |> fetch propertyID
-                contractData = extractData contract pid properties
+                contractData = extractData contract properties
                 typeData = getTypeFields prop.propertyType
             in
                 Dict.union contractData typeData
@@ -145,47 +113,44 @@ extractData c pid properties =
             emptyData
 
 
-extractValue : Properties -> Int -> Contract -> Json.Encode.Value
-extractValue properties pid c =
+extractValue : ContractProperties -> Contract -> Json.Encode.Value
+extractValue properties c =
     case c of
-        Contracts.StringValue x ->
+        Contracts.Constant (SimpleString x) ->
             Json.Encode.string x
 
-        Contracts.IntValue x ->
+        Contracts.Constant (SimpleInt x) ->
             Json.Encode.int x
 
-        Contracts.FloatValue x ->
+        Contracts.Constant (SimpleFloat x) ->
             Json.Encode.float x
 
-        Contracts.BoolValue x ->
+        Contracts.Constant (SimpleBool x) ->
             Json.Encode.bool x
 
-        Contracts.PropertyKey propertyID _ ->
+        Contracts.PropertyKey { path } _ ->
             let
-                { value } =
-                    properties |> fetch pid |> fetch propertyID
+                value =
+                    properties |> fetch path
             in
             case value of
-                Just (Contracts.SimpleInt x) ->
+                Contracts.SimpleInt x ->
                     Json.Encode.int x
 
-                Just (Contracts.SimpleString x) ->
+                Contracts.SimpleString x ->
                     Json.Encode.string x
 
-                Just (Contracts.SimpleFloat x) ->
+                Contracts.SimpleFloat x ->
                     Json.Encode.float x
 
-                Just (Contracts.SimpleBool x) ->
+                Contracts.SimpleBool x ->
                     Json.Encode.bool x
 
                 _ ->
                     Json.Encode.null
 
-        Contracts.ListContract subcontracts ->
-            Json.Encode.list (extractValue properties pid) subcontracts
-
         Contracts.MapContract subcontracts ->
-            Json.Encode.dict (\k -> k) (extractValue properties pid) subcontracts
+            Json.Encode.dict (\k -> k) (extractValue properties) subcontracts
 
         _ -> Json.Encode.null
 
