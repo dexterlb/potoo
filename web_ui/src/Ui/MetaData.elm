@@ -227,7 +227,7 @@ getIntTag k m = getTag k m |> Maybe.andThen (\tag -> case tag of
     _           -> Nothing)
 
 getBoolTag : String -> UiTags -> Bool
-getBoolTag s t = getStringTag s t |> Maybe.map (\_ -> True) |> Maybe.withDefault False
+getBoolTag s t = getTag s t |> Maybe.map (\_ -> True) |> Maybe.withDefault False
 
 uiLevel : MetaData -> Float
 uiLevel m = getFloatTag "level" m.uiTags |> Maybe.withDefault
