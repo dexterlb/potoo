@@ -9,6 +9,7 @@ import Ui.Widgets.Function
 import Ui.Widgets.Button
 import Ui.Widgets.Slider
 import Ui.Widgets.Switch
+import Ui.Widgets.List
 
 
 type alias Widgets =
@@ -20,7 +21,7 @@ type Widget
     | ButtonWidget Ui.Widgets.Button.Model
     | SliderWidget Ui.Widgets.Slider.Model
     | SwitchWidget Ui.Widgets.Switch.Model
-    | ListWidget MetaData
+    | ListWidget Ui.Widgets.List.Model
     | StringWidget MetaData Value
     | NumberWidget MetaData Value
     | UnknownWidget MetaData Value
@@ -38,6 +39,7 @@ type WidgetMsg
     | ButtonMsg Ui.Widgets.Button.Msg
     | SliderMsg Ui.Widgets.Slider.Msg
     | SwitchMsg Ui.Widgets.Switch.Msg
+    | ListMsg   Ui.Widgets.List.Msg
 
 
 type alias Node =
@@ -209,8 +211,12 @@ updateWidgetMetaData meta ( widget, node ) =
         BrokenWidget _ v ->
             ( BrokenWidget meta v, Cmd.none, [] )
 
-        ListWidget _ ->
-            ( ListWidget meta, Cmd.none, [] )
+        ListWidget m ->
+            let
+                ( newModel, cmd, actions ) =
+                    Ui.Widgets.List.updateMetaData meta m
+            in
+                ( ListWidget newModel, Cmd.map ListMsg cmd, actions )
 
         LoadingWidget _ ->
             ( LoadingWidget meta, Cmd.none, [] )

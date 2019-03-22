@@ -8,6 +8,7 @@ import Ui.Widgets.Function
 import Ui.Widgets.Button
 import Ui.Widgets.Slider
 import Ui.Widgets.Switch
+import Ui.Widgets.List
 
 
 toTree : Pid -> Dict Pid Contract -> Properties -> ( WidgetID, Widgets )
@@ -93,14 +94,14 @@ toTree_ c key pid contracts properties widgets =
                         |> Dict.values
                         |> toTreeMany contracts properties widgets
             in
-            simpleTree newWidgets key metaMaker children (ListWidget metaData)
+            simpleTree newWidgets key metaMaker children (ListWidget <| Ui.Widgets.List.init metaData)
 
         Contracts.ListContract d ->
             let
                 ( children, newWidgets ) =
                     List.indexedMap (\i subcontract -> ( subcontract, "#" ++ String.fromInt i, pid )) d |> toTreeMany contracts properties widgets
             in
-            simpleTree newWidgets key metaMaker children (ListWidget metaData)
+            simpleTree newWidgets key metaMaker children (ListWidget <| Ui.Widgets.List.init metaData)
 
         Contracts.PropertyKey propertyID (Contracts.MapContract d) ->
             let
