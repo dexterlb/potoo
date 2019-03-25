@@ -2,8 +2,8 @@ module Ui.MetaData exposing (..)
 
 import Contracts exposing (Contract, Children, Data, ContractProperties, Property, emptyData, fetch, getTypeFields, Value(..))
 import Dict exposing (Dict)
-import Json.Decode
-import Json.Encode
+import Json.Decode as JD
+import Json.Encode as JE
 
 
 type alias MetaData =
@@ -55,18 +55,18 @@ dataMetaData key d =
     { key = key
     , description =
         Dict.get "description" d
-            |> Maybe.withDefault (Json.Encode.string "")
-            |> Json.Decode.decodeValue Json.Decode.string
+            |> Maybe.withDefault (JE.string "")
+            |> JD.decodeValue JD.string
             |> Result.withDefault ""
     , enabled =
         Dict.get "enabled" d
-            |> Maybe.withDefault (Json.Encode.bool True)
-            |> Json.Decode.decodeValue Json.Decode.bool
+            |> Maybe.withDefault (JE.bool True)
+            |> JD.decodeValue JD.bool
             |> Result.withDefault True
     , uiTags =
         Dict.get "ui_tags" d
-            |> Maybe.withDefault (Json.Encode.string "")
-            |> Json.Decode.decodeValue Json.Decode.string
+            |> Maybe.withDefault (JE.string "")
+            |> JD.decodeValue JD.string
             |> Result.withDefault ""
             |> String.split ","
             |> List.filter (\x -> x /= "")
@@ -75,22 +75,24 @@ dataMetaData key d =
 
     , extra = d
     , valueMeta =
-        { min = Dict.get "min" d |> Maybe.andThen (parseValue Json.Decode.float)
-        , max = Dict.get "max" d |> Maybe.andThen (parseValue Json.Decode.float)
+        { min = Dict.get "min" d |> Maybe.andThen (parseValue JD.float)
+        , max = Dict.get "max" d |> Maybe.andThen (parseValue JD.float)
         , stops = Dict.get "stops" d
-            |> Maybe.andThen ((\x -> parseValue (Json.Decode.dict Json.Decode.string) x))
+            |> Maybe.andThen (parseValue (JD.dict JD.string))
             |> Maybe.map Dict.toList
             |> Maybe.map (List.map (\(k, v) -> (String.toFloat k |> Maybe.withDefault 0, v)))
             |> Maybe.map List.sort
             |> Maybe.map List.reverse
             |> Maybe.withDefault []
+        , oneOf = Dict.get "one_of" d
+            |> Maybe.andThen (parseValue (JD.list JD.value))
         }
     , property = Nothing
     }
 
-parseValue : Json.Decode.Decoder v -> Json.Decode.Value -> Maybe v
+parseValue : JD.Decoder v -> JD.Value -> Maybe v
 parseValue dec v =
-    Json.Decode.decodeValue dec v
+    JD.decodeValue dec v
         |> Result.toMaybe
 
 extractData : Contract -> ContractProperties -> Data
@@ -114,20 +116,20 @@ extractData c properties =
 extractDataDict : Children -> ContractProperties -> Data
 extractDataDict d properties = Dict.map (\_ value -> extractValue properties value) d
 
-extractValue : ContractProperties -> Contract -> Json.Encode.Value
+extractValue : ContractProperties -> Contract -> JE.Value
 extractValue properties c =
     case c of
         Contracts.Constant (SimpleString x) ->
-            Json.Encode.string x
+            JE.string x
 
         Contracts.Constant (SimpleInt x) ->
-            Json.Encode.int x
+            JE.int x
 
         Contracts.Constant (SimpleFloat x) ->
-            Json.Encode.float x
+            JE.float x
 
         Contracts.Constant (SimpleBool x) ->
-            Json.Encode.bool x
+            JE.bool x
 
         Contracts.PropertyKey { path } _ ->
             let
@@ -136,24 +138,24 @@ extractValue properties c =
             in
             case value of
                 Contracts.SimpleInt x ->
-                    Json.Encode.int x
+                    JE.int x
 
                 Contracts.SimpleString x ->
-                    Json.Encode.string x
+                    JE.string x
 
                 Contracts.SimpleFloat x ->
-                    Json.Encode.float x
+                    JE.float x
 
                 Contracts.SimpleBool x ->
-                    Json.Encode.bool x
+                    JE.bool x
 
                 _ ->
-                    Json.Encode.null
+                    JE.null
 
         Contracts.MapContract subcontracts ->
-            Json.Encode.dict (\k -> k) (extractValue properties) subcontracts
+            JE.dict (\k -> k) (extractValue properties) subcontracts
 
-        _ -> Json.Encode.null
+        _ -> JE.null
 
 parseUiTag : String -> (String, UiTagValue)
 parseUiTag s = case splitUpTo 2 ":" s of
@@ -197,7 +199,7 @@ getBoolTag s t = getTag s t |> Maybe.map (\_ -> True) |> Maybe.withDefault False
 
 uiLevel : MetaData -> Float
 uiLevel m = getFloatTag "level" m.uiTags |> Maybe.withDefault
-    (if List.member m.key ["enabled", "description", "ui_tags", "get", "set", "subscribe", "stops"] then
+    (if List.member m.key ["enabled", "description", "ui_tags", "get", "set", "subscribe", "stops", "one_of"] then
         1
      else
         0
@@ -220,6 +222,7 @@ type alias ValueMeta =
     { min : Maybe Float
     , max : Maybe Float
     , stops : List (Float, String)
+    , oneOf : Maybe Choices
     }
 
 emptyValueMeta : ValueMeta
@@ -227,6 +230,7 @@ emptyValueMeta =
     { min  = Nothing
     , max  = Nothing
     , stops  = []
+    , oneOf = Nothing
     }
 
 hasSetter : MetaData -> Bool
@@ -235,3 +239,5 @@ hasSetter { property } = case property of
     Just { setter } -> case setter of
         Just _ -> True
         _      -> False
+
+type alias Choices = List (JE.Value)

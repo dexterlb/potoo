@@ -9,6 +9,7 @@ import Ui.Widgets.Function as Function
 import Ui.Widgets.Button   as Button
 import Ui.Widgets.Slider   as Slider
 import Ui.Widgets.Switch   as Switch
+import Ui.Widgets.Choice   as Choice
 import Ui.Widgets.List
 
 
@@ -41,5 +42,6 @@ renderWidget lift w children = case w of
     FunctionWidget model              -> Function.view (lift << FunctionMsg) model children
     ButtonWidget   model              -> Button.view   (lift << ButtonMsg)   model children
     SwitchWidget   model              -> Switch.view   (lift << SwitchMsg  ) model children
+    ChoiceWidget   model              -> Choice.view   (lift << ChoiceMsg  ) model children
     SliderWidget   model              -> Slider.view   (lift << SliderMsg  ) model children
     _                                 -> renderUnknownWidget   children

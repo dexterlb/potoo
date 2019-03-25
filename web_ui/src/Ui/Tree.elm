@@ -9,6 +9,7 @@ import Ui.Widgets.Function
 import Ui.Widgets.Button
 import Ui.Widgets.Slider
 import Ui.Widgets.Switch
+import Ui.Widgets.Choice
 import Ui.Widgets.List
 
 
@@ -21,6 +22,7 @@ type Widget
     | ButtonWidget Ui.Widgets.Button.Model
     | SliderWidget Ui.Widgets.Slider.Model
     | SwitchWidget Ui.Widgets.Switch.Model
+    | ChoiceWidget Ui.Widgets.Choice.Model
     | ListWidget Ui.Widgets.List.Model
     | StringWidget MetaData Value
     | NumberWidget MetaData Value
@@ -39,6 +41,7 @@ type WidgetMsg
     | ButtonMsg Ui.Widgets.Button.Msg
     | SliderMsg Ui.Widgets.Slider.Msg
     | SwitchMsg Ui.Widgets.Switch.Msg
+    | ChoiceMsg Ui.Widgets.Choice.Msg
     | ListMsg   Ui.Widgets.List.Msg
 
 
@@ -134,6 +137,20 @@ updateWidget outerMsg ( widget, node ) =
             in
                 ( SwitchWidget newModel, Cmd.map SwitchMsg cmd, actions )
 
+        ( ChoiceMsg msg, ChoiceWidget model ) ->
+            let
+                ( newModel, cmd, actions ) =
+                    Ui.Widgets.Choice.update msg model
+            in
+                ( ChoiceWidget newModel, Cmd.map ChoiceMsg cmd, actions )
+
+        ( ListMsg msg, ListWidget model ) ->
+            let
+                ( newModel, cmd, actions ) =
+                    Ui.Widgets.List.update msg model
+            in
+                ( ListWidget newModel, Cmd.map ListMsg cmd, actions )
+
         _ ->
             Debug.todo "widget message of wrong type"
 
@@ -181,6 +198,13 @@ updateWidgetValue v ( widget, node ) =
                     Ui.Widgets.Switch.updateValue v m
             in
             ( SwitchWidget newModel, Cmd.map SwitchMsg cmd, actions )
+
+        ChoiceWidget m ->
+            let
+                ( newModel, cmd, actions ) =
+                    Ui.Widgets.Choice.updateValue (Contracts.encodeValue v) m
+            in
+            ( ChoiceWidget newModel, Cmd.map ChoiceMsg cmd, actions )
 
         SliderWidget m ->
             let
@@ -248,6 +272,13 @@ updateWidgetMetaData meta ( widget, node ) =
                     Ui.Widgets.Switch.updateMetaData meta m
             in
             ( SwitchWidget newModel, Cmd.map SwitchMsg cmd, actions )
+
+        ChoiceWidget m ->
+            let
+                ( newModel, cmd, actions ) =
+                    Ui.Widgets.Choice.updateMetaData meta m
+            in
+            ( ChoiceWidget newModel, Cmd.map ChoiceMsg cmd, actions )
 
 
 simpleTree : Widgets -> String -> (Contracts.ContractProperties -> MetaData) -> List WidgetID -> Widget -> ( WidgetID, Widgets )
