@@ -51,6 +51,7 @@ type alias Model =
     , status : Status
     , ui : Ui.Model
     , animationTime: Float
+    , key: Key
     }
 
 
@@ -62,8 +63,7 @@ init _ url key = let model = emptyModel url key Connecting
 startCommand : Model -> Cmd Msg
 startCommand model =
     Cmd.batch
-        [ nextPing
-        , Api.connect "main" <| connectionUrl model.url
+        [ api <| Connect <| { root = "", url = connectionUrl model.url }
         ]
 
 
@@ -98,7 +98,7 @@ fragmentParser s = case s of
     Just "advanced" -> Advanced
     _               -> Basic
 
-connectionUrl : Url -> Conn
+connectionUrl : Url -> String
 connectionUrl { host, port_ } =
     let authority = (case port_ of
             Nothing -> host
@@ -113,7 +113,6 @@ connectionUrl { host, port_ } =
 
 type Msg
     = ApiResponse Api.Response
-    | SendPing
     | UrlChanged Url
     | UrlRequested UrlRequest
     | UiMsg Ui.Msg
@@ -123,17 +122,7 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        ApiResponse (Ok (_, resp)) ->
-            handleResponse model resp
-        ApiResponse (Err err) ->
-            let
-                errMsg = Debug.log "error" <|
-                    "unable to parse response: " ++ err
-            in
-            ( { model | messages = errMsg :: model.messages }, Cmd.none )
-
-        SendPing ->
-            ( model, Cmd.batch [ sendPing model.conn, nextPing ] )
+        ApiResponse resp -> handleResponse model resp
 
         UrlChanged url -> let newModel = emptyModel url model.key Connecting in
             ( newModel, startCommand newModel )
@@ -161,38 +150,14 @@ update msg model =
             ( { model | ui = Ui.animate (time, diff) model.ui, animationTime = time } , Cmd.none )
 
 
-nextPing : Cmd Msg
-nextPing =
-    Delay.after 5 Delay.Second SendPing
-
-
 handleUiAction : Model -> Int -> Ui.Action -> Cmd Msg
 handleUiAction m id action =
     case action of
-        Ui.Action.RequestCall { name, pid } argument token ->
-            Api.unsafeCall m.conn
-                { target = { destination = pid, data = emptyData }
-                , name = name
-                , argument = argument
-                } (String.fromInt id ++ ":" ++ token)
-        Ui.Action.RequestSet (pid, propertyID) value ->
-            case m.allProperties |> fetch pid |> fetch propertyID |> (\x -> x.setter) of
-                Just { name } ->
-                    Api.setterCall m.conn
-                        { target = delegate pid
-                        , name = name
-                        , argument = value
-                        } (pid, propertyID)
-                Nothing -> Cmd.none
-        Ui.Action.RequestGet (pid, propertyID) value ->
-            case m.allProperties |> fetch pid |> fetch propertyID |> (\x -> x.getter) of
-                Just { name } ->
-                    Api.getterCall m.conn
-                        { target = delegate pid
-                        , name = name
-                        , argument = value
-                        } (pid, propertyID)
-                Nothing -> Cmd.none
+        Ui.Action.RequestCall callee argument token ->
+            api <| Call callee argument <| String.fromInt id ++ ":" ++ token
+        Ui.Action.RequestSet prop value -> case prop.setter of
+            Just setter -> api <| Call setter value "setter_result_ignore"
+            Nothing -> Cmd.none
 
 handleResponse : Model -> Response -> ( Model, Cmd Msg )
 handleResponse m resp =
@@ -223,13 +188,9 @@ handleResponse m resp =
 
         GotValue path value ->
             updateUiProperty path <|
-                ( { m
-                    | allProperties =
-                        m.allProperties
-                            |> Dict.update path (Maybe.map <| setValue value)
-                  }
+                ( { m | allProperties = m.allProperties |> Dict.insert path (decodeValue value) }
                 , Cmd.none
-                )
+                )   -- todo: check the property type here (store it somewhere?)
 
         Connected ->
             ( emptyModel m.url m.key JollyGood, Cmd.none )
@@ -251,17 +212,7 @@ subscribeProperty : PropertyID -> Cmd Msg
 subscribeProperty path = api <| Subscribe path
 
 
-setValue : Json.Encode.Value -> Property -> Property
-setValue v prop =
-    case decodeValue v prop of
-        Ok value ->
-            { prop | value = Just value }
-
-        Err _ ->
-            { prop | value = Just <| Complex v }
-
-
-decodeValue : Json.Encode.Value -> Property -> Result Json.Decode.Error Value
+decodeValue : Json.Encode.Value -> Value
 decodeValue v prop = Json.Decode.decodeValue
     (case prop.propertyType.t of
         TFloat ->

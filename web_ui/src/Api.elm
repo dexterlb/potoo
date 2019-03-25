@@ -7,6 +7,8 @@ import Socket
 
 type alias Token = JE.Value
 
+type alias ConnectOpts = { url: String, root: Topic }
+
 type Response
     = GotContract Contract
     | GotValue Topic JE.Value
@@ -17,9 +19,9 @@ type Response
     | Unknown JE.Value
 
 type Request
-    = Connect { url: String, root: Topic }
+    = Connect ConnectOpts
     | Subscribe Topic
-    | Call { path: Topic, argument: JE.Value } Token
+    | Call Callee JE.Value Token
 
 
 
@@ -47,7 +49,7 @@ encodeRequest req = case req of
         [ ("_t", JE.string "subscribe")
         , ("topic", JE.string topic)
         ]
-    Call { path, argument } token -> JE.object
+    Call { path } argument token -> JE.object
         [ ("_t", JE.string "call")
         , ("path", JE.string path)
         , ("argument", argument)
