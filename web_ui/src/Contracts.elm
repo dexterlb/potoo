@@ -115,6 +115,19 @@ type Value
     | Complex Json.Encode.Value
     | Loading
 
+valueEncoder : Value -> Json.Encode.Value
+valueEncoder v = case v of
+    SimpleInt    x -> Json.Encode.int x
+    SimpleString x -> Json.Encode.string x
+    SimpleFloat  x -> Json.Encode.float x
+    SimpleBool   x -> Json.Encode.bool x
+    Complex      x -> x
+    Loading        -> Json.Encode.null
+
+encodeValue : Value -> Maybe Json.Encode.Value
+encodeValue v = case v of
+    Loading -> Nothing
+    x       -> Just <| valueEncoder x
 
 delegate : Pid -> DelegateStruct
 delegate p =

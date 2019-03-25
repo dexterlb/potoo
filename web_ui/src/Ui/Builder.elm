@@ -8,6 +8,7 @@ import Ui.Widgets.Function
 import Ui.Widgets.Button
 import Ui.Widgets.Slider
 import Ui.Widgets.Switch
+import Ui.Widgets.Choice
 import Ui.Widgets.List
 
 
@@ -143,7 +144,6 @@ propertyWidget prop metaData =
     case Contracts.stripType prop.propertyType of
         Contracts.TFloat ->
             case (metaData.valueMeta.min, metaData.valueMeta.max) of
-                -- todo: parse type here instead of using barbaric getMinMax
                 (Just _, Just _) ->
                     SliderWidget <| Ui.Widgets.Slider.init metaData Contracts.Loading
 
@@ -153,8 +153,16 @@ propertyWidget prop metaData =
         Contracts.TInt ->
             NumberWidget metaData Contracts.Loading
 
-        Contracts.TString ->
-            StringWidget metaData Contracts.Loading
+        Contracts.TString -> case metaData.valueMeta.oneOf of
+            Nothing ->
+                StringWidget metaData Contracts.Loading
+            Just _ ->
+                case metaData.propData.hasSetter of
+                    False ->
+                        StringWidget metaData Contracts.Loading
+                    True ->
+                        ChoiceWidget <|
+                            Ui.Widgets.Choice.init metaData Nothing
 
         Contracts.TBool -> SwitchWidget <|
             Ui.Widgets.Switch.init metaData Contracts.Loading
