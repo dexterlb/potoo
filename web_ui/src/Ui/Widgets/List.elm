@@ -29,7 +29,7 @@ type alias Model =
 
 
 type Msg
-    = Bla
+    = ClickTab Int
 
 
 init : MetaData -> Model
@@ -40,7 +40,9 @@ init meta =
 
 update : Msg -> Model -> ( Model, Cmd Msg, List Action )
 update msg model = case msg of
-    Bla -> ( model, Cmd.none, [] )
+    ClickTab n -> case model.mode of
+        Tab _ -> ( { model | mode = Tab n }, Cmd.none, [] )
+        _     -> ( model,                    Cmd.none, [] )
 
 updateMetaData : MetaData -> Model -> ( Model, Cmd Msg, List Action )
 updateMetaData meta model =
@@ -52,13 +54,22 @@ view lift m children = case m.mode of
         renderHeaderWithChildren [ class "list" ] m.metaData children []
     Tab n ->
         renderHeaderWithChildren [ class "list-tabbed" ] m.metaData
-            (selectTab n children) (renderTabs lift m children)
+            (selectTab n children) [ renderTabs lift m children ]
 
-renderTabs : (Msg -> msg) -> Model -> List (Html msg) -> List (Html msg)
-renderTabs lift m children = List.map (renderTab lift m) children
+renderTabs : (Msg -> msg) -> Model -> List (Html msg) -> Html msg
+renderTabs lift m children = div [ class "tabs" ] <|
+    List.indexedMap (renderTab lift m) children
 
-renderTab : (Msg -> msg) -> Model -> Html msg -> Html msg
-renderTab lift m child = div [ class "tab" ] [ child ]
+renderTab : (Msg -> msg) -> Model -> Int -> Html msg -> Html msg
+renderTab lift m current child = case m.mode of
+    -- this is tremendously stupid, but to make it work properly we need to rewrite
+    -- passing of "children" to be something more useful than a html object,
+    -- and extract tab titles from there
+    Normal -> text "this is a bug"
+    Tab n  -> if n == current then
+            div [ class "tab", onClick (lift <| ClickTab current), class "active" ] [ child ]
+        else
+            div [ class "tab", onClick (lift <| ClickTab current), class "inactive" ] [ child ]
 
 selectTab : Int -> List (Html msg) -> List (Html msg)
 selectTab n l = List.take 1 <| List.drop n l

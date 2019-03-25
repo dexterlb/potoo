@@ -134,6 +134,13 @@ updateWidget outerMsg ( widget, node ) =
             in
                 ( SwitchWidget newModel, Cmd.map SwitchMsg cmd, actions )
 
+        ( ListMsg msg, ListWidget model ) ->
+            let
+                ( newModel, cmd, actions ) =
+                    Ui.Widgets.List.update msg model
+            in
+                ( ListWidget newModel, Cmd.map ListMsg cmd, actions )
+
         _ ->
             Debug.todo "widget message of wrong type"
 
