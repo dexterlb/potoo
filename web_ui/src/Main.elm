@@ -25,6 +25,8 @@ import Url.Parser exposing ((</>))
 import Browser
 import Browser exposing (UrlRequest, Document)
 import Browser.Navigation exposing (Key)
+import Json.Encode as JE
+import Json.Decode as JD
 
 
 main =
@@ -70,14 +72,12 @@ startCommand model =
 emptyModel : Url -> Key -> Status -> Model
 emptyModel url key status =
     { messages = []
-    , conn = "main"
     , mode = parseMode url
     , url = url
     , key = key
     , status = status
-    , contracts = Dict.empty
+    , contract = MapContract <| Dict.empty
     , allProperties = Dict.empty
-    , fetchingContracts = Set.empty
     , ui = Ui.blank
     , animationTime = 0
     }
@@ -154,9 +154,9 @@ handleUiAction : Model -> Int -> Ui.Action -> Cmd Msg
 handleUiAction m id action =
     case action of
         Ui.Action.RequestCall callee argument token ->
-            api <| Call callee argument <| String.fromInt id ++ ":" ++ token
+            api <| Call callee argument <| encodeToken <| CallToken id token
         Ui.Action.RequestSet prop value -> case prop.setter of
-            Just setter -> api <| Call setter value "setter_result_ignore"
+            Just setter -> api <| Call setter value <| encodeToken <| SetterToken setter.path
             Nothing -> Cmd.none
 
 handleResponse : Model -> Response -> ( Model, Cmd Msg )
@@ -174,21 +174,17 @@ handleResponse m resp =
                             , contract = newContract
                         }
                 in
-                    ( newModel subscribeProperties properties )
+                    ( newModel, subscribeProperties properties )
 
         CallResult jtoken value ->
-            case Json.Decode.decodeValue Json.Decode.string jtoken of
-                Ok token ->
-                    case String.split ":" token of
-                        [ h, t ] -> case String.toInt h of
-                            Just id -> pushUiResult id (Ui.Action.CallResult value t) m
-                            _ -> ( m, Cmd.none )
-                        _ -> ( m, Cmd.none )
-                Err _ -> ( m, Cmd.none )
+            case Json.Decode.decodeValue tokenDecoder jtoken of
+                Ok (CallToken id t) ->
+                    pushUiResult id (Ui.Action.CallResult value t) m
+                _ -> ( m, Cmd.none )
 
         GotValue path value ->
             updateUiProperty path <|
-                ( { m | allProperties = m.allProperties |> Dict.insert path (decodeValue value) }
+                ( { m | allProperties = m.allProperties |> Dict.insert path (parseValue value) }
                 , Cmd.none
                 )   -- todo: check the property type here (store it somewhere?)
 
@@ -212,26 +208,6 @@ subscribeProperty : PropertyID -> Cmd Msg
 subscribeProperty path = api <| Subscribe path
 
 
-decodeValue : Json.Encode.Value -> Value
-decodeValue v prop = Json.Decode.decodeValue
-    (case prop.propertyType.t of
-        TFloat ->
-            Json.Decode.float
-                |> Json.Decode.map SimpleFloat
-        TBool ->
-            Json.Decode.bool
-                |> Json.Decode.map SimpleBool
-        TInt ->
-            Json.Decode.int
-                |> Json.Decode.map SimpleInt
-        TString ->
-            Json.Decode.string
-                |> Json.Decode.map SimpleString
-        _ ->
-            Json.Decode.fail "unknown property type"
-    ) v
-
-
 checkCallInput : String -> Maybe Json.Encode.Value
 checkCallInput s =
     case Json.Decode.decodeString Json.Decode.value s of
@@ -244,7 +220,7 @@ checkCallInput s =
 
 updateUi : Model -> Model
 updateUi m =
-    { m | ui = Ui.build 0 m.contracts m.allProperties }
+    { m | ui = Ui.build m.contract m.allProperties }
 
 
 updateUiCmd : ( Model, a ) -> ( Model, a )
@@ -267,6 +243,29 @@ updateUiProperty prop ( m, x ) =
             Ui.updateProperty (handleUiAction m) UiMsg prop m.allProperties m.ui
     in
     ( { m | ui = uiModel }, Cmd.batch [ x, cmd ] )
+
+
+type Token
+    = CallToken Int String
+    | SetterToken Topic
+
+encodeToken : Token -> JE.Value
+encodeToken t = case t of
+    CallToken id token -> JE.object
+        [ ("_t", JE.string "call"), ("id", JE.int id), ("token", JE.string token) ]
+    SetterToken path -> JE.object
+        [ ("_t", JE.string "setter"), ("path", JE.string path) ]
+
+tokenDecoder : JD.Decoder Token
+tokenDecoder =
+    JD.field "_t" JD.string |> JD.andThen (\t -> case t of
+        "call" -> JD.map2 CallToken
+            (JD.field "id"    JD.int)
+            (JD.field "token" JD.string)
+        "setter" -> JD.map SetterToken
+            (JD.field "path"  JD.string)
+        _ -> JD.fail "malformed token"
+    )
 
 
 

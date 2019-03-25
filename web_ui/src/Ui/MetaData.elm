@@ -75,23 +75,23 @@ dataMetaData key d =
 
     , extra = d
     , valueMeta =
-        { min = Dict.get "min" d |> Maybe.andThen (parseValue JD.float)
-        , max = Dict.get "max" d |> Maybe.andThen (parseValue JD.float)
+        { min = Dict.get "min" d |> Maybe.andThen (parseValueAs JD.float)
+        , max = Dict.get "max" d |> Maybe.andThen (parseValueAs JD.float)
         , stops = Dict.get "stops" d
-            |> Maybe.andThen (parseValue (JD.dict JD.string))
+            |> Maybe.andThen (parseValueAs (JD.dict JD.string))
             |> Maybe.map Dict.toList
             |> Maybe.map (List.map (\(k, v) -> (String.toFloat k |> Maybe.withDefault 0, v)))
             |> Maybe.map List.sort
             |> Maybe.map List.reverse
             |> Maybe.withDefault []
         , oneOf = Dict.get "one_of" d
-            |> Maybe.andThen (parseValue (JD.list JD.value))
+            |> Maybe.andThen (parseValueAs (JD.list JD.value))
         }
     , property = Nothing
     }
 
-parseValue : JD.Decoder v -> JD.Value -> Maybe v
-parseValue dec v =
+parseValueAs : JD.Decoder v -> JD.Value -> Maybe v
+parseValueAs dec v =
     JD.decodeValue dec v
         |> Result.toMaybe
 

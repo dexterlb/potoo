@@ -1,15 +1,14 @@
 module Contracts exposing (..)
 
 import Dict exposing (Dict)
-import Json.Decode exposing (Decoder, andThen, bool, decodeString, dict, fail, field, float, int, null, oneOf, string, succeed, list, value)
-import Json.Encode
+import Json.Decode as JD exposing (Decoder, andThen, bool, decodeString, dict, fail, field, float, int, null, oneOf, string, succeed, list, value)
 import Json.Encode as JE
 import Result
 import Set
 
 
 type alias Data =
-    Dict String Json.Encode.Value
+    Dict String JE.Value
 
 
 type alias Type = { t: TypeDescr, meta: Data }
@@ -70,19 +69,31 @@ type Value
     | SimpleString String
     | SimpleFloat Float
     | SimpleBool Bool
-    | Complex Json.Encode.Value
+    | Complex JE.Value
     | Loading
 
-valueEncoder : Value -> Json.Encode.Value
-valueEncoder v = case v of
-    SimpleInt    x -> Json.Encode.int x
-    SimpleString x -> Json.Encode.string x
-    SimpleFloat  x -> Json.Encode.float x
-    SimpleBool   x -> Json.Encode.bool x
-    Complex      x -> x
-    Loading        -> Json.Encode.null
+valueDecoder : Decoder Value
+valueDecoder = JD.oneOf
+    [ JD.map SimpleInt    JD.int
+    , JD.map SimpleString JD.string
+    , JD.map SimpleBool   JD.bool
+    , JD.map SimpleFloat  JD.float
+    , JD.map Complex      JD.value
+    ]
 
-encodeValue : Value -> Maybe Json.Encode.Value
+parseValue : JE.Value -> Value
+parseValue v = JD.decodeValue valueDecoder v |> Result.withDefault (Complex v)
+
+valueEncoder : Value -> JE.Value
+valueEncoder v = case v of
+    SimpleInt    x -> JE.int x
+    SimpleString x -> JE.string x
+    SimpleFloat  x -> JE.float x
+    SimpleBool   x -> JE.bool x
+    Complex      x -> x
+    Loading        -> JE.null
+
+encodeValue : Value -> Maybe JE.Value
 encodeValue v = case v of
     Loading -> Nothing
     x       -> Just <| valueEncoder x
@@ -95,13 +106,13 @@ equivTypes a b =
 parseContract : String -> Result String Contract
 parseContract s =
     decodeString contractDecoder s
-        |> Result.mapError Json.Decode.errorToString
+        |> Result.mapError JD.errorToString
 
 
 parseType : String -> Result String Type
 parseType s =
     decodeString typeDecoder s
-        |> Result.mapError Json.Decode.errorToString
+        |> Result.mapError JD.errorToString
 
 
 contractDecoder : Decoder Contract
@@ -112,28 +123,28 @@ contractDecoder =
         , boolValueDecoder
         , floatValueDecoder
         , objectDecoder
-        , Json.Decode.lazy (\_ -> mapContractDecoder)
+        , JD.lazy (\_ -> mapContractDecoder)
         ]
 
 
 stringValueDecoder : Decoder Contract
 stringValueDecoder =
-    Json.Decode.map (Constant << SimpleString) string
+    JD.map (Constant << SimpleString) string
 
 
 intValueDecoder : Decoder Contract
 intValueDecoder =
-    Json.Decode.map (Constant << SimpleInt) int
+    JD.map (Constant << SimpleInt) int
 
 
 boolValueDecoder : Decoder Contract
 boolValueDecoder =
-    Json.Decode.map (Constant << SimpleBool) bool
+    JD.map (Constant << SimpleBool) bool
 
 
 floatValueDecoder : Decoder Contract
 floatValueDecoder =
-    Json.Decode.map (Constant << SimpleFloat) float
+    JD.map (Constant << SimpleFloat) float
 
 
 objectDecoder : Decoder Contract
@@ -155,28 +166,28 @@ objectDecoder =
 
 propertyDecoder : Decoder Contract
 propertyDecoder =
-    Json.Decode.map2 makeProperty
+    JD.map2 makeProperty
         (field "type" typeDecoder)
         (field "subcontract" mapDecoder)
 
 functionDecoder : Decoder Contract
 functionDecoder =
-    Json.Decode.map3 makeFunction
+    JD.map3 makeFunction
         (field "argument" typeDecoder)
         (field "retval" typeDecoder)
         (field "subcontract" mapDecoder)
 
 
 mapContractDecoder : Decoder Contract
-mapContractDecoder = Json.Decode.map MapContract mapDecoder
+mapContractDecoder = JD.map MapContract mapDecoder
 
 mapDecoder : Decoder Children
-mapDecoder = dict (Json.Decode.lazy (\_ -> contractDecoder))
+mapDecoder = dict (JD.lazy (\_ -> contractDecoder))
 
 
 dataDecoder : Decoder Data
 dataDecoder =
-    dict Json.Decode.value
+    dict JD.value
 
 
 makeProperty : Type -> Children -> Contract
@@ -194,26 +205,26 @@ makeFunction argument retval subcontract =
         subcontract
 
 
-dataEncoder : Data -> Json.Encode.Value
+dataEncoder : Data -> JE.Value
 dataEncoder d =
-    Json.Encode.object (Dict.toList d)
+    JE.object (Dict.toList d)
 
 
 
 typeDecoder : Decoder Type
 typeDecoder =
     (oneOf
-        [ Json.Decode.field "_meta" dataDecoder
-        , Json.Decode.succeed Dict.empty ]
+        [ JD.field "_meta" dataDecoder
+        , JD.succeed Dict.empty ]
     ) |> andThen
         (\meta ->
-            Json.Decode.map (\t ->
+            JD.map (\t ->
                 { meta = meta, t = t }
             ) typeDescrDecoder
         )
 
 recursiveTypeDecoder : Decoder Type
-recursiveTypeDecoder = Json.Decode.lazy <| \_ -> typeDecoder
+recursiveTypeDecoder = JD.lazy <| \_ -> typeDecoder
 
 typeDescrDecoder : Decoder TypeDescr
 typeDescrDecoder =
@@ -225,11 +236,11 @@ typeDescrDecoder =
 
 recursiveTypeDescrDecoder : Decoder TypeDescr
 recursiveTypeDescrDecoder =
-    Json.Decode.lazy <|
+    JD.lazy <|
         \_ ->
             oneOf
                 [ tBasicDecoder
-                , Json.Decode.lazy <| \_ -> tComplexDecoder
+                , JD.lazy <| \_ -> tComplexDecoder
                 ]
 
 
@@ -269,12 +280,12 @@ tBasicDecoder =
 
 tComplexDecoder : Decoder TypeDescr
 tComplexDecoder =
-    Json.Decode.field "_t" string
+    JD.field "_t" string
         |> andThen
             (\t ->
                 case t of
                     "type-basic" ->
-                        Json.Decode.field "name" tBasicDecoder
+                        JD.field "name" tBasicDecoder
 
                     "type-literal" ->
                         tLiteralDecoder
@@ -301,49 +312,49 @@ tComplexDecoder =
 
 tStructDecoder : Decoder TypeDescr
 tStructDecoder =
-    Json.Decode.field "fields" <|
-        Json.Decode.map TStruct <|
-            Json.Decode.dict recursiveTypeDecoder
+    JD.field "fields" <|
+        JD.map TStruct <|
+            JD.dict recursiveTypeDecoder
 
 
 tTupleDecoder : Decoder TypeDescr
 tTupleDecoder =
-    Json.Decode.field "fields" <|
-        Json.Decode.map TTuple <|
-            Json.Decode.list recursiveTypeDecoder
+    JD.field "fields" <|
+        JD.map TTuple <|
+            JD.list recursiveTypeDecoder
 
 
 tListDecoder : Decoder TypeDescr
 tListDecoder =
-    Json.Decode.map TList
-        (Json.Decode.field "value" recursiveTypeDecoder)
+    JD.map TList
+        (JD.field "value" recursiveTypeDecoder)
 
 
 tMapDecoder : Decoder TypeDescr
 tMapDecoder =
-    Json.Decode.map2 TMap
-        (Json.Decode.field "key" recursiveTypeDecoder)
-        (Json.Decode.field "value" recursiveTypeDecoder)
+    JD.map2 TMap
+        (JD.field "key" recursiveTypeDecoder)
+        (JD.field "value" recursiveTypeDecoder)
 
 
 tLiteralDecoder : Decoder TypeDescr
 tLiteralDecoder =
-    Json.Decode.map TLiteral
-        (Json.Decode.field "value" <| Json.Decode.value
+    JD.map TLiteral
+        (JD.field "value" <| JD.value
         )
 
 tUnionDecoder : Decoder TypeDescr
 tUnionDecoder =
-    Json.Decode.map TUnion
-        (Json.Decode.field "alts" <| Json.Decode.list
+    JD.map TUnion
+        (JD.field "alts" <| JD.list
         <| recursiveTypeDecoder)
 
 
 tUnknownDecoder : Decoder TypeDescr
 tUnknownDecoder =
-    Json.Decode.map
-        (\v -> TUnknown <| Json.Encode.encode 4 v)
-        Json.Decode.value
+    JD.map
+        (\v -> TUnknown <| JE.encode 4 v)
+        JD.value
 
 
 inspectType : Type -> String
@@ -403,7 +414,7 @@ inspectData : Data -> String
 inspectData d =
     d
         |> Dict.toList
-        |> List.map (\( k, v ) -> k ++ ": " ++ Json.Encode.encode 0 v)
+        |> List.map (\( k, v ) -> k ++ ": " ++ JE.encode 0 v)
         |> String.join ", "
         |> (\s -> "<" ++ s ++ ">")
 
@@ -510,7 +521,7 @@ propertifyMap path l data =
 
 -- todo: make those work on deep types
 
-getTypeFields : Type -> Dict String Json.Encode.Value
+getTypeFields : Type -> Dict String JE.Value
 getTypeFields { meta } = meta
 
 
@@ -558,8 +569,8 @@ typeErrorToString err = case err of
     NotSupported s   -> s
     KeysDiffer a b   -> "keys differ: " ++ (String.join "," a) ++ " ≠ " ++ (String.join "," b)
 
-typeCheck : Type -> Json.Encode.Value -> TypeError
-typeCheck t v = Json.Decode.decodeValue (typeChecker t) v
+typeCheck : Type -> JE.Value -> TypeError
+typeCheck t v = JD.decodeValue (typeChecker t) v
     |> Result.withDefault (CannotCoerce v t)
 
 typeChecker : Type -> Decoder TypeError
