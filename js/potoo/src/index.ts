@@ -1,4 +1,4 @@
-import {Contract, RawContract, Value, RawCallable, Callable, Call, CallResponse, traverse, encode, decode, isValue, isCallable} from './contracts';
+import {Contract, RawContract, Value, RawCallable, Callable, Call, CallResponse, traverse, encode, decode, isValue, isCallable, attach_at, MapContract} from './contracts';
 export {Contract, RawContract} from './contracts';
 import {Channel} from './channel'
 export * from './channel'
@@ -185,6 +185,14 @@ export class Connection {
         }
     }
 
+    public contract_dirty(): MapContract {
+        let result: MapContract = {}
+        Object.keys(this.contract_index).forEach(topic => {
+            result = attach_at(result, topic, this.contract_index[topic])
+        })
+        return result
+    }
+
     public call(topic: string, argument: any): Promise<any> {
         if (!(topic in this.callable_index)) {
             return Promise.reject("topic ${topic} not available for call")
@@ -283,8 +291,10 @@ export class Connection {
         }
         traverse(this.contract_index[topic], (c, subtopic) => {
             delete this.callable_index[mqtt.join_topics(topic, subtopic)]
-            delete this.value_index[mqtt.join_topics(topic, subtopic)]
+            delete this.value_index[mqtt.join_topic_list(['_value', topic, subtopic])]
         })
+        delete this.contract_index[topic]
+        // hooray for the garbage collector :)
     }
 
     private publish_reply(topic: mqtt.Topic, token: string, result: any): void {

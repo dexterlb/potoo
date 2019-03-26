@@ -14,20 +14,20 @@ export type Contract        = Constant
 
 type Constant = null | boolean | number | string
 
-interface RawMapContract {
+export interface RawMapContract {
     [key: string]: RawContract
 }
 
-interface MapContract {
+export interface MapContract {
     [key: string]: Contract
 }
 
-interface ValueDescr {
+export interface ValueDescr {
     _t: "value",
     type: Type,
 }
 
-interface CallableDescr {
+export interface CallableDescr {
     _t: "callable",
     argument: Type,
     retval: Type,
@@ -140,6 +140,51 @@ function encode_map(c: MapContract): RawMapContract {
         result[key] = encode(c[key])
     }
     return result
+}
+
+function child_map(c: MapContract, key: string): MapContract {
+    if (key == '') {
+        return c
+    }
+    if (key in c) {
+        let o = c[key]
+        if (typeof o == 'object' && o != null) {
+            if (isValue(o) || isCallable(o)) {
+                return o.subcontract
+            }
+            return o
+        }
+    }
+    let o = {}
+    c[key] = o
+    return o
+}
+
+function to_map(c: Contract): MapContract {
+    if (typeof c == 'object' && c != null) {
+        if (isValue(c) || isCallable(c)) {
+            return c.subcontract
+        }
+        return c
+    }
+    return {}   // non-map root contracts not supported
+}
+
+export function attach_at(into: MapContract, path: Topic, contract: Contract): MapContract {
+    let items = path.split('/')
+    let last  = items.pop()
+    if (last == undefined) {
+        return to_map(contract)
+    }
+
+    let iter = into
+    items.forEach(key => {
+        iter = child_map(iter, key)
+    })
+
+    iter[last] = contract
+
+    return into
 }
 
 export function make_topic(items: Array<string>): Topic {

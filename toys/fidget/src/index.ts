@@ -136,17 +136,23 @@ async function connect(root: string, service_root?: string): Promise<potoo.Conne
 }
 
 declare global {
-    interface Window { contracts: { [topic: string]: potoo.Contract }; potoo: potoo.Connection }
+    interface Window {
+        contracts: { [topic: string]: potoo.Contract }
+        potoo: potoo.Connection
+        contract: potoo.Contract
+    }
 }
 
 window.contracts = {}
+window.contract = {}
 function on_contract(topic: string, contract: potoo.Contract) {
     window.contracts[topic] = contract;
+    window.contract = window.potoo.contract_dirty()
 }
 
 async function server(): Promise<void> {
     document.title += ': server'
-    let conn = await connect('/fidget', "")
+    let conn = await connect('/things/fidget', "")
     window.potoo = conn
     conn.update_contract(make_contract())
 }
