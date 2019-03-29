@@ -8,6 +8,7 @@ function show_time(chan: potoo.Channel<string>) {
     setTimeout(() => show_time(chan), 999)
 }
 
+
 function make_contract() : potoo.Contract {
     let boingval  = new potoo.Channel<number>().send(4)
     let sliderval = new potoo.Channel<number>().send(5)
@@ -77,54 +78,10 @@ function make_contract() : potoo.Contract {
 
 async function connect(root: string, service_root?: string): Promise<potoo.Connection> {
     let paho = new MQTT.Client('ws://' + location.hostname + ':' + Number(location.port) + '/ws', "fidget_" + random_string(8));
-    let client = {
-        connect: (config: potoo.ConnectConfig) : Promise<void> => new Promise((resolve, reject) => {
-            paho.onConnectionLost = (err) => {
-                config.on_disconnect()
-                console.log(`disconnected! error: ${err.errorMessage}`)
-            }
-            paho.onMessageArrived = (m) => {
-                let msg = {
-                    topic: m.destinationName,
-                    payload: m.payloadString,
-                    retain: m.retained,
-                }
-                console.log(' [in] ', msg.topic, ': ', msg.payload)
-                config.on_message(msg)
-            }
-            let conn_data: MQTT.ConnectionOptions = {
-                onSuccess: (con) => resolve(),
-                onFailure: (err) => reject(err.errorMessage),
-            }
-            if (config.will_message) {
-                let will = new MQTT.Message(config.will_message.payload)
-                will.destinationName = config.will_message.topic
-                will.retained        = config.will_message.retain
-                conn_data.willMessage = will
-            }
-            console.log('[con]')
-            paho.connect(conn_data)
-        }),
-        publish:   (msg: potoo.Message) => {
-            console.log('[out] ', msg.topic, ': ', msg.payload)
-            paho.send(msg.topic, msg.payload, 0, msg.retain)
-        },
-        subscribe: (filter: string) : Promise<void> => new Promise((resolve, reject) => {
-            console.log('[sub] ', filter)
-            paho.subscribe(filter, {
-                onSuccess: (con) => resolve(),
-                onFailure: (err) => reject(err.errorMessage),
-            })
-        }),
-        unsubscribe: (filter: string) : Promise<void> => new Promise((resolve, reject) => {
-            console.log('[uns] ', filter)
-            paho.unsubscribe(filter, {
-                onSuccess: (con) => resolve(),
-                onFailure: (err) => reject(err.errorMessage),
-            })
-        }),
-    }
-
+    let client = potoo.paho_wrap({
+        client: paho,
+        message_constructor: MQTT.Message
+    })
     let conn = new potoo.Connection({
         mqtt_client: client,
         root: root,

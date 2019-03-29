@@ -4,6 +4,7 @@ import {Channel} from './channel'
 export * from './channel'
 import * as mqtt from './mqtt';
 export * from './mqtt';
+export * from './mqtt_wrappers';
 import {typecheck, is_void} from './types'
 
 export interface ConnectionOptions {
