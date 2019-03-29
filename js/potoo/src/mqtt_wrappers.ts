@@ -65,6 +65,7 @@ export interface PahoWrapOptions {
     client:              PahoClient
     message_constructor: PahoMessageConstructor
     on_disconnect?:      (err: PahoError) => void
+    on_connect?:         () => void
     subscribe_qos?:      Qos
     message_qos?:        Qos
     debug?:              boolean
@@ -75,8 +76,10 @@ export function paho_wrap(opts: PahoWrapOptions): Client {
     let subscribe_qos: Qos = 0
     let message_qos: Qos = 0
     let on_disconnect: (err: PahoError) => void = err => {}
+    let on_connect: () => void = () => {}
     let dbg = (...args: any[]) => {}
     if (opts.on_disconnect) { on_disconnect = opts.on_disconnect }
+    if (opts.on_connect) { on_connect = opts.on_connect }
     if (opts.subscribe_qos) { subscribe_qos = opts.subscribe_qos }
     if (opts.message_qos) { message_qos = opts.message_qos }
     if (opts.debug) {
@@ -107,8 +110,19 @@ export function paho_wrap(opts: PahoWrapOptions): Client {
                 dbg(' [in] ', msg.topic, ': ', msg.payload)
                 config.on_message(msg)
             }
-            conn_data.onSuccess = (con) => resolve()
-            conn_data.onFailure = (err) => reject(err.errorMessage)
+            conn_data.onSuccess = (con) => {
+                resolve()
+                if (opts.connection_opts && opts.connection_opts.onSuccess) {
+                    opts.connection_opts.onSuccess(con)
+                }
+            }
+            conn_data.onFailure = (err) => {
+                reject(err.errorMessage)
+                on_disconnect(err)
+                if (opts.connection_opts && opts.connection_opts.onFailure) {
+                    opts.connection_opts.onFailure(err)
+                }
+            }
             if (config.will_message) {
                 let msg = new opts.message_constructor(config.will_message.payload)
                 msg.destinationName = config.will_message.topic
@@ -118,6 +132,7 @@ export function paho_wrap(opts: PahoWrapOptions): Client {
             }
             dbg('[con]')
             paho.connect(conn_data)
+            on_connect()
         }),
         publish:   (msg: Message) => {
             dbg('[out] ', msg.topic, ': ', msg.payload)

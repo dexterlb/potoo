@@ -69,7 +69,8 @@ module.exports = {
               target: 'ws://localhost:1880',
               ws: true
             }
-      }
+      },
+      port: 8081,
   },
 
 

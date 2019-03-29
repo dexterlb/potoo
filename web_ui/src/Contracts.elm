@@ -461,7 +461,7 @@ propertify_ path contract properties =
                 ( PropertyKey
                     { prop | path = path, setter = makeSetter prop subcontractDict }
                     subcontractDict
-                , newProperties )
+                , newerProperties )
 
         Constant c -> ( Constant c, properties )
 
@@ -514,7 +514,7 @@ propertifyMap path l data =
             in
             let
                 ( contract, newData2 ) =
-                    propertify_ (path ++ "/" ++ hk) hv newData1
+                    propertify_ (appendPath path hk) hv newData1
             in
             ( ( hk, contract ) :: newTail, newData2 )
 
@@ -528,6 +528,12 @@ getTypeFields { meta } = meta
 
 -- utils
 
+appendPath : Topic -> Topic -> Topic
+appendPath a b = case (a, b) of
+    ("", "") -> ""
+    (_, "")  -> a
+    ("", _)  -> b
+    _        -> a ++ "/" ++ b
 
 fetch : comparable -> Dict comparable v -> v
 fetch k d =
@@ -536,7 +542,18 @@ fetch k d =
             v
 
         Nothing ->
-            Debug.todo "the author of this page is a moron"
+            Debug.todo <| "trying to get " ++ (Debug.toString k) ++ " out of "
+                       ++ (Debug.toString d)
+
+fetch2 : comparable -> Dict comparable v -> v
+fetch2 k d =
+    case Dict.get k d of
+        Just v ->
+            v
+
+        Nothing ->
+            Debug.todo <| "!!!trying to get " ++ (Debug.toString k) ++ " out of "
+                       ++ (Debug.toString d)
 
 
 firstJust : List (Maybe a) -> Maybe a

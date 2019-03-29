@@ -4,7 +4,6 @@ import Api exposing (..)
 import Browser exposing (UrlRequest)
 import Contracts exposing (..)
 import Debug exposing (log)
-import Delay
 import Dict exposing (Dict)
 import Json.Decode
 import Json.Encode

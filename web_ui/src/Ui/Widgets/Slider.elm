@@ -112,6 +112,7 @@ animatePeak (time, diff) model = case model.displayRatio > model.peakRatio of
 getValue : Value -> Maybe Float
 getValue v = case v of
     SimpleFloat f -> Just f
+    SimpleInt i   -> Just (toFloat i)
     _             -> Nothing
 
 calcRatio : Model -> Float -> Float

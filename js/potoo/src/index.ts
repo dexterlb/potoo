@@ -171,19 +171,20 @@ export class Connection {
         await this.mqtt_client.subscribe(this.client_topic('_contract', topic))
     }
 
-    public value(topic: string, persistent: boolean = false): Channel<any> | null {
+    public value(topic: string): Channel<any> | null {
         let value_topic = this.client_topic('_value', topic)
-        if (persistent) {
-            if (!(value_topic in this.persistent_value_index)) {
-                this.persistent_value_index[value_topic] = this.make_value_channel(value_topic)
-            }
-            return this.persistent_value_index[value_topic]
-        } else {
-            if (value_topic in this.value_index) {
-                return this.value_index[value_topic].channel
-            }
-            return null
+        if (value_topic in this.value_index) {
+            return this.value_index[value_topic].channel
         }
+        return null
+    }
+
+    public value_persistent(topic: string): Channel<any> {
+        let value_topic = this.client_topic('_value', topic)
+        if (!(value_topic in this.persistent_value_index)) {
+            this.persistent_value_index[value_topic] = this.make_value_channel(value_topic)
+        }
+        return this.persistent_value_index[value_topic]
     }
 
     public contract_dirty(): MapContract {
@@ -245,12 +246,6 @@ export class Connection {
                 }
             })
         }
-
-        console.log('new contract at ', topic, ': ', contract, ', index: ', {
-            contract: this.contract_index,
-            callable: this.callable_index,
-            value: this.value_index,
-        })
 
         this.on_contract(topic, contract)
     }

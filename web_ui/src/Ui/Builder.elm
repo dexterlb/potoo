@@ -49,6 +49,8 @@ toTree_ c key properties widgets =
                 widget = case (argument.t, retval.t) of
                     (TNil, TNil) ->
                         ButtonWidget <| Ui.Widgets.Button.init metaData callee
+                    (TNil, TVoid) ->
+                        ButtonWidget <| Ui.Widgets.Button.init metaData callee
                     _ ->
                         (FunctionWidget <| Ui.Widgets.Function.init metaData callee)
             in let
@@ -56,7 +58,7 @@ toTree_ c key properties widgets =
                     Dict.toList subcontract
                         |> toTreeMany properties widgets
             in
-                simpleTree widgets
+                simpleTree newWidgets
                     key
                     metaMaker
                     children
