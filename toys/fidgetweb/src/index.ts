@@ -44,11 +44,6 @@ function make_contract() : potoo.Contract {
                 channel: boingval,
                 subcontract: {
                     "ui_tags": "order:4,decimals:0",
-                    "stops": {
-                        "0": "init",
-                        "5": "first",
-                        "15": "second",
-                    },
                 }
             },
             "slider": {
