@@ -1,1 +1,3 @@
 github.com/DexterLB/potoo v0.0.0-20190325130919-8925288ab100 h1:Mm6oUbp2e4ry8/QDzELA/mg+00pjezGdPaDAW41id2g=
+github.com/DexterLB/potoo/go/potoo v0.0.0-20190331090903-6fda96831e5b h1:Lm6HhqXehimSVz08kS/0keyTtQjZbdiFmjPA+TGJC2s=
+github.com/DexterLB/potoo/go/potoo v0.0.0-20190331090903-6fda96831e5b/go.mod h1:6hnOIX/Cl9AIJCDesmHDwUe4+ceXpn4hnYGUqusNxGA=
