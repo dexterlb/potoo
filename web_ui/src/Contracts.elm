@@ -100,7 +100,7 @@ encodeValue v = case v of
 
 equivTypes : Type -> Type -> Bool
 equivTypes a b =
-    a == b  -- fixme
+    a.t == b.t  -- FIXME
 
 
 parseContract : String -> Result String Contract
@@ -411,12 +411,14 @@ inspectTypeDescr givenType =
 
 
 inspectData : Data -> String
-inspectData d =
-    d
-        |> Dict.toList
-        |> List.map (\( k, v ) -> k ++ ": " ++ JE.encode 0 v)
-        |> String.join ", "
-        |> (\s -> "<" ++ s ++ ">")
+inspectData d = if Dict.isEmpty d then
+        ""
+    else
+        d
+            |> Dict.toList
+            |> List.map (\( k, v ) -> k ++ ": " ++ JE.encode 0 v)
+            |> String.join ", "
+            |> (\s -> "<" ++ s ++ ">")
 
 
 propertify : Contract -> ( Contract, ContractProperties )
