@@ -28,9 +28,15 @@ type TString struct{}
 func (t TString) TypeName() string { return "string" }
 
 type TLiteral struct {
-    value Fuck
+    Value Fuck
 }
 func (t TLiteral) TypeName() string { return "literal" }
+
+type TMap struct {
+    Key Type
+    Value Type
+}
+func (t TMap) TypeName() string { return "map" }
 
 type MetaData map[string]Fuck
 

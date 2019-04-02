@@ -9,7 +9,6 @@ import (
 	"github.com/francoispqt/gojay"
 	"github.com/modern-go/reflect2"
 )
-
 type Serialiser struct {
 	decoder decoder
 }
@@ -38,7 +37,7 @@ func makeDecoder(pType Type, sampleValue Fuck) decoder {
     goPtr   := reflect2.PtrTo(goType2)
 	goType := reflect.TypeOf(sampleValue)
 
-	switch pType.T.(type) {
+    switch typ := pType.T.(type) {
 	case TVoid:
 		return func(dec *gojay.Decoder, v Fuck) error {
 			return fmt.Errorf("trying to decode Void, which is uninhabitable")
@@ -93,6 +92,43 @@ func makeDecoder(pType Type, sampleValue Fuck) decoder {
 			goType2.Set(v, pb)
 			return nil
 		}
+	case TFloat:
+	    if goType2 != reflect2.TypeOf(42.0) {
+	        panic(fmt.Sprintf("trying to decode %s as float", goType2))
+	    }
+		return func(dec *gojay.Decoder, v Fuck) error {
+			checkType(goPtr, v)
+            var pb *float64
+			err := dec.FloatNull(&pb)
+			if err != nil {
+				return err
+			}
+			if pb == nil {
+			    return fmt.Errorf("got null instead of float")
+			}
+			goType2.Set(v, pb)
+			return nil
+		}
+	case TString:
+	    if goType2 != reflect2.TypeOf("foo") {
+	        panic(fmt.Sprintf("trying to decode %s as string", goType2))
+	    }
+		return func(dec *gojay.Decoder, v Fuck) error {
+			checkType(goPtr, v)
+            var pb *string
+			err := dec.StringNull(&pb)
+			if err != nil {
+				return err
+			}
+			if pb == nil {
+			    return fmt.Errorf("got null instead of string")
+			}
+			goType2.Set(v, pb)
+			return nil
+		}
+	case TMap:
+
+        keySer := MakeSerialiser(typ.Key)
 	default:
 		panic(fmt.Sprintf("don't know how to decode %s", pType))
 	}
@@ -110,3 +146,26 @@ func checkType(t reflect2.Type, v Fuck) {
 		panic(fmt.Sprintf("decoder for %s used on %s", t, reflect2.TypeOf(v)))
 	}
 }
+
+/*
+    Here begins a rant.
+
+    Fuck this lack of generics. Why do I have to write the same motherfucking
+    thing 10 times and to what end? To get underperforming code because the
+    stupid reflect package is slow and there's no way to extract a pointer from
+    a bloody interface which IS a fucking pointer! Not only that, but even trying
+    to mitigate the reflect performance hit by precomputing as much as possible
+    and then capturing it in a closure doesn't work because guess what? The
+    damn closures are fucking slow as hell.
+    Use a fucking dynamically-typed language, you say: yeah, throw ALL possible
+    compiler guarantees out of the window and shoot yourself in the leg.
+    You know what that leaves us with? C++ (just no), rust (anyone who is not
+    wearing a lumberjack shirt will refuse to use this code) and Haskell.
+    So if I want this code to be usable by non-haskellists, I'm left with this
+    mediocre language which, albeit mediocre, turns out to be better than all
+    the rest for this task.
+    Everything sucks and I want to kill myself.
+
+    End of rant.
+*/
+
