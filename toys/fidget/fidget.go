@@ -1,14 +1,19 @@
 package main
 
-import "fmt"
-import "github.com/DexterLB/potoo/go/potoo/types"
+import (
+	"fmt"
+
+	"github.com/DexterLB/potoo/go/potoo/types"
+	"github.com/valyala/fastjson"
+)
 
 func main() {
-    ser := types.MakeSerialiser(types.Type{T: types.TInt{}}, 500)
-    foo := 70
-    err := ser.DecodeString("null", &foo)
-    if err != nil {
-        fmt.Printf("error: %s\n", err)
-    }
-    fmt.Printf("foo: %d\n", foo)
+	var a fastjson.Arena
+    o := a.NewObject()
+    o.Set("bar", a.NewNumberInt(42))
+    o.Set("foo", a.NewNumberInt(45))
+	err := types.TypeCheck(o, types.Map(types.String(), types.Int()))
+	if err != nil {
+		fmt.Printf("error: %s\n", err)
+	}
 }
