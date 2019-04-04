@@ -54,6 +54,30 @@ type TMap struct {
 func (t TMap) TypeName() string { return "map" }
 func Map(kt Type, vt Type) Type { return Type{ T: TMap{KeyType: kt, ValueType: vt} } }
 
+type TList struct {
+	ValueType Type
+}
+func (t TList) TypeName() string { return "list" }
+func List(vt Type) Type { return Type{ T: TList{ValueType: vt} } }
+
+type TUnion struct {
+    Alts []Type
+}
+func (t TUnion) TypeName() string { return "union" }
+func Union(alts ...Type) Type { return Type{ T: TUnion{Alts: alts} } }
+
+type TStruct struct {
+    Fields map[string]Type
+}
+func (t TStruct) TypeName() string { return "struct" }
+func Struct(fields map[string]Type) Type { return Type{ T: TStruct{Fields: fields} } }
+
+type TTuple struct {
+    Fields []Type
+}
+func (t TTuple) TypeName() string { return "struct" }
+func Tuple(fields ...Type) Type { return Type{ T: TTuple{Fields: fields} } }
+
 type MetaData map[string]*fastjson.Value
 
 func (t Type) String() string {

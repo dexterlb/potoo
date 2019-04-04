@@ -34,14 +34,76 @@ func TypeCheck(v *fastjson.Value, t Type) error {
         o, err = v.Object()
         if err == nil {
             o.Visit(func(key []byte, v2 *fastjson.Value) {
-                err = TypeCheck(v2, typ.ValueType)
                 if err != nil {
                     return
+                }
+                err = TypeCheck(v2, typ.ValueType)
+            })
+        }
+        if err == nil {
+            return nil
+        }
+    case TTuple:
+        var a []*fastjson.Value
+        a, err = v.Array()
+        if err == nil {
+            if len(a) != len(typ.Fields) {
+                err = fmt.Errorf("number of fields differs")
+            }
+            for i := range(a) {
+                err = TypeCheck(a[i], typ.Fields[i])
+                if err != nil {
+                    break
+                }
+            }
+        }
+        if err == nil {
+            return nil
+        }
+    case TStruct:
+        var o *fastjson.Object
+        o, err = v.Object()
+        if err == nil {
+            if o.Len() != len(typ.Fields) {
+                err = fmt.Errorf("number of fields differs")
+            }
+            o.Visit(func(key []byte, v2 *fastjson.Value) {
+                if err != nil {
+                    return
+                }
+                if t2, ok := typ.Fields[string(key)]; ok {
+                    err = TypeCheck(v2, t2)
+                } else {
+                    err = fmt.Errorf("field %s is not supposed to be here", string(key))
                 }
             })
         }
         if err == nil {
             return nil
+        }
+    case TList:
+        var a []*fastjson.Value
+        a, err = v.Array()
+        if err == nil {
+            for i := range a {
+                err = TypeCheck(a[i], typ.ValueType)
+                if err != nil {
+                    break
+                }
+            }
+        }
+        if err == nil {
+            return nil
+        }
+    case TUnion:
+        for i := range typ.Alts {
+            err = TypeCheck(v, typ.Alts[i])
+            if err == nil {
+                return nil
+            }
+        }
+        if err == nil {
+            err = fmt.Errorf("empty union type is uninhabitable")
         }
 	}
 	if err == nil {
