@@ -13,74 +13,74 @@ type Type struct {
 }
 
 type TypeDescr interface {
-	TypeName() string
+	typeName() string
 }
 
 type TVoid struct{}
-func (t TVoid) TypeName() string { return "void" }
-func Void() Type { return Type{ T: TVoid{} } }
+func (t *TVoid) typeName() string { return "type-void" }
+func Void() Type { return Type{ T: &TVoid{} } }
 
 type TNull struct{}
-func (t TNull) TypeName() string { return "null" }
-func Null() Type { return Type{ T: TNull{} } }
+func (t *TNull) typeName() string { return "type-null" }
+func Null() Type { return Type{ T: &TNull{} } }
 
 
 type TBool struct{}
-func (t TBool) TypeName() string { return "bool" }
-func Bool() Type { return Type{ T: TBool{} } }
+func (t *TBool) typeName() string { return "type-bool" }
+func Bool() Type { return Type{ T: &TBool{} } }
 
 type TInt struct{}
-func (t TInt) TypeName() string { return "int" }
-func Int() Type { return Type{ T: TInt{} } }
+func (t *TInt) typeName() string { return "type-int" }
+func Int() Type { return Type{ T: &TInt{} } }
 
 type TFloat struct{}
-func (t TFloat) TypeName() string { return "float" }
-func Float() Type { return Type{ T: TFloat{} } }
+func (t *TFloat) typeName() string { return "type-float" }
+func Float() Type { return Type{ T: &TFloat{} } }
 
 type TString struct{}
-func (t TString) TypeName() string { return "string" }
-func String() Type { return Type{ T: TString{} } }
+func (t *TString) typeName() string { return "type-string" }
+func String() Type { return Type{ T: &TString{} } }
 
 type TLiteral struct {
 	Value *fastjson.Value
 }
-func (t TLiteral) TypeName() string { return "literal" }
-func Literal(val *fastjson.Value) Type { return Type{ T: TLiteral{Value: val} } }
+func (t *TLiteral) typeName() string { return "type-literal" }
+func Literal(val *fastjson.Value) Type { return Type{ T: &TLiteral{Value: val} } }
 
 type TMap struct {
 	KeyType   Type
 	ValueType Type
 }
-func (t TMap) TypeName() string { return "map" }
-func Map(kt Type, vt Type) Type { return Type{ T: TMap{KeyType: kt, ValueType: vt} } }
+func (t *TMap) typeName() string { return "type-map" }
+func Map(kt Type, vt Type) Type { return Type{ T: &TMap{KeyType: kt, ValueType: vt} } }
 
 type TList struct {
 	ValueType Type
 }
-func (t TList) TypeName() string { return "list" }
-func List(vt Type) Type { return Type{ T: TList{ValueType: vt} } }
+func (t *TList) typeName() string { return "type-list" }
+func List(vt Type) Type { return Type{ T: &TList{ValueType: vt} } }
 
 type TUnion struct {
     Alts []Type
 }
-func (t TUnion) TypeName() string { return "union" }
-func Union(alts ...Type) Type { return Type{ T: TUnion{Alts: alts} } }
+func (t *TUnion) typeName() string { return "type-union" }
+func Union(alts ...Type) Type { return Type{ T: &TUnion{Alts: alts} } }
 
 type TStruct struct {
     Fields map[string]Type
 }
-func (t TStruct) TypeName() string { return "struct" }
-func Struct(fields map[string]Type) Type { return Type{ T: TStruct{Fields: fields} } }
+func (t *TStruct) typeName() string { return "type-struct" }
+func Struct(fields map[string]Type) Type { return Type{ T: &TStruct{Fields: fields} } }
 
 type TTuple struct {
     Fields []Type
 }
-func (t TTuple) TypeName() string { return "struct" }
-func Tuple(fields ...Type) Type { return Type{ T: TTuple{Fields: fields} } }
+func (t *TTuple) typeName() string { return "type-tuple" }
+func Tuple(fields ...Type) Type { return Type{ T: &TTuple{Fields: fields} } }
 
 type MetaData map[string]*fastjson.Value
 
-func (t Type) String() string {
+func (t *Type) String() string {
 	if t.Meta == nil || len(t.Meta) == 0 {
 		return typeString(t.T)
 	}
@@ -101,9 +101,13 @@ func (m MetaData) String() string {
 
 func typeString(d TypeDescr) string {
     switch typ := d.(type) {
-        case TMap:
+        case *TMap:
             return fmt.Sprintf("map{%s: %s}", typ.KeyType, typ.ValueType)
         default:
-            return d.TypeName()
+            return d.typeName()
     }
+}
+
+func DecodeType(v *fastjson.Value) (Type, error) {
+    return Type{}, nil
 }

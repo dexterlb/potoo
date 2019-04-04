@@ -9,27 +9,27 @@ import (
 func TypeCheck(v *fastjson.Value, t Type) error {
     var err error
     switch typ := t.T.(type) {
-	case TVoid:
+	case *TVoid:
 		return fmt.Errorf("trying to typecheck a value against Void, which is uninhabitable")
-	case TNull:
+	case *TNull:
 		if v.Type() == fastjson.TypeNull {
 			return nil
 		}
-	case TBool:
+	case *TBool:
 		if v.Type() == fastjson.TypeTrue || v.Type() == fastjson.TypeFalse {
 			return nil
 		}
-	case TInt, TFloat:
+	case *TInt, *TFloat:
 		if v.Type() == fastjson.TypeNumber {
 			return nil
 		}
-	case TString:
+	case *TString:
 		if v.Type() == fastjson.TypeString {
 			return nil
 		}
-    case TLiteral:
+    case *TLiteral:
         panic("literals not yet implemented")
-    case TMap:
+    case *TMap:
         var o *fastjson.Object
         o, err = v.Object()
         if err == nil {
@@ -43,7 +43,7 @@ func TypeCheck(v *fastjson.Value, t Type) error {
         if err == nil {
             return nil
         }
-    case TTuple:
+    case *TTuple:
         var a []*fastjson.Value
         a, err = v.Array()
         if err == nil {
@@ -60,7 +60,7 @@ func TypeCheck(v *fastjson.Value, t Type) error {
         if err == nil {
             return nil
         }
-    case TStruct:
+    case *TStruct:
         var o *fastjson.Object
         o, err = v.Object()
         if err == nil {
@@ -81,7 +81,7 @@ func TypeCheck(v *fastjson.Value, t Type) error {
         if err == nil {
             return nil
         }
-    case TList:
+    case *TList:
         var a []*fastjson.Value
         a, err = v.Array()
         if err == nil {
@@ -95,7 +95,7 @@ func TypeCheck(v *fastjson.Value, t Type) error {
         if err == nil {
             return nil
         }
-    case TUnion:
+    case *TUnion:
         for i := range typ.Alts {
             err = TypeCheck(v, typ.Alts[i])
             if err == nil {
