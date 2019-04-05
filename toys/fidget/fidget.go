@@ -12,14 +12,22 @@ func main() {
     o := a.NewObject()
     o.Set("bar", a.NewString("baz"))
     o.Set("foo", a.NewNumberInt(45))
-	err := types.TypeCheck(o, types.Union(
-	    types.Struct(map[string]types.Type{
-            "foo": types.Int(),
-            "bar": types.String(),
-        }),
-        types.Int(),
-    ))
+    t := types.MustDecode(fastjson.MustParse(`
+        { "_t": "type-union", "alts": [
+            { "_t": "type-float", "meta": { "min": 0, "max": 1 } },
+            { "_t": "type-struct", "meta": { "foo": "bar" }, "fields":
+                { "foo": { "_t": "type-int" },
+                "bar": { "_t": "type-string" }
+                }
+            }
+        ] }
+    `))
+	err := types.TypeCheck(o, t)
 	if err != nil {
 		fmt.Printf("error: %s\n", err)
+		return
 	}
+
+
+	fmt.Printf(types.Encode(&a, t).String())
 }

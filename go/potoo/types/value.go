@@ -109,5 +109,5 @@ func TypeCheck(v *fastjson.Value, t Type) error {
 	if err == nil {
 	    err = fmt.Errorf("type mismatch")
 	}
-    return fmt.Errorf("value %s doesn't match type %s: %s", v, t, err)
+    return fmt.Errorf("value %s doesn't match %s: %s", v, t, err)
 }
