@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/DexterLB/potoo/go/potoo/types"
+	"github.com/DexterLB/potoo/go/potoo/contracts"
 	"github.com/valyala/fastjson"
 )
 
@@ -29,5 +30,6 @@ func main() {
 	}
 
 
-	fmt.Printf(types.Encode(&a, t).String())
+    fmt.Printf("json: %s\n", types.Encode(&a, t).String())
+    fmt.Printf("contract: %v\n", contracts.ConstantInt(42))
 }
