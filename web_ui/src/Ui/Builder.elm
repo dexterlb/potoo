@@ -10,6 +10,7 @@ import Ui.Widgets.Slider
 import Ui.Widgets.Switch
 import Ui.Widgets.Choice
 import Ui.Widgets.List
+import Ui.Widgets.Text
 
 
 toTree : Pid -> Dict Pid Contract -> Properties -> ( WidgetID, Widgets )
@@ -155,7 +156,12 @@ propertyWidget prop metaData =
 
         Contracts.TString -> case metaData.valueMeta.oneOf of
             Nothing ->
-                StringWidget metaData Contracts.Loading
+                case metaData.propData.hasSetter of
+                    False ->
+                        StringWidget metaData Contracts.Loading
+                    True ->
+                        TextWidget <|
+                            Ui.Widgets.Text.init metaData Nothing
             Just _ ->
                 case metaData.propData.hasSetter of
                     False ->
@@ -167,8 +173,8 @@ propertyWidget prop metaData =
         Contracts.TBool -> SwitchWidget <|
             Ui.Widgets.Switch.init metaData Contracts.Loading
 
-        _ ->
-            UnknownWidget metaData Contracts.Loading
+        unk ->
+            UnknownWidget unk metaData Contracts.Loading
 
 
 propertyMap : Properties -> Widgets -> Dict ( Pid, PropertyID ) WidgetID
