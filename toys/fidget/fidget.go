@@ -31,5 +31,5 @@ func main() {
 
 
     fmt.Printf("json: %s\n", types.Encode(&a, t).String())
-    fmt.Printf("contract: %v\n", contracts.ConstantInt(42))
+    fmt.Printf("contract: %v\n", contracts.Constant{Value: a.NewNumberInt(42)})
 }

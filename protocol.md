@@ -63,6 +63,7 @@ of the following:
 | Contract           | JSON                              |
 | ------------------ | --------------------------------- |
 | constant           | `null`, `true`, `false`, an int, a float or a string |
+| constant           | `{ "_t": "constant", "value": <any JSON value> }` |
 | value              | `{ "_t": "value", "type": <type>, "subcontract": <contract> }` |
 | callable           | `{ "_t": "callable", "argument": <type>, "retval": <type>, "subcontract": <contract> }` |
 | map                | a map without a `"_t"` key whose values are contracts |

@@ -28,21 +28,32 @@ toTree_ c key properties widgets =
             metaMaker properties
     in
     case c of
-        Contracts.Constant (Contracts.SimpleString s) ->
-            simpleTree widgets key metaMaker [] (StringWidget metaData <| Contracts.SimpleString s)
+        Contracts.Constant val subcontract ->
+            let
+                widget = case val of
+                    Contracts.SimpleString s ->
+                        StringWidget metaData <| Contracts.SimpleString s
 
-        Contracts.Constant (Contracts.SimpleInt x) ->
-            simpleTree widgets key metaMaker [] (NumberWidget metaData <| Contracts.SimpleInt x)
+                    Contracts.SimpleInt x ->
+                        NumberWidget metaData <| Contracts.SimpleInt x
 
-        Contracts.Constant (Contracts.SimpleFloat x) ->
-            simpleTree widgets key metaMaker [] (NumberWidget metaData <| Contracts.SimpleFloat x)
+                    Contracts.SimpleFloat x ->
+                        NumberWidget metaData <| Contracts.SimpleFloat x
 
-        Contracts.Constant (Contracts.SimpleBool x) ->
-            simpleTree widgets key metaMaker [] (SwitchWidget <|
-                Ui.Widgets.Switch.init metaData <| Contracts.SimpleBool x)
+                    Contracts.SimpleBool x -> SwitchWidget <|
+                        Ui.Widgets.Switch.init metaData <| Contracts.SimpleBool x
 
-        Contracts.Constant _ ->
-            simpleTree widgets key metaMaker [] (StringWidget metaData <| Contracts.SimpleString "<const>")
+                    _ -> StringWidget metaData <| Contracts.SimpleString "<const>"
+            in let
+                ( children, newWidgets ) =
+                    Dict.toList subcontract
+                        |> toTreeMany properties widgets
+            in
+                simpleTree newWidgets
+                    key
+                    metaMaker
+                    children
+                    widget
 
         Contracts.Function ({ argument, retval } as callee) subcontract ->
             let

@@ -10,25 +10,16 @@ type Contract interface {
 	encode(a *fastjson.Arena) *fastjson.Value
 }
 
-type ConstantNumber float64
-
-func (c ConstantNumber) contractNode() string { return "constant-number" }
-
-type ConstantBool bool
-
-func (c ConstantBool) contractNode() string { return "constant-bool" }
-
-type ConstantString string
-
-func (c ConstantString) contractNode() string { return "constant-string" }
-
-type ConstantNull struct{}
-
-func (c ConstantNull) contractNode() string { return "constant-null" }
-
 type Map map[string]Contract
 
-func (m Map) contractNode() string { return "map" }
+func (m Map) contractNode() string { return "_map" }
+
+type Constant struct {
+    Value *fastjson.Value
+	Subcontract Contract
+}
+
+func (v Constant) contractNode() string { return "constant" }
 
 type Value struct {
 	Type        types.Type

@@ -15,6 +15,10 @@ func MustDecode(v *fastjson.Value) Type {
 }
 
 func Decode(v *fastjson.Value) (Type, error) {
+    if v == nil {
+        return Type{}, fmt.Errorf("item does not exist")
+    }
+
 	nameVal := v.Get("_t")
 	if nameVal == nil {
 		return Type{}, fmt.Errorf("no _t field in type")

@@ -2,17 +2,17 @@ import {Type}    from './types';
 import {Channel} from './channel';
 import {Topic}   from './mqtt'
 
-export type RawContract     = Constant
+export type RawContract     = RawConstant
                             | RawValue
                             | RawCallable
                             | RawMapContract
+                            | null
 
 export type Contract        = Constant
                             | Value
                             | Callable
                             | MapContract
-
-type Constant = null | boolean | number | string
+                            | null
 
 export interface RawMapContract {
     [key: string]: RawContract
@@ -33,12 +33,21 @@ export interface CallableDescr {
     retval: Type,
 }
 
+export interface ConstantDescr {
+    _t: "constant",
+    value: any,
+}
+
 export function isValue(x: any) : x is ValueDescr {
     return (x != null) && (typeof x == 'object') && (x._t == 'value')
 }
 
 export function isCallable(x: any) : x is CallableDescr {
     return (x != null) && (typeof x == 'object') && (x._t == 'callable')
+}
+
+export function isConstant(x: any) : x is ConstantDescr {
+    return (x != null) && (typeof x == 'object') && (x._t == 'constant')
 }
 
 export interface Value extends ValueDescr {
@@ -51,12 +60,20 @@ export interface Callable extends CallableDescr {
     handler: Handler
 }
 
+export interface Constant extends ConstantDescr {
+    subcontract: MapContract
+}
+
 export interface RawValue extends ValueDescr {
     subcontract: RawMapContract,
 }
 
 export interface RawCallable extends CallableDescr {
     subcontract: RawMapContract,
+}
+
+export interface RawConstant extends ConstantDescr {
+    subcontract: RawMapContract
 }
 
 export interface Call {
@@ -80,7 +97,7 @@ export function traverse(c: Contract, f: (c: Contract, topic: Topic) => void) {
 
 function traverse_helper(c: Contract, f: (c: Contract, topic: Topic) => void, path: Array<string>) {
     f(c, make_topic(path))
-    if (isValue(c) || isCallable(c)) {
+    if (isValue(c) || isCallable(c) || isConstant(c)) {
         traverse_helper(c.subcontract, f, path)
         return
     }
@@ -107,6 +124,9 @@ export function decode(c: RawContract, o: DecodeOptions): Contract {
         return { _t: c._t, argument: c.argument, retval: c.retval, subcontract: decode_map(c.subcontract, o),
                  handler: o.callHandler(c) }
     }
+    if (isConstant(c)) {
+        return { _t: c._t, value: c.value, subcontract: decode_map(c.subcontract, o) }
+    }
     if (c != null && typeof c == 'object') {
         return decode_map(c, o)
     }
@@ -127,6 +147,9 @@ export function encode(c: Contract): RawContract {
     }
     if (isCallable(c)) {
         return { _t: c._t, argument: c.argument, retval: c.retval, subcontract: encode_map(c.subcontract) }
+    }
+    if (isConstant(c)) {
+        return { _t: c._t, value: c.value, subcontract: encode_map(c.subcontract) }
     }
     if (c != null && typeof c == 'object') {
         return encode_map(c)
@@ -149,7 +172,7 @@ function child_map(c: MapContract, key: string): MapContract {
     if (key in c) {
         let o = c[key]
         if (typeof o == 'object' && o != null) {
-            if (isValue(o) || isCallable(o)) {
+            if (isValue(o) || isCallable(o) || isConstant(o)) {
                 return o.subcontract
             }
             return o
@@ -162,7 +185,7 @@ function child_map(c: MapContract, key: string): MapContract {
 
 function to_map(c: Contract): MapContract {
     if (typeof c == 'object' && c != null) {
-        if (isValue(c) || isCallable(c)) {
+        if (isValue(c) || isCallable(c) || isConstant(c)) {
             return c.subcontract
         }
         return c

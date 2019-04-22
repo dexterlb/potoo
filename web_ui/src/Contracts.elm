@@ -30,7 +30,7 @@ type TypeDescr
 
 
 type Contract
-    = Constant Value
+    = Constant Value Children
     | MapContract Children
     | Function Callee Children
     | PropertyKey Property Children
@@ -118,33 +118,9 @@ parseType s =
 contractDecoder : Decoder Contract
 contractDecoder =
     oneOf
-        [ stringValueDecoder
-        , intValueDecoder
-        , boolValueDecoder
-        , floatValueDecoder
-        , objectDecoder
+        [ objectDecoder
         , JD.lazy (\_ -> mapContractDecoder)
         ]
-
-
-stringValueDecoder : Decoder Contract
-stringValueDecoder =
-    JD.map (Constant << SimpleString) string
-
-
-intValueDecoder : Decoder Contract
-intValueDecoder =
-    JD.map (Constant << SimpleInt) int
-
-
-boolValueDecoder : Decoder Contract
-boolValueDecoder =
-    JD.map (Constant << SimpleBool) bool
-
-
-floatValueDecoder : Decoder Contract
-floatValueDecoder =
-    JD.map (Constant << SimpleFloat) float
 
 
 objectDecoder : Decoder Contract
@@ -158,6 +134,9 @@ objectDecoder =
 
                     "callable" ->
                         functionDecoder
+
+                    "constant" ->
+                        constantDecoder
 
                     _ ->
                         fail <| "object type `" ++ t ++ "' is unknown"
@@ -175,6 +154,12 @@ functionDecoder =
     JD.map3 makeFunction
         (field "argument" typeDecoder)
         (field "retval" typeDecoder)
+        (field "subcontract" mapDecoder)
+
+constantDecoder : Decoder Contract
+constantDecoder =
+    JD.map2 makeConstant
+        (field "value" valueDecoder)
         (field "subcontract" mapDecoder)
 
 
@@ -202,6 +187,12 @@ makeFunction argument retval subcontract =
         , path = ""
         , retval = retval
         }
+        subcontract
+
+makeConstant : Value -> Children -> Contract
+makeConstant value subcontract =
+    Constant
+        value
         subcontract
 
 
@@ -465,7 +456,12 @@ propertify_ path contract properties =
                     subcontractDict
                 , newerProperties )
 
-        Constant c -> ( Constant c, properties )
+        Constant c subcontract ->
+            let
+                ( subcontractList, newProperties ) =
+                    propertifyMap path (Dict.toList subcontract) properties
+            in
+                ( Constant c (Dict.fromList subcontractList), newProperties )
 
 
 
@@ -483,10 +479,10 @@ checkSetterType t f = case equivTypes f.argument t of
 numericContract : Contract -> Maybe Float
 numericContract c =
     case c of
-        Constant (SimpleFloat f) ->
+        Constant (SimpleFloat f) _ ->
             Just f
 
-        Constant (SimpleInt i) ->
+        Constant (SimpleInt i) _ ->
             Just <| toFloat i
 
         _ ->

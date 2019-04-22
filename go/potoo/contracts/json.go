@@ -8,73 +8,116 @@ import (
 )
 
 func Decode(v *fastjson.Value) (Contract, error) {
+    if v == nil {
+        return nil, fmt.Errorf("item does not exist")
+    }
+
 	switch v.Type() {
-	case fastjson.TypeNumber:
-		n, err := v.Float64()
-		noerr(err)
-		return ConstantNumber(n), nil
-	case fastjson.TypeTrue:
-		return ConstantBool(true), nil
-	case fastjson.TypeFalse:
-		return ConstantBool(true), nil
-	case fastjson.TypeString:
-		s, err := v.StringBytes()
-		noerr(err)
-		return ConstantString(string(s)), nil
 	case fastjson.TypeNull:
-		return ConstantNull{}, nil
-	case fastjson.TypeArray:
-		return ConstantNull{}, fmt.Errorf("array in contract is not allowed (yet)")
+		return nil, nil
 	case fastjson.TypeObject:
-		o, err := v.Object()
-		noerr(err)
-		m := make(Map)
-		var key string
-		o.Visit(func(k []byte, v *fastjson.Value) {
-		    key = string(k)
-			if err != nil {
-				return
+		tv := v.Get("_t")
+		if tv != nil {
+            t, err := tv.StringBytes()
+            if err != nil {
+                return nil, fmt.Errorf("_t is not a string: %s", err)
+            }
+			switch string(t) {
+			case "value":
+				return decodeValue(v)
+			case "callable":
+				return decodeCallable(v)
+			case "constant":
+				return decodeConstant(v)
 			}
-			var field Contract
-			field, err = Decode(v)
-			m[key] = field
-		})
-		if err != nil {
-            return ConstantNull{}, fmt.Errorf("error decoding field %s: %s", key, err)
-        }
-		return m, nil
+		}
+		return decodeMap(v)
 	default:
-	    panic("no such type!")
+		panic("no such type!")
 	}
+}
+
+func decodeValue(v *fastjson.Value) (Contract, error) {
+    typ, err := types.Decode(v.Get("type"))
+    if err != nil {
+        return nil, fmt.Errorf("invalid type on value: %s", err)
+    }
+    subcontract, err := Decode(v.Get("subcontract"))
+    if err != nil {
+        return nil, fmt.Errorf("invalid subcontract on value: %s", err)
+    }
+
+    return Value {
+        Type: typ,
+        Subcontract: subcontract,
+    }, nil
+}
+
+func decodeConstant(v *fastjson.Value) (Contract, error) {
+    val := v.Get("value")
+    if val == nil {
+        return nil, fmt.Errorf("no value on constant")
+    }
+
+    subcontract, err := Decode(v.Get("subcontract"))
+    if err != nil {
+        return nil, fmt.Errorf("invalid subcontract on constant: %s", err)
+    }
+
+    return Constant {
+        Value: val,
+        Subcontract: subcontract,
+    }, nil
+}
+
+func decodeCallable(v *fastjson.Value) (Contract, error) {
+    argument, err := types.Decode(v.Get("argument"))
+    if err != nil {
+        return nil, fmt.Errorf("invalid argument on callable: %s", err)
+    }
+    retval, err := types.Decode(v.Get("retval"))
+    if err != nil {
+        return nil, fmt.Errorf("invalid retval on callable: %s", err)
+    }
+    subcontract, err := Decode(v.Get("subcontract"))
+    if err != nil {
+        return nil, fmt.Errorf("invalid subcontract on callable: %s", err)
+    }
+
+    return Callable {
+        Argument: argument,
+        Retval: retval,
+        Subcontract: subcontract,
+    }, nil
+}
+
+func decodeMap(v *fastjson.Value) (Map, error) {
+	o, err := v.Object()
+	noerr(err)
+	m := make(Map)
+	var key string
+	o.Visit(func(k []byte, v *fastjson.Value) {
+		key = string(k)
+		if err != nil {
+			return
+		}
+		var field Contract
+		field, err = Decode(v)
+		m[key] = field
+	})
+	if err != nil {
+		return nil, fmt.Errorf("error decoding field %s: %s", key, err)
+	}
+	return m, nil
 }
 
 func noerr(err error) {
-    if err != nil {
-        panic(fmt.Errorf("error should not have happened: %s", err))
-    }
+	if err != nil {
+		panic(fmt.Errorf("error should not have happened: %s", err))
+	}
 }
 func Encode(a *fastjson.Arena, c Contract) *fastjson.Value {
 	return c.encode(a)
-}
-
-func (c ConstantNumber) encode(a *fastjson.Arena) *fastjson.Value {
-	return a.NewNumberFloat64(float64(c))
-}
-
-func (c ConstantBool) encode(a *fastjson.Arena) *fastjson.Value {
-	if c {
-		return a.NewTrue()
-	} else {
-		return a.NewFalse()
-	}
-}
-
-func (c ConstantString) encode(a *fastjson.Arena) *fastjson.Value {
-	return a.NewString(string(c))
-}
-
-func (c ConstantNull) encode(a *fastjson.Arena) *fastjson.Value {
-	return a.NewNull()
 }
 
 func (m Map) encode(a *fastjson.Arena) *fastjson.Value {
@@ -85,8 +128,17 @@ func (m Map) encode(a *fastjson.Arena) *fastjson.Value {
 	return o
 }
 
+func (c Constant) encode(a *fastjson.Arena) *fastjson.Value {
+	o := a.NewObject()
+	o.Set("_t", a.NewString(c.contractNode()))
+	o.Set("value", c.Value)
+	o.Set("subcontract", c.Subcontract.encode(a))
+	return o
+}
+
 func (v Value) encode(a *fastjson.Arena) *fastjson.Value {
 	o := a.NewObject()
+	o.Set("_t", a.NewString(v.contractNode()))
 	o.Set("type", types.Encode(a, v.Type))
 	o.Set("subcontract", v.Subcontract.encode(a))
 	return o
@@ -94,6 +146,7 @@ func (v Value) encode(a *fastjson.Arena) *fastjson.Value {
 
 func (c Callable) encode(a *fastjson.Arena) *fastjson.Value {
 	o := a.NewObject()
+	o.Set("_t", a.NewString(c.contractNode()))
 	o.Set("argument", types.Encode(a, c.Argument))
 	o.Set("retval", types.Encode(a, c.Retval))
 	o.Set("subcontract", c.Subcontract.encode(a))

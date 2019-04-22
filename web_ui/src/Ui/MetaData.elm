@@ -103,6 +103,9 @@ extractData c properties =
         Contracts.Function _ subcontract ->
             extractDataDict subcontract properties
 
+        Contracts.Constant _ subcontract ->
+            extractDataDict subcontract properties
+
         Contracts.PropertyKey prop subcontract ->
             let
                 contractData = extractDataDict subcontract properties
@@ -110,26 +113,13 @@ extractData c properties =
             in
                 Dict.union contractData typeData
 
-        _ ->
-            emptyData
-
 extractDataDict : Children -> ContractProperties -> Data
 extractDataDict d properties = Dict.map (\_ value -> extractValue properties value) d
 
 extractValue : ContractProperties -> Contract -> JE.Value
 extractValue properties c =
     case c of
-        Contracts.Constant (SimpleString x) ->
-            JE.string x
-
-        Contracts.Constant (SimpleInt x) ->
-            JE.int x
-
-        Contracts.Constant (SimpleFloat x) ->
-            JE.float x
-
-        Contracts.Constant (SimpleBool x) ->
-            JE.bool x
+        Contracts.Constant val _ -> Contracts.valueEncoder val
 
         Contracts.PropertyKey { path } _ ->
             let
