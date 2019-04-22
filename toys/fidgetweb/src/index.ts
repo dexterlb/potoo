@@ -62,7 +62,7 @@ function make_contract() : potoo.Contract {
                         handler: async (val: any) => sliderval.send(val as number),
                         subcontract: { },
                     },
-                    "ui_tags": con("order:5,decimals:1"),
+                    "ui_tags": con("order:5,decimals:1,speed:99,exp_speed:99"),
                 }
             },
             "clock": {

@@ -11,6 +11,7 @@ import Ui.Widgets.Slider
 import Ui.Widgets.Switch
 import Ui.Widgets.Choice
 import Ui.Widgets.List
+import Ui.Widgets.Text
 
 
 type alias Widgets =
@@ -24,9 +25,10 @@ type Widget
     | SwitchWidget Ui.Widgets.Switch.Model
     | ChoiceWidget Ui.Widgets.Choice.Model
     | ListWidget Ui.Widgets.List.Model
+    | TextWidget Ui.Widgets.Text.Model
     | StringWidget MetaData Value
     | NumberWidget MetaData Value
-    | UnknownWidget MetaData Value
+    | UnknownWidget Type MetaData Value
     | DelegateWidget MetaData Int
     | BrokenWidget MetaData Int
     | LoadingWidget MetaData
@@ -42,6 +44,7 @@ type WidgetMsg
     | SliderMsg Ui.Widgets.Slider.Msg
     | SwitchMsg Ui.Widgets.Switch.Msg
     | ChoiceMsg Ui.Widgets.Choice.Msg
+    | TextMsg Ui.Widgets.Text.Msg
     | ListMsg   Ui.Widgets.List.Msg
 
 
@@ -144,6 +147,14 @@ updateWidget outerMsg ( widget, node ) =
             in
                 ( ChoiceWidget newModel, Cmd.map ChoiceMsg cmd, actions )
 
+        ( TextMsg msg, TextWidget model ) ->
+            let
+                ( newModel, cmd, actions ) =
+                    Ui.Widgets.Text.update msg model
+            in
+                ( TextWidget newModel, Cmd.map TextMsg cmd, actions )
+
+
         ( ListMsg msg, ListWidget model ) ->
             let
                 ( newModel, cmd, actions ) =
@@ -189,8 +200,8 @@ updateWidgetValue v ( widget, node ) =
         NumberWidget meta _ ->
             ( NumberWidget meta v, Cmd.none, [] )
 
-        UnknownWidget meta _ ->
-            ( UnknownWidget meta v, Cmd.none, [] )
+        UnknownWidget typ meta _ ->
+            ( UnknownWidget typ meta v, Cmd.none, [] )
 
         SwitchWidget m ->
             let
@@ -205,6 +216,13 @@ updateWidgetValue v ( widget, node ) =
                     Ui.Widgets.Choice.updateValue (Contracts.encodeValue v) m
             in
             ( ChoiceWidget newModel, Cmd.map ChoiceMsg cmd, actions )
+
+        TextWidget m ->
+            let
+                ( newModel, cmd, actions ) =
+                    Ui.Widgets.Text.updateValue v m
+            in
+            ( TextWidget newModel, Cmd.map TextMsg cmd, actions )
 
         SliderWidget m ->
             let
@@ -226,8 +244,8 @@ updateWidgetMetaData meta ( widget, node ) =
         NumberWidget _ v ->
             ( NumberWidget meta v, Cmd.none, [] )
 
-        UnknownWidget _ v ->
-            ( UnknownWidget meta v, Cmd.none, [] )
+        UnknownWidget typ _ v ->
+            ( UnknownWidget typ meta v, Cmd.none, [] )
 
         DelegateWidget _ v ->
             ( DelegateWidget meta v, Cmd.none, [] )
@@ -279,6 +297,13 @@ updateWidgetMetaData meta ( widget, node ) =
                     Ui.Widgets.Choice.updateMetaData meta m
             in
             ( ChoiceWidget newModel, Cmd.map ChoiceMsg cmd, actions )
+
+        TextWidget m ->
+            let
+                ( newModel, cmd, actions ) =
+                    Ui.Widgets.Text.updateMetaData meta m
+            in
+            ( TextWidget newModel, Cmd.map TextMsg cmd, actions )
 
 
 simpleTree : Widgets -> String -> (Contracts.ContractProperties -> MetaData) -> List WidgetID -> Widget -> ( WidgetID, Widgets )

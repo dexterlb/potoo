@@ -84,8 +84,9 @@ renderBrokenWidget : MetaData -> Int -> Html msg
 renderBrokenWidget m _ = renderHeader [ class "broken-delegate" ] m <|
     [ text "not connected" ]
 
-renderUnknownWidget : List (Html msg) -> Html msg
-renderUnknownWidget children = renderHeader
+renderUnknownWidget : String -> List (Html msg) -> Html msg
+renderUnknownWidget t children = renderHeaderWithChildren
     [ class "unknown-widget" ]
-    { noMetaData | key = "unknown_widget" } <|
-        (childify children)
+    { noMetaData | key = "unknown_widget" }
+    (childify children)
+    [ text t ]
