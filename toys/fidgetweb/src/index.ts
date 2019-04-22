@@ -12,12 +12,23 @@ function show_time(chan: potoo.Channel<string>) {
     setTimeout(() => show_time(chan), 999)
 }
 
+async function woo(chan: potoo.Channel<number>) {
+    let woo_div = document.getElementById('woo')
+    let val = await chan.get()
+    chan.send((val + 0.01) % 20)
+    setTimeout(() => woo(chan), 10)
+    if (woo_div != null) {
+        woo_div.innerHTML = "" + val
+    }
+}
 
 function make_contract() : potoo.Contract {
     let boingval  = new potoo.Channel<number>().send(4)
+    let wooval    = new potoo.Channel<number>().send(4)
     let sliderval = new potoo.Channel<number>().send(5)
     let timechan  = new potoo.Channel<string>()
     show_time(timechan)
+    woo(wooval)
 
     return {
         "description": con("A service which provides a greeting."),
@@ -48,6 +59,14 @@ function make_contract() : potoo.Contract {
                 channel: boingval,
                 subcontract: {
                     "ui_tags": con("order:4,decimals:0"),
+                }
+            },
+            "wooo": {
+                _t: "value",
+                type: {_t: "type-basic", name: "float", _meta: {min: 0, max: 20}},
+                channel: wooval,
+                subcontract: {
+                    "ui_tags": con("order:4,decimals:2"),
                 }
             },
             "slider": {
@@ -121,7 +140,7 @@ async function client(): Promise<void> {
 }
 
 async function do_stuff(f: () => Promise<void>) {
-    document.body.innerHTML = 'read your motherfucking console';
+    document.body.innerHTML = 'read your motherfucking console. Also woo = <span id="woo"></span>';
     f().then(() => console.log('wooo')).catch((err) => console.log('err ', err));
 }
 

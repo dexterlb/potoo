@@ -118,16 +118,11 @@
         .outer {
             border: 1px solid black;
         }
-        .stoprec-s0 {
-            .inner {
-                background-color: green;
-            }
-            border-right: 1px solid black;
+        .stop-value-left {
+            display: none;
         }
-        .stoprec-s1 {
-            .inner {
-                background-color: red;
-            }
+        .stop-value-right {
+            display: none;
         }
     }
 }
