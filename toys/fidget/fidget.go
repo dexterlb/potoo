@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/DexterLB/potoo/go/potoo/contracts"
 	"github.com/DexterLB/potoo/go/potoo/mqtt"
@@ -37,8 +38,9 @@ func main() {
 	var wr mqtt.Client
 	wr = wrappers.NewGmqWrapper(&wrappers.GmqOpts{
 		ConnectOptions: client.ConnectOptions{
-			Network: "websocket",
-			Address: "ws://localhost:8330",
+			Network:  "tcp",
+			Address:  "localhost:1883",
+			ClientID: []byte("the-go-fidget"),
 		},
 	})
 	err = wr.Connect(&mqtt.ConnectConfig{})
@@ -46,4 +48,6 @@ func main() {
 		fmt.Printf("error: %s\n", err)
 		return
 	}
+	wr.Publish(&mqtt.Message{Topic: []byte("/foo/bar"), Payload: []byte("fu"), Retain: false})
+	time.Sleep(1 * time.Second)
 }
