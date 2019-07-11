@@ -9,20 +9,21 @@
     "potoo": "file:../js/potoo"
   },
   "devDependencies": {
-    "@types/node": "^10.12.9",
+    "@types/node": "^12.6.2",
     "@types/ws": "^6.0.1",
-    "css-loader": "^1.0.1",
-    "elm-webpack-loader": "^5.0.0",
-    "file-loader": "^2.0.0",
-    "node-sass": "^4.10.0",
+    "elm": "^0.19.0-no-deps",
+    "css-loader": "^3.0.0",
+    "elm-webpack-loader": "git://github.com/Borzik/elm-webpack-loader#remove-elm",
+    "file-loader": "^4.0.0",
+    "node-sass": "^4.12.0",
     "sass-loader": "^7.1.0",
     "style-loader": "^0.23.1",
-    "ts-loader": "^5.3.0",
-    "typescript": "^3.1.6",
-    "webpack": "^4.26.0",
-    "webpack-cli": "^3.1.2",
-    "webpack-dev-server": "^3.1.10",
-    "ws": "^6.1.2"
+    "ts-loader": "^6.0.4",
+    "typescript": "^3.5.3",
+    "webpack": "^4.35.3",
+    "webpack-cli": "^3.3.5",
+    "webpack-dev-server": "^3.7.2",
+    "ws": "^7.1.0"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
