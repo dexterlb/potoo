@@ -28,5 +28,5 @@ func main() {
 
 	conn := potoo.New(opts)
 
-	conn.MustConnect()
+	conn.LoopOrDie()
 }
