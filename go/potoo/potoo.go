@@ -22,7 +22,7 @@ type Connection struct {
 
 func New(opts *ConnectionOptions) *Connection {
 	return &Connection{
-		opts: *opts,
+        opts: *opts,
 	}
 }
 

@@ -3,7 +3,7 @@ package mqtt
 type Topic []byte
 
 type ConnectConfig struct {
-	OnDisconnect chan<- struct{}
+	OnDisconnect chan<- error
 	OnMessage    chan<- Message
 	WillMessage  Message
 }

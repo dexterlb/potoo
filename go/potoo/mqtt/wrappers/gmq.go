@@ -24,7 +24,7 @@ func NewGmqWrapper(opts *GmqOpts) *GmqWrapper {
 }
 
 func (g *GmqWrapper) handleError(err error) {
-	g.connConf.OnDisconnect <- struct{}{}
+	g.connConf.OnDisconnect <- err
 	if g.opts.ErrorHandler != nil {
 		g.opts.ErrorHandler(err)
 	}
