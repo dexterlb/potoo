@@ -1,5 +1,7 @@
 package mqtt
 
+type Topic []byte
+
 type ConnectConfig struct {
 	OnDisconnect chan<- struct{}
 	OnMessage    chan<- Message
@@ -7,7 +9,7 @@ type ConnectConfig struct {
 }
 
 type Message struct {
-	Topic   []byte
+	Topic   Topic
 	Payload []byte
 	Retain  bool
 }
@@ -17,6 +19,6 @@ type Client interface {
 	// or maybe the implementation should decide?
 	Connect(config *ConnectConfig) error
 	Publish(message *Message)
-	Subscribe(filter []byte)   // must be synchronous
-	Unsubscribe(filter []byte)
+	Subscribe(filter Topic) // must be synchronous
+	Unsubscribe(filter Topic)
 }

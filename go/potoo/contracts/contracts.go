@@ -1,7 +1,8 @@
 package contracts
 
 import (
-	"github.com/DexterLB/potoo/go/potoo/types"
+    "github.com/DexterLB/potoo/go/potoo/types"
+    "github.com/DexterLB/potoo/go/potoo/bus"
 	"github.com/valyala/fastjson"
 )
 
@@ -23,7 +24,8 @@ func (v Constant) contractNode() string { return "constant" }
 
 type Value struct {
 	Type        types.Type
-	Subcontract Contract
+    Subcontract Contract
+    Bus         *bus.Bus
 }
 
 func (v Value) contractNode() string { return "value" }
@@ -31,7 +33,8 @@ func (v Value) contractNode() string { return "value" }
 type Callable struct {
 	Argument    types.Type
 	Retval      types.Type
-	Subcontract Contract
+    Subcontract Contract
+    Handler     *bus.Handler
 }
 
 func (c Callable) contractNode() string { return "callable" }

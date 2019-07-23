@@ -50,7 +50,7 @@ func (g *GmqWrapper) Publish(m *mqtt.Message) {
     }
 }
 
-func (g *GmqWrapper) Subscribe(filter []byte) {
+func (g *GmqWrapper) Subscribe(filter mqtt.Topic) {
     // TODO: maybe make this take a slice of filters and subscribe at once
     err := g.cli.Subscribe(&client.SubscribeOptions{
         SubReqs: []*client.SubReq{
@@ -66,7 +66,7 @@ func (g *GmqWrapper) Subscribe(filter []byte) {
     }
 }
 
-func (g *GmqWrapper) Unsubscribe(filter []byte) {
+func (g *GmqWrapper) Unsubscribe(filter mqtt.Topic) {
     // TODO: maybe make this take a slice of filters and unsubscribe at once
     err := g.cli.Unsubscribe(&client.UnsubscribeOptions{
         TopicFilters: [][]byte{filter},
