@@ -117,13 +117,16 @@ func noerr(err error) {
 	}
 }
 func Encode(a *fastjson.Arena, c Contract) *fastjson.Value {
+    if c == nil {
+        return a.NewNull()
+    }
 	return c.encode(a)
 }
 
 func (m Map) encode(a *fastjson.Arena) *fastjson.Value {
 	o := a.NewObject()
 	for k := range m {
-		o.Set(k, m[k].encode(a))
+		o.Set(k, Encode(a, m[k]))
 	}
 	return o
 }
@@ -132,7 +135,7 @@ func (c Constant) encode(a *fastjson.Arena) *fastjson.Value {
 	o := a.NewObject()
 	o.Set("_t", a.NewString(c.contractNode()))
 	o.Set("value", c.Value)
-	o.Set("subcontract", c.Subcontract.encode(a))
+	o.Set("subcontract", Encode(a, c.Subcontract))
 	return o
 }
 
@@ -140,7 +143,7 @@ func (v Value) encode(a *fastjson.Arena) *fastjson.Value {
 	o := a.NewObject()
 	o.Set("_t", a.NewString(v.contractNode()))
 	o.Set("type", types.Encode(a, v.Type))
-	o.Set("subcontract", v.Subcontract.encode(a))
+	o.Set("subcontract", Encode(a, v.Subcontract))
 	return o
 }
 
@@ -149,6 +152,6 @@ func (c Callable) encode(a *fastjson.Arena) *fastjson.Value {
 	o.Set("_t", a.NewString(c.contractNode()))
 	o.Set("argument", types.Encode(a, c.Argument))
 	o.Set("retval", types.Encode(a, c.Retval))
-	o.Set("subcontract", c.Subcontract.encode(a))
+	o.Set("subcontract", Encode(a, c.Subcontract))
 	return o
 }
