@@ -1,10 +1,10 @@
-export class Channel<T> {
+export class Bus<T> {
     private subscribers: Subscriber<T>[] = []
     private transient_subscribers: Subscriber<T>[] = []
 
     private value: T | undefined
 
-    constructor(private options?: ChannelOptions) {}
+    constructor(private options?: BusOptions) {}
 
     public async subscribe(callback: Subscriber<T>): Promise<void> {
         let action = this.check_subscribe()
@@ -17,7 +17,7 @@ export class Channel<T> {
         await this.check_unsubscribe()()
     }
 
-    public send(value: T) : Channel<T> {
+    public send(value: T) : Bus<T> {
         this.value = value
         this.subscribers.forEach(callback => callback(value))
         if (this.transient_subscribers.length > 0) {
@@ -65,7 +65,7 @@ export class Channel<T> {
 
 type Subscriber<T> = (value: T) => void
 
-interface ChannelOptions {
+interface BusOptions {
     on_first_subscribed: () => Promise<void>,
     on_last_unsubscribed: () => Promise<void>,
     on_subscribed: () => Promise<void>,

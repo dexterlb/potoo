@@ -1,7 +1,7 @@
 import {Contract, RawContract, Value, RawCallable, Callable, Call, CallResponse, traverse, encode, decode, isValue, isCallable, attach_at, MapContract} from './contracts';
 export {Contract, RawContract} from './contracts';
-import {Channel} from './channel'
-export * from './channel'
+import {Bus} from './bus'
+export * from './bus'
 import * as mqtt from './mqtt';
 export * from './mqtt';
 export * from './mqtt_wrappers';
@@ -24,7 +24,7 @@ export class Connection {
     private is_service: boolean = false
     private on_contract: (topic: mqtt.Topic, contract: Contract) => void
     private call_timeout: number
-    private dummyChan: Channel<any>
+    private dummyChan: Bus<any>
 
     constructor(options: ConnectionOptions) {
         this.reply_topic  = random_string(16)
@@ -75,7 +75,7 @@ export class Connection {
                     value: c,
                 }
 
-                side_effects.push(c.channel.subscribe(f))
+                side_effects.push(c.bus.subscribe(f))
                 return
             }
             if (isCallable(c)) {
@@ -98,7 +98,7 @@ export class Connection {
         Object.keys(this.service_value_index).forEach(topic => {
             let v = this.service_value_index[topic]
             side_effects.push((async () => {
-                v.callback(await v.value.channel.get())
+                v.callback(await v.value.bus.get())
             })())
         })
         await Promise.all(side_effects)
@@ -107,7 +107,7 @@ export class Connection {
     private destroy_service(): void {
         Object.keys(this.service_value_index).forEach(topic => {
             let v = this.service_value_index[topic]
-            v.value.channel.unsubscribe(v.callback)
+            v.value.bus.unsubscribe(v.callback)
         })
     }
 
@@ -121,7 +121,7 @@ export class Connection {
             let v = this.value_index[message.topic]
             let value = JSON.parse(message.payload)
             typecheck(v.type, value)
-            v.channel.send(value)
+            v.bus.send(value)
             if (message.topic in this.persistent_value_index) {
                 this.persistent_value_index[message.topic].send(value)
             }
@@ -171,18 +171,18 @@ export class Connection {
         await this.mqtt_client.subscribe(this.client_topic('_contract', topic))
     }
 
-    public value(topic: string): Channel<any> | null {
+    public value(topic: string): Bus<any> | null {
         let value_topic = this.client_topic('_value', topic)
         if (value_topic in this.value_index) {
-            return this.value_index[value_topic].channel
+            return this.value_index[value_topic].bus
         }
         return null
     }
 
-    public value_persistent(topic: string): Channel<any> {
+    public value_persistent(topic: string): Bus<any> {
         let value_topic = this.client_topic('_value', topic)
         if (!(value_topic in this.persistent_value_index)) {
-            this.persistent_value_index[value_topic] = this.make_value_channel(value_topic)
+            this.persistent_value_index[value_topic] = this.make_value_bus(value_topic)
         }
         return this.persistent_value_index[value_topic]
     }
@@ -202,8 +202,8 @@ export class Connection {
         return this.callable_index[topic].handler(argument)
     }
 
-    private make_value_channel(value_topic: string): Channel<any>{
-        return new Channel<any>({
+    private make_value_bus(value_topic: string): Bus<any>{
+        return new Bus<any>({
             on_first_subscribed: async () => {
                 await this.mqtt_client.subscribe(value_topic)
             },
@@ -221,11 +221,11 @@ export class Connection {
     private contract_index: { [topic: string]: Contract } = {}
     private callable_index: { [topic: string]: Callable } = {}
     private value_index: { [topic: string]: Value } = {}
-    private persistent_value_index: { [topic: string]: Channel<any> } = {}
+    private persistent_value_index: { [topic: string]: Bus<any> } = {}
     private incoming_contract(topic: mqtt.Topic, raw: RawContract) {
         this.destroy_contract(topic)
         let contract = decode(raw, {
-            valueChannel: c => this.dummyChan,
+            valueBus: c => this.dummyChan,
             callHandler: c => async x => undefined,
         })
 
@@ -235,7 +235,7 @@ export class Connection {
                 let full_topic = mqtt.join_topics(topic, subtopic)
                 if (isValue(c)) {
                     let value_topic = this.client_topic('_value', full_topic)
-                    c.channel = this.make_value_channel(value_topic)
+                    c.bus = this.make_value_bus(value_topic)
                     this.value_index[value_topic] = c
                     return
                 }
@@ -333,7 +333,7 @@ export class Connection {
 
 interface Subscription {
     persistent: boolean,
-    channel: Channel<any>,
+    bus: Bus<any>,
 }
 
 interface Promiser<T> {

@@ -7,12 +7,12 @@ function con(value: any): potoo.Contract {
     return { _t: "constant", value: value, subcontract: {} }
 }
 
-function show_time(chan: potoo.Channel<string>) {
+function show_time(chan: potoo.Bus<string>) {
     chan.send((new Date()).toLocaleString())
     setTimeout(() => show_time(chan), 999)
 }
 
-async function woo(chan: potoo.Channel<number>) {
+async function woo(chan: potoo.Bus<number>) {
     let woo_div = document.getElementById('woo')
     let val = await chan.get()
     chan.send((val + 0.01) % 20)
@@ -23,10 +23,10 @@ async function woo(chan: potoo.Channel<number>) {
 }
 
 function make_contract() : potoo.Contract {
-    let boingval  = new potoo.Channel<number>().send(4)
-    let wooval    = new potoo.Channel<number>().send(4)
-    let sliderval = new potoo.Channel<number>().send(5)
-    let timechan  = new potoo.Channel<string>()
+    let boingval  = new potoo.Bus<number>().send(4)
+    let wooval    = new potoo.Bus<number>().send(4)
+    let sliderval = new potoo.Bus<number>().send(5)
+    let timechan  = new potoo.Bus<string>()
     show_time(timechan)
     woo(wooval)
 
@@ -56,7 +56,7 @@ function make_contract() : potoo.Contract {
             "boinger": {
                 _t: "value",
                 type: {_t: "type-basic", name: "float", _meta: {min: 0, max: 20}},
-                channel: boingval,
+                bus: boingval,
                 subcontract: {
                     "ui_tags": con("order:4,decimals:0"),
                 }
@@ -64,7 +64,7 @@ function make_contract() : potoo.Contract {
             "wooo": {
                 _t: "value",
                 type: {_t: "type-basic", name: "float", _meta: {min: 0, max: 20}},
-                channel: wooval,
+                bus: wooval,
                 subcontract: {
                     "ui_tags": con("order:4,decimals:2"),
                 }
@@ -72,7 +72,7 @@ function make_contract() : potoo.Contract {
             "slider": {
                 _t: "value",
                 type: {_t: "type-basic", name: "float", _meta: {min: 0, max: 20}},
-                channel: sliderval,
+                bus: sliderval,
                 subcontract: {
                     "set": {
                         _t: "callable",
@@ -88,7 +88,7 @@ function make_contract() : potoo.Contract {
                 _t: "value",
                 type: { _t: "type-basic", name: "string" },
                 subcontract: { "description": con("current time") },
-                channel: timechan,
+                bus: timechan,
             },
         }
     }

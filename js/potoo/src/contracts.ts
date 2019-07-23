@@ -1,5 +1,5 @@
 import {Type}    from './types';
-import {Channel} from './channel';
+import {Bus} from './bus';
 import {Topic}   from './mqtt'
 
 export type RawContract     = RawConstant
@@ -52,7 +52,7 @@ export function isConstant(x: any) : x is ConstantDescr {
 
 export interface Value extends ValueDescr {
     subcontract: MapContract,
-    channel: Channel<any>
+    bus: Bus<any>
 }
 
 export interface Callable extends CallableDescr {
@@ -111,14 +111,14 @@ function traverse_helper(c: Contract, f: (c: Contract, topic: Topic) => void, pa
 }
 
 export interface DecodeOptions {
-    valueChannel: (v: RawValue) => Channel<any>,
+    valueBus: (v: RawValue) => Bus<any>,
     callHandler: (c: RawCallable) => Handler,
 }
 
 export function decode(c: RawContract, o: DecodeOptions): Contract {
     if (isValue(c)) {
         return { _t: c._t, type: c.type, subcontract: decode_map(c.subcontract, o),
-                 channel: o.valueChannel(c) }
+                 bus: o.valueBus(c) }
     }
     if (isCallable(c)) {
         return { _t: c._t, argument: c.argument, retval: c.retval, subcontract: decode_map(c.subcontract, o),
