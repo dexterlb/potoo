@@ -8,6 +8,7 @@ import (
 
 	"github.com/DexterLB/potoo/go/potoo/contracts"
 	"github.com/DexterLB/potoo/go/potoo/mqtt"
+	"github.com/valyala/fastjson"
 )
 
 type ConnectionOptions struct {
@@ -21,14 +22,24 @@ type ConnectionOptions struct {
 type Connection struct {
 	opts ConnectionOptions
 
+	arena  *fastjson.Arena
+    msgBuf []byte
+
+    contractTopic mqtt.Topic
+
 	mqttDisconnect chan error
 	mqttMessage    chan mqtt.Message
 }
 
 func New(opts *ConnectionOptions) *Connection {
-	return &Connection{
-		opts: *opts,
-	}
+	c := &Connection{}
+
+	c.opts = *opts
+    c.arena = &fastjson.Arena{}
+
+    c.contractTopic = c.serviceTopic(mqtt.Topic("_contract"))
+
+	return c
 }
 
 func (c *Connection) Loop(exit <-chan struct{}) error {
@@ -36,12 +47,12 @@ func (c *Connection) Loop(exit <-chan struct{}) error {
 		OnDisconnect: c.mqttDisconnect,
 		OnMessage:    c.mqttMessage,
 		WillMessage:  c.publishContractMessage(nil),
-    }
+	}
 
-    err := c.opts.MqttClient.Connect(connConfig)
-    if err != nil {
-        return fmt.Errorf("Could not connect to MQTT: %s", err)
-    }
+	err := c.opts.MqttClient.Connect(connConfig)
+	if err != nil {
+		return fmt.Errorf("Could not connect to MQTT: %s", err)
+	}
 
 	for {
 		select {
@@ -70,9 +81,37 @@ func (c *Connection) LoopOrDie() {
 }
 
 func (c *Connection) publishContractMessage(contract contracts.Contract) mqtt.Message {
-	panic("not implemented")
+	return c.msg(
+		c.contractTopic,
+		contracts.Encode(c.arena, contract),
+		true,
+	)
+}
+
+func (c *Connection) msg(topic mqtt.Topic, payload *fastjson.Value, retain bool) mqtt.Message {
+	c.msgBuf = c.msgBuf[0:0]
+	c.msgBuf = payload.MarshalTo(c.msgBuf)
+	return mqtt.Message{
+		Topic:   topic,
+		Payload: c.msgBuf,
+		Retain:  retain,
+	}
 }
 
 func (c *Connection) handleMsg(msg mqtt.Message) {
+    panic("not implemented")
+}
 
+func (c *Connection) serviceTopic(prefix mqtt.Topic, suffixes ...mqtt.Topic) mqtt.Topic {
+    return mqtt.JoinTopics(
+        mqtt.JoinTopics(prefix, c.opts.Root, c.opts.ServiceRoot),
+        mqtt.JoinTopics(suffixes...),
+    )
+}
+
+func (c *Connection) clientTopic(prefix mqtt.Topic, suffixes ...mqtt.Topic) mqtt.Topic {
+    return mqtt.JoinTopics(
+        mqtt.JoinTopics(prefix, c.opts.Root),
+        mqtt.JoinTopics(suffixes...),
+    )
 }
