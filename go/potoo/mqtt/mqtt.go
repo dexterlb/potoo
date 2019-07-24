@@ -18,7 +18,7 @@ type Client interface {
 	// TODO: decide on syncness/asyncness of each of these.
 	// or maybe the implementation should decide?
 	Connect(config *ConnectConfig) error
-	Publish(message *Message)
+	Publish(message Message)
 	Subscribe(filter Topic) // must be synchronous
 	Unsubscribe(filter Topic)
 }

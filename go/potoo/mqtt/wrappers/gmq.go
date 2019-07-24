@@ -47,7 +47,7 @@ func (g *GmqWrapper) handleMessage(topic []byte, payload []byte) {
 	}
 }
 
-func (g *GmqWrapper) Publish(m *mqtt.Message) {
+func (g *GmqWrapper) Publish(m mqtt.Message) {
 	if g.opts.Debug != nil {
 		g.opts.Debug(fmt.Sprintf("[gmq] -> %s : %s", string(m.Topic), string(m.Payload)))
 	}

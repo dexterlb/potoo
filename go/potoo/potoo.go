@@ -29,6 +29,7 @@ type Connection struct {
 
 	mqttDisconnect chan error
 	mqttMessage    chan mqtt.Message
+	updateContract chan contracts.Contract
 }
 
 func New(opts *ConnectionOptions) *Connection {
@@ -40,6 +41,10 @@ func New(opts *ConnectionOptions) *Connection {
     c.contractTopic = c.serviceTopic(mqtt.Topic("_contract"))
 
 	return c
+}
+
+func (c *Connection) UpdateContract(contract contracts.Contract) {
+    c.updateContract <- contract
 }
 
 func (c *Connection) Loop(exit <-chan struct{}) error {
@@ -65,6 +70,8 @@ func (c *Connection) Loop(exit <-chan struct{}) error {
 			return nil
 		case msg := <-c.mqttMessage:
 			c.handleMsg(msg)
+		case contract := <-c.updateContract:
+		    c.handleUpdateContract(contract)
 		}
 	}
 	return nil
@@ -78,6 +85,10 @@ func (c *Connection) LoopOrDie() {
 	}
 	log.Printf("Potoo loop finished.")
 	os.Exit(0)
+}
+
+func (c *Connection) handleUpdateContract(contract contracts.Contract) {
+    c.publish(c.publishContractMessage(contract))
 }
 
 func (c *Connection) publishContractMessage(contract contracts.Contract) mqtt.Message {
@@ -114,4 +125,8 @@ func (c *Connection) clientTopic(prefix mqtt.Topic, suffixes ...mqtt.Topic) mqtt
         mqtt.JoinTopics(prefix, c.opts.Root),
         mqtt.JoinTopics(suffixes...),
     )
+}
+
+func (c *Connection) publish(msg mqtt.Message) {
+    c.opts.MqttClient.Publish(msg)
 }
