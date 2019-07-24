@@ -1,14 +1,15 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"time"
 
 	"github.com/DexterLB/potoo/go/potoo"
 	"github.com/DexterLB/potoo/go/potoo/contracts"
 	"github.com/DexterLB/potoo/go/potoo/mqtt"
-	"github.com/DexterLB/potoo/go/potoo/types"
 	"github.com/DexterLB/potoo/go/potoo/mqtt/wrappers"
+	"github.com/DexterLB/potoo/go/potoo/types"
 	"github.com/yosssi/gmq/mqtt/client"
 
 	"github.com/valyala/fastjson"
@@ -31,6 +32,13 @@ func (f *Fidget) contract() contracts.Contract {
 				Subcontract: contracts.Map{
 					"description": constr("Performs a greeting"),
 					"ui_tags":     constr("order:1"),
+				},
+				Handler: func(a *fastjson.Arena, arg *fastjson.Value) *fastjson.Value {
+					item, err := arg.Get("item").StringBytes()
+					if err != nil {
+						panic(err)
+					}
+					return a.NewString(fmt.Sprintf("Hello, %s", string(item)))
 				},
 			},
 			// "boing": {
@@ -85,7 +93,7 @@ func (f *Fidget) contract() contracts.Contract {
 }
 
 func New() *Fidget {
-    return &Fidget{}
+	return &Fidget{}
 }
 
 func main() {
@@ -110,10 +118,10 @@ func main() {
 
 	conn := potoo.New(opts)
 
-    f := New()
-    go func() {
-        conn.UpdateContract(f.contract())
-    }()
+	f := New()
+	go func() {
+		conn.UpdateContract(f.contract())
+	}()
 
 	conn.LoopOrDie()
 }

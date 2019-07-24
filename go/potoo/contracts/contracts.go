@@ -34,7 +34,7 @@ type Callable struct {
 	Argument    types.Type
 	Retval      types.Type
     Subcontract Contract
-    Handler     bus.Handler
+    Handler     bus.RetHandler
 }
 
 func (c Callable) contractNode() string { return "callable" }
