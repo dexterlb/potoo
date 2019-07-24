@@ -23,32 +23,36 @@ type Connection struct {
 	opts ConnectionOptions
 
 	arena  *fastjson.Arena
-    msgBuf []byte
+	msgBuf []byte
 
-    contractTopic mqtt.Topic
+	contractTopic mqtt.Topic
 
 	mqttDisconnect chan error
 	mqttMessage    chan mqtt.Message
 	updateContract chan contracts.Contract
+
+	serviceCallableIndex map[string]*contracts.Callable
 }
 
 func New(opts *ConnectionOptions) *Connection {
 	c := &Connection{}
 
 	c.opts = *opts
-    c.arena = &fastjson.Arena{}
+	c.arena = &fastjson.Arena{}
 
-    c.contractTopic = c.serviceTopic(mqtt.Topic("_contract"))
+	c.contractTopic = c.serviceTopic(mqtt.Topic("_contract"))
 
-    c.mqttDisconnect = make(chan error)
-    c.mqttMessage = make(chan mqtt.Message)
-    c.updateContract = make(chan contracts.Contract)
+	c.mqttDisconnect = make(chan error)
+	c.mqttMessage = make(chan mqtt.Message)
+	c.updateContract = make(chan contracts.Contract)
+
+	c.serviceCallableIndex = make(map[string]*contracts.Callable)
 
 	return c
 }
 
 func (c *Connection) UpdateContract(contract contracts.Contract) {
-    c.updateContract <- contract
+	c.updateContract <- contract
 }
 
 func (c *Connection) Loop(exit <-chan struct{}) error {
@@ -75,7 +79,7 @@ func (c *Connection) Loop(exit <-chan struct{}) error {
 		case msg := <-c.mqttMessage:
 			c.handleMsg(msg)
 		case contract := <-c.updateContract:
-		    c.handleUpdateContract(contract)
+			c.handleUpdateContract(contract)
 		}
 	}
 	return nil
@@ -92,7 +96,16 @@ func (c *Connection) LoopOrDie() {
 }
 
 func (c *Connection) handleUpdateContract(contract contracts.Contract) {
-    c.publish(c.publishContractMessage(contract))
+	contracts.Traverse(contract, func(subcontr contracts.Contract, subtopic mqtt.Topic) {
+		switch s := subcontr.(type) {
+		case *contracts.Callable:
+			topic := c.serviceTopic(mqtt.Topic("_call"), subtopic)
+			c.serviceCallableIndex[string(topic)] = s
+			c.opts.MqttClient.Subscribe(topic)
+		}
+	})
+
+	c.publish(c.publishContractMessage(contract))
 }
 
 func (c *Connection) publishContractMessage(contract contracts.Contract) mqtt.Message {
@@ -114,23 +127,23 @@ func (c *Connection) msg(topic mqtt.Topic, payload *fastjson.Value, retain bool)
 }
 
 func (c *Connection) handleMsg(msg mqtt.Message) {
-    panic("not implemented")
+	panic("not implemented")
 }
 
 func (c *Connection) serviceTopic(prefix mqtt.Topic, suffixes ...mqtt.Topic) mqtt.Topic {
-    return mqtt.JoinTopics(
-        mqtt.JoinTopics(prefix, c.opts.Root, c.opts.ServiceRoot),
-        mqtt.JoinTopics(suffixes...),
-    )
+	return mqtt.JoinTopics(
+		mqtt.JoinTopics(prefix, c.opts.Root, c.opts.ServiceRoot),
+		mqtt.JoinTopics(suffixes...),
+	)
 }
 
 func (c *Connection) clientTopic(prefix mqtt.Topic, suffixes ...mqtt.Topic) mqtt.Topic {
-    return mqtt.JoinTopics(
-        mqtt.JoinTopics(prefix, c.opts.Root),
-        mqtt.JoinTopics(suffixes...),
-    )
+	return mqtt.JoinTopics(
+		mqtt.JoinTopics(prefix, c.opts.Root),
+		mqtt.JoinTopics(suffixes...),
+	)
 }
 
 func (c *Connection) publish(msg mqtt.Message) {
-    c.opts.MqttClient.Publish(msg)
+	c.opts.MqttClient.Publish(msg)
 }
