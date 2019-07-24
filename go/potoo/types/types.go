@@ -13,45 +13,52 @@ type Type struct {
 }
 
 type TypeDescr interface {
+    typeKey() string
 	typeName() string
-	typeString() string
+    typeString() string
 	decode(v *fastjson.Value) error
 	encode(a *fastjson.Arena, v *fastjson.Value)
 }
 
 type TVoid struct{}
 
-func (t *TVoid) typeName() string   { return "type-void" }
+func (t *TVoid) typeKey() string    { return "type-basic" }
+func (t *TVoid) typeName() string   { return "void" }
 func (t *TVoid) typeString() string { return "void" }
 func Void() Type                    { return Type{T: &TVoid{}} }
 
 type TNull struct{}
 
-func (t *TNull) typeName() string   { return "type-null" }
+func (t *TNull) typeKey() string    { return "type-basic" }
+func (t *TNull) typeName() string   { return "null" }
 func (t *TNull) typeString() string { return "null" }
 func Null() Type                    { return Type{T: &TNull{}} }
 
 type TBool struct{}
 
-func (t *TBool) typeName() string   { return "type-bool" }
+func (t *TBool) typeKey() string    { return "type-basic" }
+func (t *TBool) typeName() string   { return "bool" }
 func (t *TBool) typeString() string { return "bool" }
 func Bool() Type                    { return Type{T: &TBool{}} }
 
 type TInt struct{}
 
-func (t *TInt) typeName() string   { return "type-int" }
+func (t *TInt) typeKey() string    { return "type-basic" }
+func (t *TInt) typeName() string   { return "int" }
 func (t *TInt) typeString() string { return "int" }
 func Int() Type                    { return Type{T: &TInt{}} }
 
 type TFloat struct{}
 
-func (t *TFloat) typeName() string   { return "type-float" }
+func (t *TFloat) typeKey() string    { return "type-basic" }
+func (t *TFloat) typeName() string   { return "float" }
 func (t *TFloat) typeString() string { return "float" }
 func Float() Type                    { return Type{T: &TFloat{}} }
 
 type TString struct{}
 
-func (t *TString) typeName() string   { return "type-string" }
+func (t *TString) typeKey() string    { return "type-basic" }
+func (t *TString) typeName() string   { return "string" }
 func (t *TString) typeString() string { return "string" }
 func String() Type                    { return Type{T: &TString{}} }
 
@@ -59,7 +66,8 @@ type TLiteral struct {
 	Value *fastjson.Value
 }
 
-func (t *TLiteral) typeName() string   { return "type-literal" }
+func (t *TLiteral) typeKey() string    { return "type-basic" }
+func (t *TLiteral) typeName() string   { return "literal" }
 func (t *TLiteral) typeString() string { return "literal" }
 func Literal(val *fastjson.Value) Type { return Type{T: &TLiteral{Value: val}} }
 
@@ -68,7 +76,8 @@ type TMap struct {
 	ValueType Type
 }
 
-func (t *TMap) typeName() string { return "type-map" }
+func (t *TMap) typeKey() string { return "type-map" }
+func (t *TMap) typeName() string { return "" }
 func (t *TMap) typeString() string {
 	return fmt.Sprintf("map[%s: %s]", t.KeyType, t.ValueType)
 }
@@ -78,7 +87,8 @@ type TList struct {
 	ValueType Type
 }
 
-func (t *TList) typeName() string { return "type-list" }
+func (t *TList) typeKey() string { return "type-list" }
+func (t *TList) typeName() string { return "list" }
 func (t *TList) typeString() string {
 	return fmt.Sprintf("list[%s]", t.ValueType)
 }
@@ -88,7 +98,8 @@ type TUnion struct {
 	Alts []Type
 }
 
-func (t *TUnion) typeName() string { return "type-union" }
+func (t *TUnion) typeKey()  string { return "type-union" }
+func (t *TUnion) typeName() string { return "" }
 func (t *TUnion) typeString() string {
 	alts := make([]string, len(t.Alts))
 	for i := range t.Alts {
@@ -102,7 +113,8 @@ type TStruct struct {
 	Fields map[string]Type
 }
 
-func (t *TStruct) typeName() string { return "type-struct" }
+func (t *TStruct) typeKey() string { return "type-struct" }
+func (t *TStruct) typeName() string { return "" }
 func (t *TStruct) typeString() string {
 	fields := make([]string, len(t.Fields))
 	i := 0
@@ -118,7 +130,8 @@ type TTuple struct {
 	Fields []Type
 }
 
-func (t *TTuple) typeName() string { return "type-tuple" }
+func (t *TTuple) typeKey()  string { return "type-tuple" }
+func (t *TTuple) typeName() string { return "" }
 func (t *TTuple) typeString() string {
 	fields := make([]string, len(t.Fields))
 	for i := range t.Fields {

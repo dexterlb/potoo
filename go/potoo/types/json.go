@@ -19,16 +19,25 @@ func Decode(v *fastjson.Value) (Type, error) {
         return Type{}, fmt.Errorf("item does not exist")
     }
 
-	nameVal := v.Get("_t")
-	if nameVal == nil {
+	keyVal := v.Get("_t")
+	if keyVal == nil {
 		return Type{}, fmt.Errorf("no _t field in type")
 	}
-	name, err := nameVal.StringBytes()
+	key, err := keyVal.StringBytes()
 	if err != nil {
-		return Type{}, fmt.Errorf("cannot decode type name: %s", err)
+		return Type{}, fmt.Errorf("cannot decode type key: %s", err)
 	}
 
-	if descrCtor, ok := descrDic[string(name)]; ok {
+    nameVal := v.Get("name")
+    var name []byte
+    if nameVal != nil {
+        name, err = nameVal.StringBytes()
+        if err != nil {
+            return Type{}, fmt.Errorf("cannot decode type name: %s", err)
+        }
+	}
+
+    if descrCtor, ok := descrDic[fmt.Sprintf("%s:%s", string(key), string(name))]; ok {
 		descr := descrCtor()
 		descr.decode(v)
 		return Type{
@@ -41,7 +50,10 @@ func Decode(v *fastjson.Value) (Type, error) {
 
 func Encode(a *fastjson.Arena, t Type) *fastjson.Value {
     o := a.NewObject()
-    o.Set("_t", a.NewString(t.T.typeName()))
+    o.Set("_t", a.NewString(t.T.typeKey()))
+    if t.T.typeName() != "" {
+        o.Set("name", a.NewString(t.T.typeName()))
+    }
     encodeMetaData(a, t.Meta, o)
     t.T.encode(a, o)
     return o
@@ -220,7 +232,7 @@ func makeDescrDic() map[string](func() TypeDescr) {
 	}
 	dic := make(map[string](func() TypeDescr))
 	for _, descr := range descrs {
-		dic[descr().typeName()] = descr
+        dic[fmt.Sprintf("%s:%s", descr().typeKey(), descr().typeName())] = descr
 	}
 	return dic
 }

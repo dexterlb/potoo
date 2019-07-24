@@ -40,6 +40,10 @@ func New(opts *ConnectionOptions) *Connection {
 
     c.contractTopic = c.serviceTopic(mqtt.Topic("_contract"))
 
+    c.mqttDisconnect = make(chan error)
+    c.mqttMessage = make(chan mqtt.Message)
+    c.updateContract = make(chan contracts.Contract)
+
 	return c
 }
 
