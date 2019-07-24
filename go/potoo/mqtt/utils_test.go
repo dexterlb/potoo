@@ -29,4 +29,7 @@ func TestJoinTopics(t *testing.T) {
 	jt("/foo/bar//baz", "foo/bar/baz")
 	jt("foo/bar", "baz", "foo/bar/baz")
 	jt("foo//bar", "baz", "foo/bar/baz")
+	jt("foo//bar/", "baz", "foo/bar/baz")
+	jt("foo//bar/", "baz/", "foo/bar/baz")
+	jt("foo//bar/", "baz/", "/", "foo/bar/baz")
 }

@@ -3,10 +3,9 @@ package mqtt
 func JoinTopics(topics ...Topic) Topic {
     var b []byte
 
+    var lastc byte
     for i := range topics {
         var j int
-        var lastc byte
-
         for ; j < len(topics[i]) && topics[i][j] == byte('/'); j++ {}
         for ; j < len(topics[i]); j++ {
             if topics[i][j] != byte('/') || lastc != byte('/') {

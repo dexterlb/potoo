@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"time"
 
 	"github.com/DexterLB/potoo/go/potoo"
@@ -15,6 +16,9 @@ func main() {
 			Network:  "tcp",
 			Address:  "localhost:1883",
 			ClientID: []byte("the-go-fidget"),
+		},
+		Debug: func(msg string) {
+			log.Printf(msg)
 		},
 	})
 
