@@ -30,8 +30,10 @@ type Connection struct {
 	mqttDisconnect chan error
 	mqttMessage    chan mqtt.Message
 	updateContract chan contracts.Contract
+	outgoingValues chan outgoingValue
 
 	serviceCallableIndex map[string]*contracts.Callable
+	unsubscribers        []func()
 }
 
 func New(opts *ConnectionOptions) *Connection {
@@ -45,6 +47,7 @@ func New(opts *ConnectionOptions) *Connection {
 	c.mqttDisconnect = make(chan error)
 	c.mqttMessage = make(chan mqtt.Message)
 	c.updateContract = make(chan contracts.Contract)
+	c.outgoingValues = make(chan outgoingValue)
 
 	c.serviceCallableIndex = make(map[string]*contracts.Callable)
 
@@ -56,6 +59,8 @@ func (c *Connection) UpdateContract(contract contracts.Contract) {
 }
 
 func (c *Connection) Loop(exit <-chan struct{}) error {
+	defer c.destroyService()
+
 	connConfig := &mqtt.ConnectConfig{
 		OnDisconnect: c.mqttDisconnect,
 		OnMessage:    c.mqttMessage,
@@ -80,6 +85,11 @@ func (c *Connection) Loop(exit <-chan struct{}) error {
 			c.handleMsg(msg)
 		case contract := <-c.updateContract:
 			c.handleUpdateContract(contract)
+		case ov := <-c.outgoingValues:
+			err = c.handleOutgoingValue(ov)
+			if err != nil {
+				return fmt.Errorf("Unable to send value: %s", err)
+			}
 		}
 	}
 	return nil
@@ -95,17 +105,61 @@ func (c *Connection) LoopOrDie() {
 	os.Exit(0)
 }
 
-func (c *Connection) handleUpdateContract(contract contracts.Contract) {
+func (c *Connection) handleOutgoingValue(ov outgoingValue) error {
+	panic("not implemented")
+}
+
+func (c *Connection) handleUpdateContract(contract contracts.Contract) error {
+	c.destroyService()
+	var err error
 	contracts.Traverse(contract, func(subcontr contracts.Contract, subtopic mqtt.Topic) {
+		if err != nil {
+			return
+		}
+
 		switch s := subcontr.(type) {
 		case *contracts.Callable:
 			topic := c.serviceTopic(mqtt.Topic("_call"), subtopic)
 			c.serviceCallableIndex[string(topic)] = s
 			c.opts.MqttClient.Subscribe(topic)
+		case *contracts.Value:
+			topic := c.serviceTopic(mqtt.Topic("_value"), subtopic)
+			sync := make(chan struct{})
+			sub := s.Bus.Subscribe(func(v *fastjson.Value) {
+				c.outgoingValues <- outgoingValue{topic: topic, v: v, sync: sync}
+				<-sync
+			})
+			unsubscriber := func() {
+				s.Bus.Unsubscribe(sub)
+			}
+			c.unsubscribers = append(c.unsubscribers, unsubscriber)
+			err = c.handleOutgoingValue(outgoingValue{contract: s, topic: topic, v: s.Default, sync: nil})
+			if err != nil {
+				return
+			}
 		}
 	})
 
+	if err != nil {
+		return fmt.Errorf("Cannot update contract: %s", err)
+	}
+
 	c.publish(c.publishContractMessage(contract))
+
+	return nil
+}
+
+type outgoingValue struct {
+	contract *contracts.Value
+	v        *fastjson.Value
+	topic    mqtt.Topic
+	sync     chan<- struct{}
+}
+
+func (c *Connection) destroyService() {
+	for i := range c.unsubscribers {
+		c.unsubscribers[i]()
+	}
 }
 
 func (c *Connection) publishContractMessage(contract contracts.Contract) mqtt.Message {
