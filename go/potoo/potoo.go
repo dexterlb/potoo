@@ -8,6 +8,7 @@ import (
 
 	"github.com/DexterLB/potoo/go/potoo/contracts"
 	"github.com/DexterLB/potoo/go/potoo/mqtt"
+	"github.com/DexterLB/potoo/go/potoo/types"
 	"github.com/valyala/fastjson"
 )
 
@@ -22,8 +23,9 @@ type ConnectionOptions struct {
 type Connection struct {
 	opts ConnectionOptions
 
-	arena  *fastjson.Arena
-	msgBuf []byte
+	arena      *fastjson.Arena
+	jsonparser *fastjson.Parser
+	msgBuf     []byte
 
 	contractTopic mqtt.Topic
 
@@ -41,6 +43,7 @@ func New(opts *ConnectionOptions) *Connection {
 
 	c.opts = *opts
 	c.arena = &fastjson.Arena{}
+	c.jsonparser = &fastjson.Parser{}
 
 	c.contractTopic = c.serviceTopic(mqtt.Topic("_contract"))
 
@@ -91,6 +94,7 @@ func (c *Connection) Loop(exit <-chan struct{}) error {
 				return fmt.Errorf("Unable to send value: %s", err)
 			}
 		}
+		c.arena.Reset()
 	}
 	return nil
 }
@@ -118,11 +122,11 @@ func (c *Connection) handleUpdateContract(contract contracts.Contract) error {
 		}
 
 		switch s := subcontr.(type) {
-		case *contracts.Callable:
+		case contracts.Callable:
 			topic := c.serviceTopic(mqtt.Topic("_call"), subtopic)
-			c.serviceCallableIndex[string(topic)] = s
+			c.serviceCallableIndex[string(topic)] = &s
 			c.opts.MqttClient.Subscribe(topic)
-		case *contracts.Value:
+		case contracts.Value:
 			topic := c.serviceTopic(mqtt.Topic("_value"), subtopic)
 			sync := make(chan struct{})
 			sub := s.Bus.Subscribe(func(v *fastjson.Value) {
@@ -133,7 +137,7 @@ func (c *Connection) handleUpdateContract(contract contracts.Contract) error {
 				s.Bus.Unsubscribe(sub)
 			}
 			c.unsubscribers = append(c.unsubscribers, unsubscriber)
-			err = c.handleOutgoingValue(outgoingValue{contract: s, topic: topic, v: s.Default, sync: nil})
+			err = c.handleOutgoingValue(outgoingValue{contract: &s, topic: topic, v: s.Default, sync: nil})
 			if err != nil {
 				return
 			}
@@ -180,8 +184,61 @@ func (c *Connection) msg(topic mqtt.Topic, payload *fastjson.Value, retain bool)
 	}
 }
 
+func (c *Connection) handleCall(msg mqtt.Message, callable *contracts.Callable) error {
+	req, err := c.jsonparser.ParseBytes(msg.Payload)
+	if err != nil {
+		return fmt.Errorf("cannot parse call request JSON: %s", err)
+	}
+
+	retTopic := req.GetStringBytes("topic")
+	if retTopic == nil {
+		return fmt.Errorf("missing 'topic' string in request json")
+	}
+
+	token := req.Get("token")
+	if token == nil {
+		return fmt.Errorf("missing 'token' string in request json")
+	}
+
+	argument := req.Get("argument")
+	if argument == nil {
+		return fmt.Errorf("missing 'argument' string in request json")
+	}
+
+	retval := callable.Handler(c.arena, argument)
+
+	switch callable.Retval.T.(type) {
+	case *types.TVoid:
+		return nil
+	}
+
+	if retval == nil {
+		return fmt.Errorf("call failed.")
+	}
+
+	payload := c.arena.NewObject()
+	payload.Set("token", token)
+	payload.Set("result", retval)
+
+	c.publish(c.msg(mqtt.JoinTopics(mqtt.Topic("_reply"), retTopic), payload, false))
+	return nil
+}
+
 func (c *Connection) handleMsg(msg mqtt.Message) {
-	panic("not implemented")
+	if callable, ok := c.serviceCallableIndex[string(msg.Topic)]; ok {
+		err := c.handleCall(msg, callable)
+		if err != nil {
+			c.err(fmt.Errorf("error while processing call on '%s': %s", string(msg.Topic), err))
+		}
+		return
+	}
+
+	c.err(fmt.Errorf("don't know what to do with message on '%s'", string(msg.Topic)))
+}
+
+func (c *Connection) err(err error) {
+	// gracefully handle this here
+	panic(err)
 }
 
 func (c *Connection) serviceTopic(prefix mqtt.Topic, suffixes ...mqtt.Topic) mqtt.Topic {
