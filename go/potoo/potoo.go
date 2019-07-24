@@ -205,15 +205,30 @@ func (c *Connection) handleCall(msg mqtt.Message, callable *contracts.Callable) 
 		return fmt.Errorf("missing 'argument' string in request json")
 	}
 
+	// TODO: skip this in insane mode
+	err = types.TypeCheck(argument, callable.Argument)
+	if err != nil {
+		return fmt.Errorf("argument has wrong type: %s", err)
+	}
+
 	retval := callable.Handler(c.arena, argument)
 
 	switch callable.Retval.T.(type) {
 	case *types.TVoid:
+		if retval != nil {
+			return fmt.Errorf("Void-typed handler returned non-nil")
+		}
 		return nil
 	}
 
 	if retval == nil {
 		return fmt.Errorf("call failed.")
+	}
+
+	// TODO: skip this in unsafe mode
+	err = types.TypeCheck(retval, callable.Retval)
+	if err != nil {
+		return fmt.Errorf("Handler returned value of wrong type: %s", err)
 	}
 
 	payload := c.arena.NewObject()
