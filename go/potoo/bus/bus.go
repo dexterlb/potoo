@@ -19,15 +19,29 @@ type BusOptions struct {
 	OnUnsubscribed     func()
 }
 
+func New() *Bus {
+    return &Bus{}
+}
+
+func NewWithOpts(opts *BusOptions) *Bus {
+    return &Bus{opts: *opts}
+}
+
+func (b *Bus) Send(val *fastjson.Value) {
+    for _, h := range b.handlers {
+        h(val)
+    }
+}
+
 func (b *Bus) Subscribe(handler Handler) int {
 	if b == nil {
 		return -1
 	}
 
 	if len(b.handlers) == 0 {
-		b.opts.OnFirstSubscribed()
+		notify(b.opts.OnFirstSubscribed)
 	}
-	b.opts.OnSubscribed()
+	notify(b.opts.OnSubscribed)
 
 	b.handlers = append(b.handlers, handler)
 
@@ -40,8 +54,14 @@ func (b *Bus) Unsubscribe(i int) {
 	}
 
 	b.handlers = append(b.handlers[:i], b.handlers[i+1:]...)
-	b.opts.OnUnsubscribed()
+	notify(b.opts.OnUnsubscribed)
 	if len(b.handlers) == 0 {
-		b.opts.OnLastUnsubscribed()
+		notify(b.opts.OnLastUnsubscribed)
 	}
+}
+
+func notify(f func()) {
+    if f != nil {
+        f()
+    }
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/DexterLB/potoo/go/potoo"
 	"github.com/DexterLB/potoo/go/potoo/contracts"
 	"github.com/DexterLB/potoo/go/potoo/mqtt"
+	"github.com/DexterLB/potoo/go/potoo/bus"
 	"github.com/DexterLB/potoo/go/potoo/mqtt/wrappers"
 	"github.com/DexterLB/potoo/go/potoo/types"
 	"github.com/yosssi/gmq/mqtt/client"
@@ -16,6 +17,7 @@ import (
 )
 
 type Fidget struct {
+    wooBus *bus.Bus
 }
 
 func (f *Fidget) contract() contracts.Contract {
@@ -41,7 +43,13 @@ func (f *Fidget) contract() contracts.Contract {
 					time.Sleep(5 * time.Second)
 					return a.NewString(fmt.Sprintf("Hello, %s", string(item)))
 				},
+                Async: true,
 			},
+            "woo": contracts.Value{
+                Type: types.Float().M(types.MetaData{"min": float(0), "max": float(20)}),
+                Default: float(5),
+                Bus: f.wooBus,
+            },
 			// "boing": {
 			//     _t: "callable",
 			//     argument: {_t: "type-basic", name: "null"},
@@ -94,7 +102,18 @@ func (f *Fidget) contract() contracts.Contract {
 }
 
 func New() *Fidget {
-	return &Fidget{}
+    f := &Fidget{}
+    f.wooBus = bus.New()
+    go func() {
+        var arena fastjson.Arena
+        var val int
+        for {
+            time.Sleep(10 * time.Millisecond)
+            val = (val + 1) % 200
+            f.wooBus.Send(arena.NewNumberFloat64(float64(val) / 10))
+        }
+    }()
+    return f
 }
 
 func main() {
@@ -134,4 +153,8 @@ func constr(text string) contracts.Contract {
 
 func str(text string) *fastjson.Value {
 	return garena.NewString(text)
+}
+
+func float(val float64) *fastjson.Value {
+	return garena.NewNumberFloat64(val)
 }

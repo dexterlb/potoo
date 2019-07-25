@@ -121,7 +121,31 @@ func (c *Connection) LoopOrDie() {
 }
 
 func (c *Connection) handleOutgoingValue(ov outgoingValue) error {
-	panic("not implemented")
+    err := types.TypeCheck(ov.v, ov.contract.Type)
+	if err != nil {
+	    ov.release()
+        return fmt.Errorf("Outgoing value has wrong type: %s", err)
+    }
+
+    msg := c.msg(ov.topic, ov.v, true)
+    ov.release()  // now safe to release ov.v
+
+    c.publish(msg)
+    return nil
+}
+
+type outgoingValue struct {
+	contract *contracts.Value
+	v        *fastjson.Value
+	topic    mqtt.Topic
+	sync     chan<- struct{}
+}
+
+func (o *outgoingValue) release() {
+    if o.sync != nil {
+        close(o.sync)
+        o.sync = nil
+    }
 }
 
 func (c *Connection) handleUpdateContract(contract contracts.Contract) error {
@@ -139,9 +163,9 @@ func (c *Connection) handleUpdateContract(contract contracts.Contract) error {
 			c.opts.MqttClient.Subscribe(topic)
 		case contracts.Value:
 			topic := c.serviceTopic(mqtt.Topic("_value"), subtopic)
-			sync := make(chan struct{})
 			sub := s.Bus.Subscribe(func(v *fastjson.Value) {
-				c.outgoingValues <- outgoingValue{topic: topic, v: v, sync: sync}
+                sync := make(chan struct{}) // TODO: can this be done with less channels?
+                c.outgoingValues <- outgoingValue{topic: topic, v: v, sync: sync, contract: &s}
 				<-sync
 			})
 			unsubscriber := func() {
@@ -162,13 +186,6 @@ func (c *Connection) handleUpdateContract(contract contracts.Contract) error {
 	c.publish(c.publishContractMessage(contract))
 
 	return nil
-}
-
-type outgoingValue struct {
-	contract *contracts.Value
-	v        *fastjson.Value
-	topic    mqtt.Topic
-	sync     chan<- struct{}
 }
 
 func (c *Connection) destroyService() {
