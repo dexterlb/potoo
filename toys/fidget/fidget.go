@@ -60,6 +60,20 @@ func (f *Fidget) contract() contracts.Contract {
 					return nil
 				},
 			},
+            "slider": contracts.Property(
+                types.Float().M(types.MetaData{"min": float(0), "max": float(20)}),
+                f.sliderBus,
+                func(a *fastjson.Arena, arg *fastjson.Value) *fastjson.Value {
+                    f.sliderBus.Send(arg)
+                    return nil
+                },
+                map[string]contracts.Contract{
+                    "ui_tags": constr("order:5,decimals:1,speed:99,exp_speed:99"),
+                },
+                float(5),
+                true,
+            ),
+
 			// "boing": {
 			//     _t: "callable",
 			//     argument: {_t: "type-basic", name: "null"},
@@ -114,6 +128,7 @@ func (f *Fidget) contract() contracts.Contract {
 func New() *Fidget {
     f := &Fidget{wooing: false}
     f.wooBus = bus.New()
+    f.sliderBus = bus.New()
     go func() {
         var arena fastjson.Arena
         var val int
