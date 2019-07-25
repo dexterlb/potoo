@@ -38,6 +38,7 @@ func (f *Fidget) contract() contracts.Contract {
 					if err != nil {
 						panic(err)
 					}
+					time.Sleep(5 * time.Second)
 					return a.NewString(fmt.Sprintf("Hello, %s", string(item)))
 				},
 			},

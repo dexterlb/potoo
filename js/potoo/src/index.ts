@@ -35,7 +35,7 @@ export class Connection {
             this.is_service = true
         }
         this.on_contract  = options.on_contract  || ((t, c) => {})
-        this.call_timeout = options.call_timeout || 5000
+        this.call_timeout = options.call_timeout || 25000
     }
 
     private root_topic: string

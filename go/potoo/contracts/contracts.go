@@ -36,6 +36,7 @@ type Callable struct {
 	Retval      types.Type
     Subcontract Contract
     Handler     bus.RetHandler
+    Async       bool
 }
 
 func (c Callable) contractNode() string { return "callable" }

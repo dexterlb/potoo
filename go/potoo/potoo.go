@@ -24,7 +24,9 @@ type Connection struct {
 	opts ConnectionOptions
 
 	arena      *fastjson.Arena
+	arenaPool  *fastjson.ArenaPool
 	jsonparser *fastjson.Parser
+	parserPool *fastjson.ParserPool
 	msgBuf     []byte
 
 	contractTopic mqtt.Topic
@@ -33,6 +35,7 @@ type Connection struct {
 	mqttMessage    chan mqtt.Message
 	updateContract chan contracts.Contract
 	outgoingValues chan outgoingValue
+	asyncCalls     chan asyncCallResult
 
 	serviceCallableIndex map[string]*contracts.Callable
 	unsubscribers        []func()
@@ -43,7 +46,9 @@ func New(opts *ConnectionOptions) *Connection {
 
 	c.opts = *opts
 	c.arena = &fastjson.Arena{}
+	c.arenaPool = &fastjson.ArenaPool{}
 	c.jsonparser = &fastjson.Parser{}
+	c.parserPool = &fastjson.ParserPool{}
 
 	c.contractTopic = c.serviceTopic(mqtt.Topic("_contract"))
 
@@ -51,6 +56,7 @@ func New(opts *ConnectionOptions) *Connection {
 	c.mqttMessage = make(chan mqtt.Message)
 	c.updateContract = make(chan contracts.Contract)
 	c.outgoingValues = make(chan outgoingValue)
+	c.asyncCalls = make(chan asyncCallResult)
 
 	c.serviceCallableIndex = make(map[string]*contracts.Callable)
 
@@ -92,6 +98,11 @@ func (c *Connection) Loop(exit <-chan struct{}) error {
 			err = c.handleOutgoingValue(ov)
 			if err != nil {
 				return fmt.Errorf("Unable to send value: %s", err)
+			}
+		case result := <-c.asyncCalls:
+			err = c.finaliseAsyncCall(result)
+			if err != nil {
+				return fmt.Errorf("Error during async call: %s", err)
 			}
 		}
 		c.arena.Reset()
@@ -184,59 +195,109 @@ func (c *Connection) msg(topic mqtt.Topic, payload *fastjson.Value, retain bool)
 	}
 }
 
+// TODO: async calls (some way for the handler to return a channel which will be read later?)
 func (c *Connection) handleCall(msg mqtt.Message, callable *contracts.Callable) error {
-	req, err := c.jsonparser.ParseBytes(msg.Payload)
+	if callable.Async == false {
+		return c.finaliseCall(handleCallHelper(c.arena, c.jsonparser, msg, callable))
+	} else {
+		go func() {
+			arena := c.arenaPool.Get()
+			parser := c.parserPool.Get()
+			c.asyncCalls <- asyncCallResult{
+				callResult: handleCallHelper(arena, parser, msg, callable),
+				arena:      arena,
+				parser:     parser,
+			}
+		}()
+	}
+	return nil
+}
+
+func (c *Connection) finaliseAsyncCall(result asyncCallResult) error {
+	defer c.parserPool.Put(result.parser)
+	defer c.arenaPool.Put(result.arena)
+	defer result.arena.Reset() // TODO: see if we really need this
+
+	return c.finaliseCall(result.callResult)
+}
+
+func (c *Connection) finaliseCall(result callResult) error {
+	if result.err != nil {
+		return result.err
+	}
+	if result.payload == nil {
+		// void call
+		return nil
+	}
+	c.publish(c.msg(result.topic, result.payload, false))
+	return nil
+}
+
+type asyncCallResult struct {
+	callResult
+
+	arena  *fastjson.Arena
+	parser *fastjson.Parser
+}
+
+type callResult struct {
+	err     error
+	topic   mqtt.Topic
+	payload *fastjson.Value
+}
+
+func handleCallHelper(arena *fastjson.Arena, parser *fastjson.Parser, msg mqtt.Message, callable *contracts.Callable) callResult {
+	req, err := parser.ParseBytes(msg.Payload)
 	if err != nil {
-		return fmt.Errorf("cannot parse call request JSON: %s", err)
+		return callResult{err: fmt.Errorf("cannot parse call request JSON: %s", err)}
 	}
 
 	retTopic := req.GetStringBytes("topic")
 	if retTopic == nil {
-		return fmt.Errorf("missing 'topic' string in request json")
+		return callResult{err: fmt.Errorf("missing 'topic' string in request json")}
 	}
 
 	token := req.Get("token")
 	if token == nil {
-		return fmt.Errorf("missing 'token' string in request json")
+		return callResult{err: fmt.Errorf("missing 'token' string in request json")}
 	}
 
 	argument := req.Get("argument")
 	if argument == nil {
-		return fmt.Errorf("missing 'argument' string in request json")
+		return callResult{err: fmt.Errorf("missing 'argument' string in request json")}
 	}
 
 	// TODO: skip this in insane mode
 	err = types.TypeCheck(argument, callable.Argument)
 	if err != nil {
-		return fmt.Errorf("argument has wrong type: %s", err)
+		return callResult{err: fmt.Errorf("argument has wrong type: %s", err)}
 	}
 
-	retval := callable.Handler(c.arena, argument)
+	retval := callable.Handler(arena, argument)
 
 	switch callable.Retval.T.(type) {
 	case *types.TVoid:
 		if retval != nil {
-			return fmt.Errorf("Void-typed handler returned non-nil")
+			return callResult{err: fmt.Errorf("Void-typed handler returned non-nil")}
 		}
-		return nil
+		return callResult{}
 	}
 
 	if retval == nil {
-		return fmt.Errorf("call failed.")
+		return callResult{err: fmt.Errorf("call failed.")}
 	}
 
 	// TODO: skip this in unsafe mode
 	err = types.TypeCheck(retval, callable.Retval)
 	if err != nil {
-		return fmt.Errorf("Handler returned value of wrong type: %s", err)
+		return callResult{err: fmt.Errorf("Handler returned value of wrong type: %s", err)}
 	}
 
-	payload := c.arena.NewObject()
+	payload := arena.NewObject()
 	payload.Set("token", token)
 	payload.Set("result", retval)
 
-	c.publish(c.msg(mqtt.JoinTopics(mqtt.Topic("_reply"), retTopic), payload, false))
-	return nil
+	return callResult{topic: mqtt.JoinTopics(mqtt.Topic("_reply"), retTopic), payload: payload}
 }
 
 func (c *Connection) handleMsg(msg mqtt.Message) {
