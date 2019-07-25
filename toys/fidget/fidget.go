@@ -18,6 +18,7 @@ import (
 
 type Fidget struct {
     wooBus *bus.Bus
+    wooing bool
 }
 
 func (f *Fidget) contract() contracts.Contract {
@@ -50,6 +51,14 @@ func (f *Fidget) contract() contracts.Contract {
                 Default: float(5),
                 Bus: f.wooBus,
             },
+			"boing": contracts.Callable{
+				Argument: types.Null(),
+				Retval: types.Void(),
+				Handler: func(a *fastjson.Arena, arg *fastjson.Value) *fastjson.Value {
+				    f.wooing = !f.wooing
+					return nil
+				},
+			},
 			// "boing": {
 			//     _t: "callable",
 			//     argument: {_t: "type-basic", name: "null"},
@@ -102,15 +111,17 @@ func (f *Fidget) contract() contracts.Contract {
 }
 
 func New() *Fidget {
-    f := &Fidget{}
+    f := &Fidget{wooing: false}
     f.wooBus = bus.New()
     go func() {
         var arena fastjson.Arena
         var val int
         for {
             time.Sleep(10 * time.Millisecond)
-            val = (val + 1) % 200
-            f.wooBus.Send(arena.NewNumberFloat64(float64(val) / 10))
+            if f.wooing {
+                val = (val + 1) % 200
+                f.wooBus.Send(arena.NewNumberFloat64(float64(val) / 10))
+            }
         }
     }()
     return f

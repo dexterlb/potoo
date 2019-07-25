@@ -48,6 +48,11 @@ func (g *GmqWrapper) handleMessage(topic []byte, payload []byte) {
 }
 
 func (g *GmqWrapper) Publish(m mqtt.Message) {
+    // TODO: see if there's a way to do this with less garbage
+    // apparently GMQ's Publish expects its payload buffer to be untouched for some
+    // time after it exits
+    payload := append([]byte(nil), m.Payload...) 
+
 	if g.opts.Debug != nil {
 		g.opts.Debug(fmt.Sprintf("[gmq] -> %s : %s", string(m.Topic), string(m.Payload)))
 	}
@@ -55,7 +60,7 @@ func (g *GmqWrapper) Publish(m mqtt.Message) {
 	popts.QoS = g.opts.DefaultQos
 	popts.Retain = m.Retain
 	popts.TopicName = m.Topic
-	popts.Message = m.Payload
+	popts.Message = payload
 	err := g.cli.Publish(&popts)
 	if err != nil {
 		g.handleError(err)
