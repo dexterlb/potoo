@@ -17,7 +17,8 @@ import (
 )
 
 type Fidget struct {
-    wooBus *bus.Bus
+    wooBus bus.Bus
+    sliderBus bus.Bus
     wooing bool
 }
 

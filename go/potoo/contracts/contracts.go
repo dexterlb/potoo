@@ -25,7 +25,7 @@ func (v Constant) contractNode() string { return "constant" }
 type Value struct {
 	Type        types.Type
     Subcontract Contract
-    Bus         *bus.Bus
+    Bus         bus.Bus
     Default     *fastjson.Value
 }
 
