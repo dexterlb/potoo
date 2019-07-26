@@ -25,7 +25,7 @@ type Fidget struct {
 
 func (f *Fidget) contract() contracts.Contract {
 	return contracts.Map{
-		"description": constr("A service which provides a greeting."),
+		"description": constr("Various knobs for testing purposes"),
 		"methods": contracts.Map{
 			"hello": contracts.Callable{
 				Argument: types.Struct(
@@ -76,54 +76,6 @@ func (f *Fidget) contract() contracts.Contract {
                 },
                 true,
             ),
-
-			// "boing": {
-			//     _t: "callable",
-			//     argument: {_t: "type-basic", name: "null"},
-			//     retval:   {_t: "type-basic", name: "void"},
-			//     handler: async (_: any) => boingval.send((await boingval.get() + 1) % 20),
-			//     subcontract: {
-			//         "description": constr("Boing!"),
-			//         "ui_tags": constr("order:3"),
-			//     }
-			// },
-			// "boinger": {
-			//     _t: "value",
-			//     type: {_t: "type-basic", name: "float", _meta: {min: 0, max: 20}},
-			//     bus: boingval,
-			//     subcontract: {
-			//         "ui_tags": constr("order:4,decimals:0"),
-			//     }
-			// },
-			// "wooo": {
-			//     _t: "value",
-			//     type: {_t: "type-basic", name: "float", _meta: {min: 0, max: 20}},
-			//     bus: wooval,
-			//     subcontract: {
-			//         "ui_tags": constr("order:4,decimals:2"),
-			//     }
-			// },
-			// "slider": {
-			//     _t: "value",
-			//     type: {_t: "type-basic", name: "float", _meta: {min: 0, max: 20}},
-			//     bus: sliderval,
-			//     subcontract: {
-			//         "set": {
-			//             _t: "callable",
-			//             argument: {_t: "type-basic", name: "float"},
-			//             retval:   {_t: "type-basic", name: "void"},
-			//             handler: async (val: any) => sliderval.send(val as number),
-			//             subcontract: { },
-			//         },
-			//         "ui_tags": constr("order:5,decimals:1,speed:99,exp_speed:99"),
-			//     }
-			// },
-			// "clock": {
-			//     _t: "value",
-			//     type: { _t: "type-basic", name: "string" },
-			//     subcontract: { "description": constr("current time") },
-			//     bus: timechan,
-			// },
 		},
 	}
 }
