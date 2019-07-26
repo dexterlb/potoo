@@ -3,10 +3,9 @@ package contracts
 import (
 	"github.com/DexterLB/potoo/go/potoo/bus"
 	"github.com/DexterLB/potoo/go/potoo/types"
-	"github.com/valyala/fastjson"
 )
 
-func Property(t types.Type, b bus.Bus, handler bus.RetHandler, children map[string]Contract, dflt *fastjson.Value, async bool) Contract {
+func Property(t types.Type, b bus.Bus, handler bus.RetHandler, children map[string]Contract, async bool) Contract {
 	subcontract := Map{
 		"set": Callable{
 			Handler:  handler,
@@ -23,7 +22,6 @@ func Property(t types.Type, b bus.Bus, handler bus.RetHandler, children map[stri
 	return Value{
 		Bus:         b,
 		Subcontract: subcontract,
-		Default:     dflt,
 		Type:        t,
 	}
 }

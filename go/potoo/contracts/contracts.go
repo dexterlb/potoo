@@ -26,7 +26,6 @@ type Value struct {
 	Type        types.Type
     Subcontract Contract
     Bus         bus.Bus
-    Default     *fastjson.Value
 }
 
 func (v Value) contractNode() string { return "value" }

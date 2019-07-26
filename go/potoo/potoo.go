@@ -172,7 +172,8 @@ func (c *Connection) handleUpdateContract(contract contracts.Contract) error {
 				s.Bus.Unsubscribe(sub)
 			}
 			c.unsubscribers = append(c.unsubscribers, unsubscriber)
-			err = c.handleOutgoingValue(outgoingValue{contract: &s, topic: topic, v: s.Default, sync: nil})
+            defaultVal := s.Bus.Get(c.arena)
+			err = c.handleOutgoingValue(outgoingValue{contract: &s, topic: topic, v: defaultVal, sync: nil})
 			if err != nil {
 				return
 			}

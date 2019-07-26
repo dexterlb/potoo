@@ -20,13 +20,12 @@ type JsonBus struct {
 	sync.Mutex
 
 	handlers []Handler
-	opts     BusOptions
+	opts     Options
 	arena    fastjson.Arena
-	first    chan struct{}
 	value    *fastjson.Value
 }
 
-type BusOptions struct {
+type Options struct {
 	Deduplicate        bool
 	OnFirstSubscribed  func()
 	OnLastUnsubscribed func()
@@ -34,20 +33,19 @@ type BusOptions struct {
 	OnUnsubscribed     func()
 }
 
-func New() *JsonBus {
-	return &JsonBus{
-		first: make(chan struct{}),
-	}
+func New(dflt *fastjson.Value) *JsonBus {
+    bus := &JsonBus{}
+    bus.value = cloneValue(&bus.arena, dflt)
+    return bus
 }
 
-func NewWithOpts(opts *BusOptions) *JsonBus {
-	bus := New()
+func NewWithOpts(dflt *fastjson.Value, opts *Options) *JsonBus {
+	bus := New(dflt)
 	bus.opts = *opts
 	return bus
 }
 
 func (b *JsonBus) Get(arena *fastjson.Arena) *fastjson.Value {
-	<-b.first
 	b.Lock()
 	defer b.Unlock()
 
@@ -55,8 +53,6 @@ func (b *JsonBus) Get(arena *fastjson.Arena) *fastjson.Value {
 }
 
 func (b *JsonBus) Send(val *fastjson.Value) {
-	defer b.signalFirst()
-
 	b.Lock()
 	defer b.Unlock()
 
@@ -70,13 +66,6 @@ func (b *JsonBus) Send(val *fastjson.Value) {
 	for _, h := range b.handlers {
 		h(b.value)
 	}
-}
-
-func (b *JsonBus) signalFirst() {
-    if b.first != nil {
-        close(b.first)
-        b.first = nil
-    }
 }
 
 func (b *JsonBus) Subscribe(handler Handler) int {
@@ -125,10 +114,22 @@ func cloneValue(arena *fastjson.Arena, val *fastjson.Value) *fastjson.Value {
         case fastjson.TypeNumber:
             f, _ := val.Float64()
             return arena.NewNumberFloat64(f)
+        case fastjson.TypeString:
+            s, _ := val.StringBytes()
+            return arena.NewStringBytes(s)
     }
     panic("not implemented")
 }
 
 func sameValue(a *fastjson.Value, b *fastjson.Value) bool {
+    if a.Type() != b.Type() {
+        return false
+    }
+    switch(a.Type()) {
+        case fastjson.TypeString:
+            sa, _ := a.StringBytes()
+            sb, _ := b.StringBytes()
+            return string(sa) == string(sb)
+    }
 	panic("not implemented")
 }
