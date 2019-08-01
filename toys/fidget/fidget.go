@@ -6,10 +6,11 @@ import (
 	"time"
 
 	"github.com/DexterLB/potoo/go/potoo"
+	"github.com/DexterLB/potoo/go/potoo/bus"
 	"github.com/DexterLB/potoo/go/potoo/contracts"
 	"github.com/DexterLB/potoo/go/potoo/mqtt"
-	"github.com/DexterLB/potoo/go/potoo/bus"
 	"github.com/DexterLB/potoo/go/potoo/mqtt/wrappers"
+	"github.com/DexterLB/potoo/go/potoo/q"
 	"github.com/DexterLB/potoo/go/potoo/types"
 	"github.com/yosssi/gmq/mqtt/client"
 
@@ -17,26 +18,26 @@ import (
 )
 
 type Fidget struct {
-    wooBus bus.Bus
-    sliderBus bus.Bus
-    clockBus bus.Bus
-    wooing bool
+	wooBus    bus.Bus
+	sliderBus bus.Bus
+	clockBus  bus.Bus
+	wooing    bool
 }
 
 func (f *Fidget) contract() contracts.Contract {
 	return contracts.Map{
-		"description": constr("Various knobs for testing purposes"),
+		"description": q.StringConst("Various knobs for testing purposes"),
 		"methods": contracts.Map{
 			"hello": contracts.Callable{
 				Argument: types.Struct(
 					map[string]types.Type{
-						"item": types.String().M(types.MetaData{"description": str("item to greet")}),
+						"item": types.String().M(types.MetaData{"description": q.String("item to greet")}),
 					},
 				),
 				Retval: types.String(),
 				Subcontract: contracts.Map{
-					"description": constr("Performs a greeting"),
-					"ui_tags":     constr("order:1"),
+					"description": q.StringConst("Performs a greeting"),
+					"ui_tags":     q.StringConst("order:1"),
 				},
 				Handler: func(a *fastjson.Arena, arg *fastjson.Value) *fastjson.Value {
 					item, err := arg.Get("item").StringBytes()
@@ -46,59 +47,59 @@ func (f *Fidget) contract() contracts.Contract {
 					time.Sleep(5 * time.Second)
 					return a.NewString(fmt.Sprintf("Hello, %s", string(item)))
 				},
-                Async: true,
+				Async: true,
 			},
-            "woo": contracts.Value{
-                Type: types.Float().M(types.MetaData{"min": float(0), "max": float(20)}),
-                Bus: f.wooBus,
-            },
-            "clock": contracts.Value{
-                Type: types.String(),
-                Bus: f.clockBus,
-            },
+			"woo": contracts.Value{
+				Type: types.Float().M(types.MetaData{"min": q.Float(0), "max": q.Float(20)}),
+				Bus:  f.wooBus,
+			},
+			"clock": contracts.Value{
+				Type: types.String(),
+				Bus:  f.clockBus,
+			},
 			"boing": contracts.Callable{
 				Argument: types.Null(),
-				Retval: types.Void(),
+				Retval:   types.Void(),
 				Handler: func(a *fastjson.Arena, arg *fastjson.Value) *fastjson.Value {
-				    f.wooing = !f.wooing
+					f.wooing = !f.wooing
 					return nil
 				},
 			},
-            "slider": contracts.Property(
-                types.Float().M(types.MetaData{"min": float(0), "max": float(20)}),
-                f.sliderBus,
-                func(a *fastjson.Arena, arg *fastjson.Value) *fastjson.Value {
-                    f.sliderBus.Send(arg)
-                    return nil
-                },
-                map[string]contracts.Contract{
-                    "ui_tags": constr("order:5,decimals:1,speed:99,exp_speed:99"),
-                },
-                true,
-            ),
+			"slider": q.Property(
+				types.Float().M(types.MetaData{"min": q.Float(0), "max": q.Float(20)}),
+				f.sliderBus,
+				func(a *fastjson.Arena, arg *fastjson.Value) *fastjson.Value {
+					f.sliderBus.Send(arg)
+					return nil
+				},
+				map[string]contracts.Contract{
+					"ui_tags": q.StringConst("order:5,decimals:1,speed:99,exp_speed:99"),
+				},
+				true,
+			),
 		},
 	}
 }
 
 func New() *Fidget {
-    f := &Fidget{wooing: false}
-    f.wooBus = bus.New(float(0))
-    f.clockBus = bus.NewWithOpts(str("bla"), &bus.Options{Deduplicate: true})
-    f.sliderBus = bus.New(float(0))
-    go func() {
-        var arena fastjson.Arena
-        var val int
-        for {
-            time.Sleep(10 * time.Millisecond)
-            f.clockBus.Send(str(time.Now().Format("2006-01-02 15:04:05")))
-            if f.wooing {
-                val = (val + 1) % 200
-                f.wooBus.Send(arena.NewNumberFloat64(float64(val) / 10))
-            }
-            arena.Reset()
-        }
-    }()
-    return f
+	f := &Fidget{wooing: false}
+	f.wooBus = bus.New(q.Float(0))
+	f.clockBus = bus.NewWithOpts(q.String("bla"), &bus.Options{Deduplicate: true})
+	f.sliderBus = bus.New(q.Float(0))
+	go func() {
+		var arena fastjson.Arena
+		var val int
+		for {
+			time.Sleep(10 * time.Millisecond)
+			f.clockBus.Send(q.String(time.Now().Format("2006-01-02 15:04:05")))
+			if f.wooing {
+				val = (val + 1) % 200
+				f.wooBus.Send(arena.NewNumberFloat64(float64(val) / 10))
+			}
+			arena.Reset()
+		}
+	}()
+	return f
 }
 
 func main() {
@@ -129,17 +130,4 @@ func main() {
 	}()
 
 	conn.LoopOrDie()
-}
-
-var garena fastjson.Arena // TODO: better way to handle this than a global arena
-func constr(text string) contracts.Contract {
-	return contracts.Constant{Value: str(text)}
-}
-
-func str(text string) *fastjson.Value {
-	return garena.NewString(text)
-}
-
-func float(val float64) *fastjson.Value {
-	return garena.NewNumberFloat64(val)
 }
