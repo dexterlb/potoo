@@ -55,7 +55,7 @@ const (
 )
 
 func main() {
-	potooConn := potoo.NewConnection("localhost:4444")
+	potooConn := potoo.NewConnection("localhost:4123")
 	err := potooConn.Open()
 	if err != nil {
 		log.Fatalf("cannot open potoo connection: %s", err)
