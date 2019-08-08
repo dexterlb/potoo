@@ -80,6 +80,7 @@ func (c *Connection) Loop(exit <-chan struct{}) error {
 	if err != nil {
 		return fmt.Errorf("Could not connect to MQTT: %s", err)
 	}
+	defer c.opts.MqttClient.Disconnect()
 
 	for {
 		select {

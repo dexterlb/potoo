@@ -21,4 +21,5 @@ type Client interface {
 	Publish(message Message)
 	Subscribe(filter Topic) // must be synchronous
 	Unsubscribe(filter Topic)
+	Disconnect()
 }

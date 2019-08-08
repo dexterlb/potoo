@@ -119,3 +119,8 @@ func (g *GmqWrapper) Connect(config *mqtt.ConnectConfig) error {
 
 	return g.cli.Connect(&g.opts.ConnectOptions)
 }
+
+func (g *GmqWrapper) Disconnect() {
+	g.cli.Disconnect()
+	close(g.connConf.OnDisconnect)
+}
