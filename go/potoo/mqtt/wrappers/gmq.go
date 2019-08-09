@@ -27,9 +27,7 @@ func NewGmqWrapper(opts *GmqOpts) *GmqWrapper {
 }
 
 func (g *GmqWrapper) handleError(err error) {
-	if g.opts.Debug != nil {
-		g.opts.Debug(fmt.Sprintf("[gmq] MQTT error: %s", err))
-	}
+	g.debug("MQTT error: %s", err)
 	g.connConf.OnDisconnect <- err
 	if g.opts.ErrorHandler != nil {
 		g.opts.ErrorHandler(err)
@@ -37,9 +35,7 @@ func (g *GmqWrapper) handleError(err error) {
 }
 
 func (g *GmqWrapper) handleMessage(topic []byte, payload []byte) {
-	if g.opts.Debug != nil {
-		g.opts.Debug(fmt.Sprintf("[gmq] <- %s : %s", string(topic), string(payload)))
-	}
+	g.debug(" <- %s : %s", string(topic), string(payload))
 	g.connConf.OnMessage <- mqtt.Message{
 		Topic:   topic,
 		Payload: payload,
@@ -48,14 +44,12 @@ func (g *GmqWrapper) handleMessage(topic []byte, payload []byte) {
 }
 
 func (g *GmqWrapper) Publish(m mqtt.Message) {
-    // TODO: see if there's a way to do this with less garbage
-    // apparently GMQ's Publish expects its payload buffer to be untouched for some
-    // time after it exits
-    payload := append([]byte(nil), m.Payload...) 
+	// TODO: see if there's a way to do this with less garbage
+	// apparently GMQ's Publish expects its payload buffer to be untouched for some
+	// time after it exits
+	payload := append([]byte(nil), m.Payload...)
 
-	if g.opts.Debug != nil {
-		g.opts.Debug(fmt.Sprintf("[gmq] -> %s : %s", string(m.Topic), string(m.Payload)))
-	}
+	g.debug(" -> %s : %s", string(m.Topic), string(m.Payload))
 	var popts client.PublishOptions
 	popts.QoS = g.opts.DefaultQos
 	popts.Retain = m.Retain
@@ -68,9 +62,7 @@ func (g *GmqWrapper) Publish(m mqtt.Message) {
 }
 
 func (g *GmqWrapper) Subscribe(filter mqtt.Topic) {
-	if g.opts.Debug != nil {
-		g.opts.Debug(fmt.Sprintf("[gmq] subscribe %s", string(filter)))
-	}
+	g.debug("Subscribe %s", string(filter))
 	// TODO: maybe make this take a slice of filters and subscribe at once
 	err := g.cli.Subscribe(&client.SubscribeOptions{
 		SubReqs: []*client.SubReq{
@@ -87,9 +79,7 @@ func (g *GmqWrapper) Subscribe(filter mqtt.Topic) {
 }
 
 func (g *GmqWrapper) Unsubscribe(filter mqtt.Topic) {
-	if g.opts.Debug != nil {
-		g.opts.Debug(fmt.Sprintf("[gmq] unsubscribe %s", string(filter)))
-	}
+	g.debug("unsubscribe %s", string(filter))
 	// TODO: maybe make this take a slice of filters and unsubscribe at once
 	err := g.cli.Unsubscribe(&client.UnsubscribeOptions{
 		TopicFilters: [][]byte{filter},
@@ -100,11 +90,9 @@ func (g *GmqWrapper) Unsubscribe(filter mqtt.Topic) {
 }
 
 func (g *GmqWrapper) Connect(config *mqtt.ConnectConfig) error {
-	if g.opts.Debug != nil {
-		g.opts.Debug(fmt.Sprintf("[gmq] connect with will %s : %s", string(config.WillMessage.Topic), string(config.WillMessage.Payload)))
-	}
-	g.opts.WillTopic = config.WillMessage.Topic
-	g.opts.WillMessage = config.WillMessage.Payload
+	g.debug("connect with will %s : %s", string(config.WillMessage.Topic), string(config.WillMessage.Payload))
+	g.opts.WillTopic = append([]byte(nil), config.WillMessage.Topic...)
+	g.opts.WillMessage = append([]byte(nil), config.WillMessage.Payload...)
 	g.opts.WillRetain = config.WillMessage.Retain
 	g.opts.WillQoS = g.opts.DefaultQos
 
@@ -120,7 +108,49 @@ func (g *GmqWrapper) Connect(config *mqtt.ConnectConfig) error {
 	return g.cli.Connect(&g.opts.ConnectOptions)
 }
 
+func (g *GmqWrapper) DisconnectWithWill() {
+	sentWill := make(chan struct{})
+
+	err := g.cli.Subscribe(&client.SubscribeOptions{
+		SubReqs: []*client.SubReq{
+			&client.SubReq{
+				TopicFilter: g.opts.WillTopic,
+				QoS:         g.opts.DefaultQos,
+				Handler: func(topic []byte, payload []byte) {
+					if string(payload) == string(g.opts.WillMessage) {
+						close(sentWill)
+					}
+				},
+			},
+		},
+	})
+	if err != nil {
+		close(sentWill) // fixme: maybe there's a better way to handle this?
+	}
+
+	var popts client.PublishOptions
+	popts.QoS = g.opts.DefaultQos
+	popts.Retain = g.opts.WillRetain
+	popts.TopicName = g.opts.WillTopic
+	popts.Message = g.opts.WillMessage
+	err = g.cli.Publish(&popts)
+	if err != nil {
+		close(sentWill)
+	}
+
+	<-sentWill
+
+	g.Disconnect()
+}
+
 func (g *GmqWrapper) Disconnect() {
 	g.cli.Disconnect()
+	g.debug("Disconnecting")
 	close(g.connConf.OnDisconnect)
+}
+
+func (g *GmqWrapper) debug(s string, args ...interface{}) {
+	if g.opts.Debug != nil {
+		g.opts.Debug(fmt.Sprintf(s, args...))
+	}
 }

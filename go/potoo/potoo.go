@@ -80,15 +80,15 @@ func (c *Connection) Loop(exit <-chan struct{}) error {
 	if err != nil {
 		return fmt.Errorf("Could not connect to MQTT: %s", err)
 	}
-	defer c.opts.MqttClient.Disconnect()
+	defer c.opts.MqttClient.DisconnectWithWill()
 
 	for {
 		select {
 		case err = <-c.mqttDisconnect:
 			if err != nil {
-				return nil
+				return fmt.Errorf("MQTT error: %s", err)
 			}
-			return fmt.Errorf("MQTT error: %s", err)
+			return nil
 		case <-exit:
 			return nil
 		case msg := <-c.mqttMessage:
@@ -122,17 +122,17 @@ func (c *Connection) LoopOrDie() {
 }
 
 func (c *Connection) handleOutgoingValue(ov outgoingValue) error {
-    err := types.TypeCheck(ov.v, ov.contract.Type)
+	err := types.TypeCheck(ov.v, ov.contract.Type)
 	if err != nil {
-	    ov.release()
-        return fmt.Errorf("Outgoing value has wrong type: %s", err)
-    }
+		ov.release()
+		return fmt.Errorf("Outgoing value has wrong type: %s", err)
+	}
 
-    msg := c.msg(ov.topic, ov.v, true)
-    ov.release()  // now safe to release ov.v
+	msg := c.msg(ov.topic, ov.v, true)
+	ov.release() // now safe to release ov.v
 
-    c.publish(msg)
-    return nil
+	c.publish(msg)
+	return nil
 }
 
 type outgoingValue struct {
@@ -143,10 +143,10 @@ type outgoingValue struct {
 }
 
 func (o *outgoingValue) release() {
-    if o.sync != nil {
-        close(o.sync)
-        o.sync = nil
-    }
+	if o.sync != nil {
+		close(o.sync)
+		o.sync = nil
+	}
 }
 
 func (c *Connection) handleUpdateContract(contract contracts.Contract) error {
@@ -165,15 +165,15 @@ func (c *Connection) handleUpdateContract(contract contracts.Contract) error {
 		case contracts.Value:
 			topic := c.serviceTopic(mqtt.Topic("_value"), subtopic)
 			sub := s.Bus.Subscribe(func(v *fastjson.Value) {
-                sync := make(chan struct{}) // TODO: can this be done with less channels?
-                c.outgoingValues <- outgoingValue{topic: topic, v: v, sync: sync, contract: &s}
+				sync := make(chan struct{}) // TODO: can this be done with less channels?
+				c.outgoingValues <- outgoingValue{topic: topic, v: v, sync: sync, contract: &s}
 				<-sync
 			})
 			unsubscriber := func() {
 				s.Bus.Unsubscribe(sub)
 			}
 			c.unsubscribers = append(c.unsubscribers, unsubscriber)
-            defaultVal := s.Bus.Get(c.arena)
+			defaultVal := s.Bus.Get(c.arena)
 			err = c.handleOutgoingValue(outgoingValue{contract: &s, topic: topic, v: defaultVal, sync: nil})
 			if err != nil {
 				return
