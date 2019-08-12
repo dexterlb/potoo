@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"math/rand"
 	"time"
 
 	"github.com/DexterLB/potoo/go/potoo"
@@ -103,11 +104,12 @@ func New() *Fidget {
 }
 
 func main() {
+	fid := randSeq(6)
 	mqttClient := wrappers.NewGmqWrapper(&wrappers.GmqOpts{
 		ConnectOptions: client.ConnectOptions{
 			Network:  "tcp",
 			Address:  "localhost:1883",
-			ClientID: []byte("the-go-fidget"),
+			ClientID: []byte(fmt.Sprintf("the-go-fidget-%s", fid)),
 		},
 		Debug: func(msg string) {
 			log.Printf(msg)
@@ -116,7 +118,7 @@ func main() {
 
 	opts := &potoo.ConnectionOptions{
 		MqttClient:  mqttClient,
-		Root:        mqtt.Topic("/things/fidget"),
+		Root:        mqtt.Topic(fmt.Sprintf("/things/fidget-%s", fid)),
 		ServiceRoot: mqtt.Topic("/"),
 		OnContract:  nil,
 		CallTimeout: 10 * time.Second,
@@ -130,4 +132,14 @@ func main() {
 	}()
 
 	conn.LoopOrDie()
+}
+
+var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+
+func randSeq(n int) string {
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = letters[rand.Intn(len(letters))]
+	}
+	return string(b)
 }

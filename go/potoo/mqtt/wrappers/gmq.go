@@ -2,6 +2,7 @@ package wrappers
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/DexterLB/potoo/go/potoo/mqtt"
 	"github.com/yosssi/gmq/mqtt/client"
@@ -110,6 +111,10 @@ func (g *GmqWrapper) Connect(config *mqtt.ConnectConfig) error {
 
 func (g *GmqWrapper) DisconnectWithWill() {
 	sentWill := make(chan struct{})
+	var once sync.Once
+	done := func() {
+		once.Do(func() { close(sentWill) })
+	}
 
 	err := g.cli.Subscribe(&client.SubscribeOptions{
 		SubReqs: []*client.SubReq{
@@ -118,14 +123,14 @@ func (g *GmqWrapper) DisconnectWithWill() {
 				QoS:         g.opts.DefaultQos,
 				Handler: func(topic []byte, payload []byte) {
 					if string(payload) == string(g.opts.WillMessage) {
-						close(sentWill)
+						done()
 					}
 				},
 			},
 		},
 	})
 	if err != nil {
-		close(sentWill) // fixme: maybe there's a better way to handle this?
+		done() // fixme: maybe there's a better way to handle this?
 	}
 
 	var popts client.PublishOptions
@@ -135,7 +140,7 @@ func (g *GmqWrapper) DisconnectWithWill() {
 	popts.Message = g.opts.WillMessage
 	err = g.cli.Publish(&popts)
 	if err != nil {
-		close(sentWill)
+		done()
 	}
 
 	<-sentWill

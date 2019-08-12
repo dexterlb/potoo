@@ -72,6 +72,7 @@ module.exports = {
               target: 'ws://localhost:1880',
               ws: true
             }
-      }
+      },
+      disableHostCheck: true,
   },
 };
