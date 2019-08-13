@@ -104,6 +104,7 @@ func New() *Fidget {
 }
 
 func main() {
+	rand.Seed(time.Now().UTC().UnixNano())
 	fid := randSeq(6)
 	mqttClient := wrappers.NewGmqWrapper(&wrappers.GmqOpts{
 		ConnectOptions: client.ConnectOptions{
