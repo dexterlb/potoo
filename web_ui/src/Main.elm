@@ -26,11 +26,13 @@ import Browser exposing (UrlRequest, Document)
 import Browser.Navigation exposing (Key)
 import Json.Encode as JE
 import Json.Decode as JD
+import Process
+import Task
 
 
 main =
     Browser.application
-        { init = init
+        { init = init Connecting
         , view = view
         , update = update
         , subscriptions = subscriptions
@@ -56,8 +58,8 @@ type alias Model =
     }
 
 
-init : Json.Encode.Value -> Url -> Key -> ( Model, Cmd Msg )
-init _ url key = let model = emptyModel url key Connecting
+init : Status -> Json.Encode.Value -> Url -> Key -> ( Model, Cmd Msg )
+init status _ url key = let model = emptyModel url key status
     in (model , startCommand model)
 
 
@@ -116,6 +118,7 @@ type Msg
     | UrlRequested UrlRequest
     | UiMsg Ui.Msg
     | Animate Float
+    | Reconnect
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -147,6 +150,9 @@ update msg model =
 
         Animate time -> let diff = time - model.animationTime in
             ( { model | ui = Ui.animate (time, diff) model.ui, animationTime = time } , Cmd.none )
+
+        Reconnect ->
+            init Reconnecting Json.Encode.null model.url model.key
 
 
 handleUiAction : Model -> Int -> Ui.Action -> Cmd Msg
@@ -191,7 +197,7 @@ handleResponse m resp =
             ( emptyModel m.url m.key JollyGood, Cmd.none )
 
         Disconnected ->
-            ( { m | status = Reconnecting }, Cmd.none )
+            ( { m | status = Reconnecting }, Process.sleep 1000 |> Task.perform (always Reconnect) )
 
         other -> ( m, Debug.log "received unknown response." Cmd.none )
 
