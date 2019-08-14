@@ -71,6 +71,7 @@ module.exports = {
             }
       },
       port: 8081,
+      disableHostCheck: true
   },
 
 
