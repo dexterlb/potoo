@@ -117,6 +117,7 @@ export function paho_wrap(opts: PahoWrapOptions): Client {
                 }
             }
             conn_data.onFailure = (err) => {
+                console.log("failure!")
                 reject(err.errorMessage)
                 on_disconnect(err)
                 if (opts.connection_opts && opts.connection_opts.onFailure) {

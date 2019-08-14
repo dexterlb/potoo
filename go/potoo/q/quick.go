@@ -1,6 +1,9 @@
 package q
 
 import (
+	"encoding/json"
+	"fmt"
+
 	"github.com/DexterLB/potoo/go/potoo/bus"
 	"github.com/DexterLB/potoo/go/potoo/contracts"
 	"github.com/DexterLB/potoo/go/potoo/types"
@@ -45,4 +48,23 @@ func Float(x float64) *fastjson.Value {
 
 func FloatConst(x float64) contracts.Contract {
 	return contracts.Constant{Value: Float(x)}
+}
+
+func Json(x interface{}) *fastjson.Value {
+	data, err := json.Marshal(x)
+	if err != nil {
+		panic(fmt.Errorf("Cannot marshal JSON: %s", err))
+	}
+
+	var parser fastjson.Parser
+	v, err := parser.ParseBytes(data)
+	if err != nil {
+		panic(fmt.Errorf("Cannot re-parse JSON: %s", err))
+	}
+
+	return v
+}
+
+func JsonConst(x interface{}) contracts.Contract {
+	return contracts.Constant{Value: Json(x)}
 }

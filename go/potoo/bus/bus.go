@@ -129,7 +129,11 @@ func sameValue(a *fastjson.Value, b *fastjson.Value) bool {
         case fastjson.TypeString:
             sa, _ := a.StringBytes()
             sb, _ := b.StringBytes()
-            return string(sa) == string(sb)
+			return string(sa) == string(sb)
+		case fastjson.TypeNumber:
+			sa, _ := a.Float64()
+			sb, _ := b.Float64()
+			return sa == sb
     }
 	panic("not implemented")
 }
