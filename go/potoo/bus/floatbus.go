@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sync"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/valyala/fastjson"
 )
 
@@ -38,28 +39,32 @@ func (b *FloatBus) Send(val *fastjson.Value) {
 		panic(fmt.Errorf("trying to send a non-float value to float bus: %s", err))
 	}
 
+	b.Lock()
+	defer b.Unlock()
+
 	if b.opts.Deduplicate && b.value == v {
 		return
 	}
-
-	b.Lock()
-	defer b.Unlock()
+	b.value = v
 
 	b.handle(v)
 }
 
 func (b *FloatBus) SendV(val float64) {
+	b.Lock()
+	defer b.Unlock()
+
 	if b.opts.Deduplicate && b.value == val {
 		return
 	}
 
-	b.Lock()
-	defer b.Unlock()
+	b.value = val
 
 	b.handle(val)
 }
 
 func (b *FloatBus) handle(v float64) {
+	log.Error(fmt.Sprintf("Handle %f", v))
 	b.arena.Reset()
 	jv := b.arena.NewNumberFloat64(v)
 	for _, h := range b.handlers {
