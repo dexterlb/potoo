@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"sync"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/valyala/fastjson"
 )
 
@@ -12,9 +11,9 @@ type FloatBus struct {
 	sync.Mutex
 
 	handlers []Handler
-	opts  Options
-	arena fastjson.Arena
-	value float64
+	opts     Options
+	arena    fastjson.Arena
+	value    float64
 }
 
 func NewFloatBus(dflt float64) *FloatBus {
@@ -64,7 +63,6 @@ func (b *FloatBus) SendV(val float64) {
 }
 
 func (b *FloatBus) handle(v float64) {
-	log.Error(fmt.Sprintf("Handle %f", v))
 	b.arena.Reset()
 	jv := b.arena.NewNumberFloat64(v)
 	for _, h := range b.handlers {
