@@ -1,5 +1,13 @@
 require('./index.html');
-require('./styles/main.scss');
+
+let fragment = new URLSearchParams(window.location.hash.substr(1));
+let theme = fragment.get('theme');
+
+if (theme == 'slick') {
+    require('./styles/slick.scss');
+} else {
+    require('./styles/main.scss');
+}
 
 let elm = require('./Main.elm')
 
