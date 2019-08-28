@@ -1,3 +1,10 @@
+/**
+ * This class represents a very simple
+ * communication bus with one or more subscribers.
+ * Each subscriber is simply a callback (see [[Subscriber]]).
+ * Messages of type `T` may be sent on the bus, calling all subscribers
+ * with the message as argument.
+ */
 export class Bus<T> {
     private subscribers: Subscriber<T>[] = []
     private transient_subscribers: Subscriber<T>[] = []
@@ -6,17 +13,20 @@ export class Bus<T> {
 
     constructor(private options?: BusOptions) {}
 
+    /** Subscribes a callback */
     public async subscribe(callback: Subscriber<T>): Promise<void> {
         let action = this.check_subscribe()
         this.subscribers.push(callback)
         await action()
     }
 
+    /** Unsubscribes a callback that has previously been subscribed by [[subscribe]]. */
     public async unsubscribe(callback: Subscriber<T>): Promise<void> {
         this.subscribers.filter(other => !Object.is(other, callback))
         await this.check_unsubscribe()()
     }
 
+    /** Sends a value to all subscribers **/
     public send(value: T) : Bus<T> {
         this.value = value
         this.subscribers.forEach(callback => callback(value))
@@ -28,6 +38,10 @@ export class Bus<T> {
         return this
     }
 
+    /**
+     * Gets the last value sent on the bus. If no value has been sent yet,
+     * async-blocks until this happens.
+     */
     public async get(timeout: number = 5000): Promise<T> {
         if (this.value != undefined) {
             return Promise.resolve(this.value)
@@ -63,8 +77,15 @@ export class Bus<T> {
     }
 }
 
+/**
+ * Subscriber represents a callback that is called upon sending a
+ * value to the [[Bus]].
+ */
 type Subscriber<T> = (value: T) => void
 
+/**
+ * BusOptions contains [[Bus]] creation options.
+ */
 interface BusOptions {
     on_first_subscribed: () => Promise<void>,
     on_last_unsubscribed: () => Promise<void>,
