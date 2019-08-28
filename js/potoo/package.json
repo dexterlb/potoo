@@ -10,11 +10,13 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "docs": "typedoc --excludePrivate --out docs src/"
   },
   "author": "dexterlb",
   "license": "MIT",
   "devDependencies": {
+    "typedoc": "^0.15.0",
     "typescript": "^3.3.3333"
   }
 }
