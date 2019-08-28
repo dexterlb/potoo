@@ -1,6 +1,6 @@
 module Ui.MetaData exposing (..)
 
-import Contracts exposing (Contract, Data, Pid, Properties, PropertyID, emptyData, fetch, getTypeFields)
+import Contracts exposing (Contract, Children, Data, ContractProperties, Property, emptyData, fetch, getTypeFields, Value(..))
 import Dict exposing (Dict)
 import Json.Decode as JD
 import Json.Encode as JE
@@ -8,7 +8,7 @@ import Json.Encode as JE
 
 type alias MetaData =
     { key : String
-    , propData : PropData
+    , property : Maybe Property
     , description : String
     , enabled : Bool
     , uiTags : UiTags
@@ -24,14 +24,6 @@ type UiTagValue
     | NumberTag Float
 
 
-type alias PropData =
-    { hasGetter : Bool
-    , hasSetter : Bool
-    , hasSubscriber : Bool
-    , property : ( Pid, PropertyID )
-    }
-
-
 noMetaData : MetaData
 noMetaData =
     { key = ""
@@ -39,43 +31,23 @@ noMetaData =
     , enabled = True
     , extra = emptyData
     , uiTags = Dict.empty
-    , propData = noPropData
+    , property = Nothing
     , valueMeta = emptyValueMeta
     }
 
 
-noPropData : PropData
-noPropData =
-    { hasGetter = False
-    , hasSetter = False
-    , hasSubscriber = False
-    , property = ( -1, -1 )
-    }
-
-
-getMetaData : String -> Contract -> Pid -> Properties -> MetaData
-getMetaData key c pid properties =
+getMetaData : String -> Contract -> ContractProperties -> MetaData
+getMetaData key c properties =
     case c of
-        Contracts.PropertyKey propertyID _ ->
+        Contracts.PropertyKey prop _ ->
             let
-                { getter, setter, subscriber } =
-                    properties |> fetch pid |> fetch propertyID
-
                 priorData =
-                    extractData c pid properties |> dataMetaData key
+                    extractData c properties |> dataMetaData key
             in
-            let
-                propData =
-                    { hasGetter = getter /= Nothing
-                    , hasSetter = setter /= Nothing
-                    , hasSubscriber = subscriber /= Nothing
-                    , property = ( pid, propertyID )
-                    }
-            in
-            { priorData | propData = propData }
+                { priorData | property = Just prop }
 
         _ ->
-            extractData c pid properties |> dataMetaData key
+            extractData c properties |> dataMetaData key
 
 
 dataMetaData : String -> Data -> MetaData
@@ -103,91 +75,75 @@ dataMetaData key d =
 
     , extra = d
     , valueMeta =
-        { min = Dict.get "min" d |> Maybe.andThen (parseValue JD.float)
-        , max = Dict.get "max" d |> Maybe.andThen (parseValue JD.float)
+        { min = Dict.get "min" d |> Maybe.andThen (parseValueAs JD.float)
+        , max = Dict.get "max" d |> Maybe.andThen (parseValueAs JD.float)
         , stops = Dict.get "stops" d
-            |> Maybe.andThen (parseValue (JD.dict JD.string))
+            |> Maybe.andThen (parseValueAs (JD.dict JD.string))
             |> Maybe.map Dict.toList
             |> Maybe.map (List.map (\(k, v) -> (String.toFloat k |> Maybe.withDefault 0, v)))
             |> Maybe.map List.sort
             |> Maybe.map List.reverse
             |> Maybe.withDefault []
         , oneOf = Dict.get "one_of" d
-            |> Maybe.andThen (parseValue (JD.list JD.value))
+            |> Maybe.andThen (parseValueAs (JD.list JD.value))
         }
-    , propData = noPropData
+    , property = Nothing
     }
 
-parseValue : JD.Decoder v -> JD.Value -> Maybe v
-parseValue dec v =
+parseValueAs : JD.Decoder v -> JD.Value -> Maybe v
+parseValueAs dec v =
     JD.decodeValue dec v
         |> Result.toMaybe
 
-extractData : Contract -> Int -> Properties -> Data
-extractData c pid properties =
+extractData : Contract -> ContractProperties -> Data
+extractData c properties =
     case c of
-        Contracts.MapContract d ->
-            Dict.map (\_ value -> extractValue properties pid value) d
+        Contracts.MapContract d -> extractDataDict d properties
 
-        Contracts.Function { data } ->
-            data
+        Contracts.Function _ subcontract ->
+            extractDataDict subcontract properties
 
-        Contracts.Delegate { data } ->
-            data
+        Contracts.Constant _ subcontract ->
+            extractDataDict subcontract properties
 
-        Contracts.PropertyKey propertyID contract ->
+        Contracts.PropertyKey prop subcontract ->
             let
-                prop = properties |> fetch pid |> fetch propertyID
-                contractData = extractData contract pid properties
+                contractData = extractDataDict subcontract properties
                 typeData = getTypeFields prop.propertyType
             in
                 Dict.union contractData typeData
 
-        _ ->
-            emptyData
+extractDataDict : Children -> ContractProperties -> Data
+extractDataDict d properties = Dict.map (\_ value -> extractValue properties value) d
 
-
-extractValue : Properties -> Int -> Contract -> JE.Value
-extractValue properties pid c =
+extractValue : ContractProperties -> Contract -> JE.Value
+extractValue properties c =
     case c of
-        Contracts.StringValue x ->
-            JE.string x
+        Contracts.Constant val _ -> Contracts.valueEncoder val
 
-        Contracts.IntValue x ->
-            JE.int x
-
-        Contracts.FloatValue x ->
-            JE.float x
-
-        Contracts.BoolValue x ->
-            JE.bool x
-
-        Contracts.PropertyKey propertyID _ ->
+        Contracts.PropertyKey { path } _ ->
             let
-                { value } =
-                    properties |> fetch pid |> fetch propertyID
+                value =
+                    properties |> fetch path
             in
             case value of
-                Just (Contracts.SimpleInt x) ->
+                Contracts.SimpleInt x ->
                     JE.int x
 
-                Just (Contracts.SimpleString x) ->
+                Contracts.SimpleString x ->
                     JE.string x
 
-                Just (Contracts.SimpleFloat x) ->
+                Contracts.SimpleFloat x ->
                     JE.float x
 
-                Just (Contracts.SimpleBool x) ->
+                Contracts.SimpleBool x ->
                     JE.bool x
 
                 _ ->
                     JE.null
 
-        Contracts.ListContract subcontracts ->
-            JE.list (extractValue properties pid) subcontracts
-
         Contracts.MapContract subcontracts ->
-            JE.dict (\k -> k) (extractValue properties pid) subcontracts
+            JE.dict (\k -> k) (extractValue properties) subcontracts
 
         _ -> JE.null
 
@@ -266,5 +222,12 @@ emptyValueMeta =
     , stops  = []
     , oneOf = Nothing
     }
+
+hasSetter : MetaData -> Bool
+hasSetter { property } = case property of
+    Nothing -> False
+    Just { setter } -> case setter of
+        Just _ -> True
+        _      -> False
 
 type alias Choices = List (JE.Value)

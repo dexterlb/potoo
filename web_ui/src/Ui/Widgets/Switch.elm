@@ -42,7 +42,9 @@ update msg model = case (msg, model.value) of
     (Toggle, Just b) ->
         let v = JE.bool (not b) in
             ( { model | transitioning = True },
-              Cmd.none, [ RequestSet model.metaData.propData.property v ] )
+              Cmd.none, case model.metaData.property of
+                  Just prop -> [ RequestSet prop v ]
+                  Nothing   -> [])
     (Toggle, Nothing) ->
         (model, Cmd.none, [])
 
@@ -85,6 +87,6 @@ valueClass { value } = case value of
 
 
 action : (Msg -> msg) -> Model -> List (Attribute msg)
-action lift m = case m.metaData.propData.hasSetter of
+action lift m = case hasSetter m.metaData of
     False -> []
     True  -> [ onClick (lift Toggle) ]

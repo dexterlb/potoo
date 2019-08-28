@@ -33,9 +33,9 @@ module.exports = {
         ]
       },
       {
-          test: /\.tsx?$/,
-          use: 'ts-loader',
-          exclude: /node_modules/
+        test: /\.tsx?$/,
+        use: 'ts-loader',
+        exclude: /node_modules/
       },
       {
         test:    /\.html$/,
@@ -60,10 +60,19 @@ module.exports = {
     noParse: /\.elm$/,
   },
 
+
   devServer: {
-    inline: true,
+    host: '0.0.0.0',
+    port: '8080',
+    inline: false,
+    hot: false,
     stats: { colors: true },
+    proxy: {
+      '/ws': {
+        target: 'ws://localhost:1880',
+        ws: true
+      }
+    },
+    disableHostCheck: true,
   },
-
-
 };

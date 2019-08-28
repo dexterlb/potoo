@@ -40,8 +40,11 @@ init meta v =
 update : Msg -> Model -> ( Model, Cmd Msg, List Action )
 update msg model = case msg of
     Set v ->
-        ( { model | wantValue = Just v },
-            Cmd.none, [ RequestSet model.metaData.propData.property v ] )
+        case model.metaData.property of
+            Just prop ->
+                ( { model | wantValue = Just v },
+                    Cmd.none, [ RequestSet prop v ] )
+            Nothing -> ( model, Cmd.none, [] )
 
 
 updateValue : Maybe JE.Value -> Model -> ( Model, Cmd Msg, List Action )

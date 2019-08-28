@@ -14,6 +14,8 @@ import Html.Events exposing (onClick, onInput)
 
 import Json.Encode as JE
 import Maybe exposing (withDefault)
+import Time
+import Task
 
 type alias Model =
     { metaData:     MetaData
@@ -24,11 +26,15 @@ type alias Model =
     , displayRatio: Float
     , peakRatio:    Float
     , lastPeakTime: Float
+    , outT:         Int
+    , latency:      List Int
     }
 
 
 type Msg
     = Set Float
+    | OutT Time.Posix
+    | InT  Time.Posix
 
 
 init : MetaData -> Value -> Model
@@ -41,6 +47,8 @@ init meta v =
     , displayRatio  = withDefault 0   meta.valueMeta.min
     , peakRatio     = 0
     , lastPeakTime  = -42
+    , latency       = [0]
+    , outT          = 99999999999999
     }
 
 getMin          { metaData } = withDefault 0   metaData.valueMeta.min
@@ -65,12 +73,19 @@ findStop v l = case l of
 update : Msg -> Model -> ( Model, Cmd Msg, List Action )
 update msg model = case msg of
     Set f ->
-        ( { model | userValue = f, dirty = True }, Cmd.none, [ RequestSet model.metaData.propData.property (JE.float f) ])
+        ( { model | userValue = f, dirty = True }, (Task.perform OutT Time.now), case model.metaData.property of
+            Just prop -> [ RequestSet prop (JE.float f) ]
+            Nothing   -> [])
+    OutT t -> ( { model | outT = Time.posixToMillis t }, Cmd.none, [] )
+    InT  t -> case (Time.posixToMillis t) - model.outT < 0 of
+        False -> ( { model | latency = pushFixed 100 (Time.posixToMillis t - model.outT) model.latency
+                             }, Cmd.none, [] )
+        True -> ( model, Cmd.none, [] )
 
 
 updateValue : Value -> Model -> ( Model, Cmd Msg, List Action )
 updateValue v model =
-    ( { model | value = getValue v }, Cmd.none, [] )
+    ( { model | value = getValue v }, (Task.perform InT Time.now), [] )
 
 updateMetaData : MetaData -> Model -> ( Model, Cmd Msg, List Action )
 updateMetaData meta model =
@@ -110,6 +125,7 @@ animatePeak (time, diff) model = case model.displayRatio > model.peakRatio of
 getValue : Value -> Maybe Float
 getValue v = case v of
     SimpleFloat f -> Just f
+    SimpleInt i   -> Just (toFloat i)
     _             -> Nothing
 
 calcRatio : Model -> Float -> Float
@@ -123,7 +139,7 @@ view lift m children =
             Just v  ->
                 [ renderNumberValue m.metaData v
                 , div [ class "outer" ] ((renderStopRects m) ++ renderGrid m)
-                ] ++ (case m.metaData.propData.hasSetter of
+                ] ++ (case hasSetter m.metaData of
                     False -> []
                     True  ->
                         [ input
@@ -141,7 +157,9 @@ view lift m children =
                                 )
                             ] []
                         ]
-                )
+                ) ++
+                [ div [ class "latency" ] [ text <| "avg latency: " ++ (String.fromInt (avg m.latency)) ]
+                ]
 
 
 renderStopRects : Model -> List (Html msg)
@@ -214,3 +232,12 @@ animateValue speed expSpeed diff new old = let delta = speed * diff + expSpeed *
     case new > old of
         True  -> min new (old + delta)
         False -> max new (old - delta)
+
+pushFixed : Int -> a -> List a -> List a
+pushFixed n a l = case (n, l) of
+    (_, []) -> [a]
+    (0, _)  -> []
+    (_, (x :: xs)) -> a :: (pushFixed (n - 1) x xs)
+
+avg : List Int -> Int
+avg l = (List.foldr (+) 0 l) // (List.length l)

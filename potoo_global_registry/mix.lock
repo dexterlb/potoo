@@ -1,3 +1,0 @@
-%{
-  "ok": {:hex, :ok, "1.11.2", "0d7a72ec1450598623d2c559fca01e2fafaa7c62b31769273fd59a610b44cca8", [:mix], [], "hexpm"},
-}

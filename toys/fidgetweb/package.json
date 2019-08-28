@@ -1,0 +1,43 @@
+{
+  "name": "fidget",
+  "version": "1.0.0",
+  "description": "Example service for Potoo",
+  "main": "index.js",
+  "dependencies": {
+    "@types/paho-mqtt": "^1.0.4",
+    "paho-mqtt": "^1.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^10.12.9",
+    "@types/ws": "^6.0.1",
+    "css-loader": "^1.0.1",
+    "elm-webpack-loader": "^5.0.0",
+    "file-loader": "^2.0.0",
+    "node-sass": "^4.10.0",
+    "sass-loader": "^7.1.0",
+    "style-loader": "^0.23.1",
+    "ts-loader": "^5.3.0",
+    "typescript": "^3.1.6",
+    "webpack": "^4.26.0",
+    "webpack-cli": "^3.1.2",
+    "webpack-dev-server": "^3.1.10",
+    "ws": "^6.1.2",
+    "potoo": "file:../../js/potoo"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "install-deps": "./scripts/install_deps.sh",
+    "make": "webpack",
+    "serve": "webpack-dev-server"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DexterLB/potoo.git"
+  },
+  "author": "DexterLB",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/DexterLB/potoo/issues"
+  },
+  "homepage": "https://github.com/DexterLB/potoo#readme"
+}

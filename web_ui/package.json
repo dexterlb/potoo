@@ -3,6 +3,11 @@
   "version": "1.0.0",
   "description": "Web UI for potoo",
   "main": "index.js",
+  "dependencies": {
+    "@types/paho-mqtt": "^1.0.4",
+    "paho-mqtt": "^1.1.0",
+    "potoo": "file:../js/potoo"
+  },
   "devDependencies": {
     "@types/node": "^12.6.2",
     "@types/ws": "^6.0.1",

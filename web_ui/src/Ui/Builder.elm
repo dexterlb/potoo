@@ -1,6 +1,6 @@
 module Ui.Builder exposing (parentMap, propertyMap, toTree)
 
-import Contracts exposing (Contract, Pid, Properties, PropertyID, fetch, makeCallee, Type(..))
+import Contracts exposing (Contract, ContractProperties, PropertyID, Property, fetch, Type, TypeDescr(..))
 import Dict exposing (Dict)
 import Ui.MetaData exposing (..)
 import Ui.Tree exposing (..)
@@ -13,136 +13,103 @@ import Ui.Widgets.List
 import Ui.Widgets.Text
 
 
-toTree : Pid -> Dict Pid Contract -> Properties -> ( WidgetID, Widgets )
-toTree pid contracts properties =
-    case Dict.get pid contracts of
-        Just contract ->
-            toTree_ contract "root" pid contracts properties noWidgets
-
-        Nothing ->
-            let
-                meta =
-                    { noMetaData | key = "root" }
-            in
-            simpleTree noWidgets "root" (\_ -> meta) [] (BrokenWidget meta pid)
+toTree : Contract -> ContractProperties -> ( WidgetID, Widgets )
+toTree contract properties =
+    toTree_ contract "root" properties noWidgets
 
 
-toTree_ : Contract -> String -> Pid -> Dict Pid Contract -> Properties -> Widgets -> ( WidgetID, Widgets )
-toTree_ c key pid contracts properties widgets =
+toTree_ : Contract -> String -> ContractProperties -> Widgets -> ( WidgetID, Widgets )
+toTree_ c key properties widgets =
     let
         metaMaker =
-            getMetaData key c pid
+            getMetaData key c
     in
     let
         metaData =
             metaMaker properties
     in
     case c of
-        Contracts.StringValue s ->
-            simpleTree widgets key metaMaker [] (StringWidget metaData <| Contracts.SimpleString s)
-
-        Contracts.IntValue x ->
-            simpleTree widgets key metaMaker [] (NumberWidget metaData <| Contracts.SimpleInt x)
-
-        Contracts.FloatValue x ->
-            simpleTree widgets key metaMaker [] (NumberWidget metaData <| Contracts.SimpleFloat x)
-
-        Contracts.BoolValue x ->
-            simpleTree widgets key metaMaker [] (SwitchWidget <|
-                Ui.Widgets.Switch.init metaData <| Contracts.SimpleBool x)
-
-        Contracts.Function { argument, name, retval, data } ->
+        Contracts.Constant val subcontract ->
             let
-                widget = case (argument, retval) of
-                    (TNil, TNil) -> ButtonWidget <| Ui.Widgets.Button.init
-                        metaData
-                        { argument = argument, name = name, retval = retval, pid = pid }
-                    _ ->
-                        (FunctionWidget <|
-                            Ui.Widgets.Function.init
-                                metaData
-                                { argument = argument, name = name, retval = retval, pid = pid }
-                        )
+                widget = case val of
+                    Contracts.SimpleString s ->
+                        StringWidget metaData <| Contracts.SimpleString s
+
+                    Contracts.SimpleInt x ->
+                        NumberWidget metaData <| Contracts.SimpleInt x
+
+                    Contracts.SimpleFloat x ->
+                        NumberWidget metaData <| Contracts.SimpleFloat x
+
+                    Contracts.SimpleBool x -> SwitchWidget <|
+                        Ui.Widgets.Switch.init metaData <| Contracts.SimpleBool x
+
+                    _ -> StringWidget metaData <| Contracts.SimpleString "<const>"
+            in let
+                ( children, newWidgets ) =
+                    Dict.toList subcontract
+                        |> toTreeMany properties widgets
             in
-                simpleTree widgets
+                simpleTree newWidgets
                     key
                     metaMaker
-                    []
+                    children
                     widget
 
-        Contracts.Delegate { destination, data } ->
+        Contracts.Function ({ argument, retval } as callee) subcontract ->
             let
-                ( widget, children, widgets2 ) =
-                    case Dict.get destination contracts of
-                        Just subcontract ->
-                            let
-                                ( child, widgets3 ) =
-                                    toTree_ subcontract "connected" destination contracts properties widgets
-                            in
-                            ( DelegateWidget metaData destination
-                            , [ child ]
-                            , widgets3
-                            )
-
-                        Nothing ->
-                            ( BrokenWidget metaData pid, [], widgets )
+                widget = case (argument.t, retval.t) of
+                    (TNil, TNil) ->
+                        ButtonWidget <| Ui.Widgets.Button.init metaData callee
+                    (TNil, TVoid) ->
+                        ButtonWidget <| Ui.Widgets.Button.init metaData callee
+                    _ ->
+                        (FunctionWidget <| Ui.Widgets.Function.init metaData callee)
+            in let
+                ( children, newWidgets ) =
+                    Dict.toList subcontract
+                        |> toTreeMany properties widgets
             in
-            simpleTree widgets2 key metaMaker children widget
+                simpleTree newWidgets
+                    key
+                    metaMaker
+                    children
+                    widget
 
         Contracts.MapContract d ->
             let
                 ( children, newWidgets ) =
-                    Dict.map (\subkey subcontract -> ( subcontract, subkey, pid )) d
-                        |> Dict.values
-                        |> toTreeMany contracts properties widgets
+                    Dict.toList d
+                        |> toTreeMany properties widgets
             in
             simpleTree newWidgets key metaMaker children (ListWidget <| Ui.Widgets.List.init metaData)
 
-        Contracts.ListContract d ->
+        Contracts.PropertyKey property d ->
             let
                 ( children, newWidgets ) =
-                    List.indexedMap (\i subcontract -> ( subcontract, "#" ++ String.fromInt i, pid )) d |> toTreeMany contracts properties widgets
-            in
-            simpleTree newWidgets key metaMaker children (ListWidget <| Ui.Widgets.List.init metaData)
-
-        Contracts.PropertyKey propertyID (Contracts.MapContract d) ->
-            let
-                ( children, newWidgets ) =
-                    Dict.map
-                        (\subkey subcontract ->
-                            ( subcontract, subkey, pid )
-                        )
-                        d
-                        |> Dict.values
-                        |> toTreeMany contracts properties widgets
-
-                property =
-                    properties |> fetch pid |> fetch propertyID
-            in
-            let
+                    Dict.toList d
+                        |> toTreeMany properties widgets
+            in let
                 node =
                     { key = key
                     , metaMaker = metaMaker
                     , children = children
                     }
             in
-            addWidget ( propertyWidget property metaData, node ) newWidgets
-
-        Contracts.PropertyKey _ subcontract ->
-            toTree_ subcontract key pid contracts properties widgets
+                addWidget ( propertyWidget property metaData, node ) newWidgets
 
 
-toTreeMany : Dict Pid Contract -> Properties -> Widgets -> List ( Contract, String, Pid ) -> ( List WidgetID, Widgets )
-toTreeMany contracts properties initialWidgets l =
+toTreeMany : ContractProperties -> Widgets -> List ( String, Contract ) -> ( List WidgetID, Widgets )
+toTreeMany properties initialWidgets l =
     List.foldr
-        (\( c, key, pid ) ( trees, widgets ) -> toTree_ c key pid contracts properties widgets |> (\( t, w ) -> ( t :: trees, w )))
+        (\( key, c ) ( trees, widgets ) -> toTree_ c key properties widgets |> (\( t, w ) -> ( t :: trees, w )))
         ( [], initialWidgets )
         l
 
 
 propertyWidget : Contracts.Property -> MetaData -> Widget
 propertyWidget prop metaData =
-    case Contracts.stripType prop.propertyType of
+    case prop.propertyType.t of
         Contracts.TFloat ->
             case (metaData.valueMeta.min, metaData.valueMeta.max) of
                 (Just _, Just _) ->
@@ -156,14 +123,14 @@ propertyWidget prop metaData =
 
         Contracts.TString -> case metaData.valueMeta.oneOf of
             Nothing ->
-                case metaData.propData.hasSetter of
+                case hasSetter metaData of
                     False ->
                         StringWidget metaData Contracts.Loading
                     True ->
                         TextWidget <|
                             Ui.Widgets.Text.init metaData Nothing
             Just _ ->
-                case metaData.propData.hasSetter of
+                case hasSetter metaData of
                     False ->
                         StringWidget metaData Contracts.Loading
                     True ->
@@ -174,24 +141,32 @@ propertyWidget prop metaData =
             Ui.Widgets.Switch.init metaData Contracts.Loading
 
         unk ->
-            UnknownWidget unk metaData Contracts.Loading
+            UnknownWidget prop.propertyType metaData Contracts.Loading
 
 
-propertyMap : Properties -> Widgets -> Dict ( Pid, PropertyID ) WidgetID
+propertyMap : ContractProperties -> Widgets -> Dict PropertyID WidgetID
 propertyMap properties ( w, _ ) =
     w
         |> Dict.toList
         |> List.map (\( id, ( _, { metaMaker } ) ) -> ( metaMaker properties, id ))
-        |> List.map (\( meta, id ) -> ( meta.propData.property, id ))
+        |> List.map (\( meta, id ) -> case meta.property of
+            Just prop -> [( prop.path, id )]
+            Nothing   -> []
+            )
+        |> List.concat
         |> Dict.fromList
 
 
-parentMap : Properties -> Widgets -> Dict ( Pid, PropertyID ) WidgetID
+parentMap : ContractProperties -> Widgets -> Dict PropertyID WidgetID
 parentMap properties ( w, l ) =
     w
         |> Dict.toList
         |> List.concatMap (\( id, ( _, { children } ) ) -> List.map (\child -> ( child, id )) children)
         |> List.map (\( child, id ) -> ( getWidget child ( w, l ), id ))
         |> List.map (\( ( _, { metaMaker } ), id ) -> ( metaMaker properties, id ))
-        |> List.map (\( meta, id ) -> ( meta.propData.property, id ))
+        |> List.map (\( meta, id ) -> case meta.property of
+            Just prop -> [( prop.path, id )]
+            Nothing   -> []
+            )
+        |> List.concat
         |> Dict.fromList

@@ -1,6 +1,6 @@
-module Ui exposing (Action, Model, Msg, blank, build, getValue, update, updateProperty, animate, pushResult, view)
+module Ui exposing (Action, Model, Msg, blank, build, update, updateProperty, animate, pushResult, view)
 
-import Contracts exposing (Contract, Pid, Properties, PropertyID, fetch)
+import Contracts exposing (Contract, ContractProperties, PropertyID, Property, fetch)
 import Dict exposing (Dict)
 import Html exposing (Html)
 import Ui.Action
@@ -12,8 +12,8 @@ import Ui.Tree exposing (..)
 type alias Model =
     { root : Int
     , widgets : Widgets
-    , propertyToWidget : Dict ( Pid, PropertyID ) WidgetID
-    , propertyToParent : Dict ( Pid, PropertyID ) WidgetID
+    , propertyToWidget : Dict PropertyID WidgetID
+    , propertyToParent : Dict PropertyID WidgetID
     }
 
 
@@ -25,11 +25,11 @@ type alias Action =
     Ui.Action.Action
 
 
-build : Int -> Dict Int Contract -> Properties -> Model
-build pid contracts properties =
+build : Contract -> ContractProperties -> Model
+build contract properties =
     let
         ( root, widgets ) =
-            toTree pid contracts properties
+            toTree contract properties
     in
     { root = root
     , widgets = widgets
@@ -40,7 +40,7 @@ build pid contracts properties =
 
 blank : Model
 blank =
-    build 0 Dict.empty Dict.empty
+    build (Contracts.MapContract Dict.empty) Dict.empty
 
 
 update : (WidgetID -> Action -> Cmd m) -> (Msg -> m) -> Msg -> Model -> ( Model, Cmd m )
@@ -52,23 +52,21 @@ update liftAction liftMsg msg m =
     ( { m | widgets = widgets }, cmd )
 
 
-updateProperty : (WidgetID -> Action -> Cmd m) -> (Msg -> m) -> ( Pid, PropertyID ) -> Properties -> Model -> ( Model, Cmd m )
-updateProperty liftAction liftMsg ( pid, id ) properties m =
+updateProperty : (WidgetID -> Action -> Cmd m) -> (Msg -> m) -> PropertyID -> ContractProperties -> Model -> ( Model, Cmd m )
+updateProperty liftAction liftMsg path properties m =
     let
         value =
-            properties |> fetch pid |> fetch id |> getValue
+            Dict.get path properties |> Maybe.withDefault Contracts.Loading
 
         widgetID =
-            m.propertyToWidget |> fetch ( pid, id )
+            m.propertyToWidget |> fetch path
 
         parentID =
-            m.propertyToParent |> fetch ( pid, id )
-    in
-    let
+            m.propertyToParent |> fetch path
+    in let
         ( widgets, cmd ) =
             updateWidgetsValue liftAction liftMsg widgetID value m.widgets
-    in
-    let
+    in let
         ( widgets2, cmd2 ) =
             updateWidgetsMetaData liftAction liftMsg parentID properties widgets
     in
@@ -90,13 +88,3 @@ pushResult liftAction liftMsg id result m =
 view : Model -> Html Msg
 view { root, widgets } =
     renderUi widgets root
-
-
-getValue : Contracts.Property -> Contracts.Value
-getValue { value } =
-    case value of
-        Just x ->
-            x
-
-        Nothing ->
-            Contracts.Loading

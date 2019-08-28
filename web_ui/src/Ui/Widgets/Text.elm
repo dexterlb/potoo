@@ -51,7 +51,10 @@ update msg model = case msg of
         Nothing -> ( model, Cmd.none, [] )
         Just s ->
             ( { model | text = Nothing, dirty = Nothing },
-                Cmd.none, [ RequestSet model.metaData.propData.property (JE.string s) ] )
+                Cmd.none, case model.metaData.property of
+                    Just prop -> [ RequestSet prop (JE.string s) ]
+                    Nothing   -> []
+                    )
 
 
 updateValue : Value -> Model -> ( Model, Cmd Msg, List Action )

@@ -1,109 +1,66 @@
 module Contracts exposing (..)
 
 import Dict exposing (Dict)
-import Json.Decode exposing (Decoder, andThen, bool, decodeString, dict, fail, field, float, int, null, oneOf, string, succeed, list, value)
-import Json.Encode
+import Json.Decode as JD exposing (Decoder, andThen, bool, decodeString, dict, fail, field, float, int, null, oneOf, string, succeed, list, value)
 import Json.Encode as JE
 import Result
 import Set
 
 
 type alias Data =
-    Dict String Json.Encode.Value
+    Dict String JE.Value
 
 
-type Type
-    = TNil
+type alias Type = { t: TypeDescr, meta: Data }
+
+type TypeDescr
+    = TVoid
+    | TNil
     | TInt
     | TFloat
-    | TAtom
     | TString
     | TBool
-    | TLiteral String
-    | TType Type Data
-    | TDelegate
-    | TChannel Type
-    | TUnion Type Type
-    | TList Type
+    | TLiteral JE.Value
+    | TUnion (List Type)
     | TMap Type Type
+    | TList Type
     | TTuple (List Type)
     | TStruct (Dict String Type)
     | TUnknown String
 
 
 type Contract
-    = StringValue String
-    | IntValue Int
-    | FloatValue Float
-    | BoolValue Bool
-    | Delegate DelegateStruct
-    | Function FunctionStruct
-    | MapContract (Dict String Contract)
-    | ListContract (List Contract)
-    | PropertyKey PropertyID Contract
+    = Constant Value Children
+    | MapContract Children
+    | Function Callee Children
+    | PropertyKey Property Children
 
+type alias Children = Dict String Contract
 
 
 -- need better names for those
 
-
-type alias FunctionStruct =
-    { argument : Type
-    , name : String
-    , retval : Type
-    , data : Data
-    }
-
+type alias Topic = String
 
 type alias Callee =
     { argument : Type
-    , name : String
+    , path : Topic
     , retval : Type
-    , pid : Int
     }
-
-
-makeCallee : Int -> FunctionStruct -> Callee
-makeCallee pid { argument, retval, name } =
-    { argument = argument
-    , name = name
-    , retval = retval
-    , pid = pid
-    }
-
-
-type alias DelegateStruct =
-    { destination : Pid
-    , data : Data
-    }
-
-
-type alias Channel =
-    Int
-
-
-type alias Pid =
-    Int
 
 
 type alias PropertyID =
-    Int
+    Topic
 
 
 type alias ContractProperties =
-    Dict PropertyID Property
-
-
-type alias Properties =
-    Dict Pid ContractProperties
+    Dict PropertyID Value
 
 
 type alias Property =
-    { getter : Maybe FunctionStruct
-    , setter : Maybe FunctionStruct
-    , subscriber : Maybe FunctionStruct
+    { setter : Maybe Callee
     , propertyType : Type
-    , value : Maybe Value
+    , path : PropertyID
     }
 
 
@@ -112,212 +69,189 @@ type Value
     | SimpleString String
     | SimpleFloat Float
     | SimpleBool Bool
-    | Complex Json.Encode.Value
+    | Complex JE.Value
     | Loading
 
-valueEncoder : Value -> Json.Encode.Value
-valueEncoder v = case v of
-    SimpleInt    x -> Json.Encode.int x
-    SimpleString x -> Json.Encode.string x
-    SimpleFloat  x -> Json.Encode.float x
-    SimpleBool   x -> Json.Encode.bool x
-    Complex      x -> x
-    Loading        -> Json.Encode.null
+valueDecoder : Decoder Value
+valueDecoder = JD.oneOf
+    [ JD.map SimpleInt    JD.int
+    , JD.map SimpleString JD.string
+    , JD.map SimpleBool   JD.bool
+    , JD.map SimpleFloat  JD.float
+    , JD.map Complex      JD.value
+    ]
 
-encodeValue : Value -> Maybe Json.Encode.Value
+parseValue : JE.Value -> Value
+parseValue v = JD.decodeValue valueDecoder v |> Result.withDefault (Complex v)
+
+valueEncoder : Value -> JE.Value
+valueEncoder v = case v of
+    SimpleInt    x -> JE.int x
+    SimpleString x -> JE.string x
+    SimpleFloat  x -> JE.float x
+    SimpleBool   x -> JE.bool x
+    Complex      x -> x
+    Loading        -> JE.null
+
+encodeValue : Value -> Maybe JE.Value
 encodeValue v = case v of
     Loading -> Nothing
     x       -> Just <| valueEncoder x
 
-delegate : Pid -> DelegateStruct
-delegate p =
-    { destination = p, data = Dict.empty }
-
-
 equivTypes : Type -> Type -> Bool
 equivTypes a b =
-    a == b
+    a.t == b.t  -- FIXME
 
 
 parseContract : String -> Result String Contract
 parseContract s =
     decodeString contractDecoder s
-        |> Result.mapError Json.Decode.errorToString
+        |> Result.mapError JD.errorToString
 
 
 parseType : String -> Result String Type
 parseType s =
     decodeString typeDecoder s
-        |> Result.mapError Json.Decode.errorToString
+        |> Result.mapError JD.errorToString
 
 
 contractDecoder : Decoder Contract
 contractDecoder =
     oneOf
-        [ stringValueDecoder
-        , intValueDecoder
-        , boolValueDecoder
-        , floatValueDecoder
-        , objectDecoder
-        , Json.Decode.lazy (\_ -> mapDecoder)
-        , Json.Decode.lazy (\_ -> listDecoder)
+        [ objectDecoder
+        , JD.lazy (\_ -> mapContractDecoder)
         ]
-
-
-stringValueDecoder : Decoder Contract
-stringValueDecoder =
-    Json.Decode.map StringValue string
-
-
-intValueDecoder : Decoder Contract
-intValueDecoder =
-    Json.Decode.map IntValue int
-
-
-boolValueDecoder : Decoder Contract
-boolValueDecoder =
-    Json.Decode.map BoolValue bool
-
-
-floatValueDecoder : Decoder Contract
-floatValueDecoder =
-    Json.Decode.map FloatValue float
 
 
 objectDecoder : Decoder Contract
 objectDecoder =
-    field "__type__" string
+    field "_t" string
         |> andThen
             (\t ->
                 case t of
-                    "delegate" ->
-                        delegateDecoder
+                    "value" ->
+                        propertyDecoder
 
-                    "function" ->
+                    "callable" ->
                         functionDecoder
+
+                    "constant" ->
+                        constantDecoder
 
                     _ ->
                         fail <| "object type `" ++ t ++ "' is unknown"
             )
 
 
-delegateDecoder : Decoder Contract
-delegateDecoder =
-    Json.Decode.map2 makeDelegate
-        (field "destination" int)
-        (field "data" dataDecoder)
-
+propertyDecoder : Decoder Contract
+propertyDecoder =
+    JD.map2 makeProperty
+        (field "type" typeDecoder)
+        (field "subcontract" mapDecoder)
 
 functionDecoder : Decoder Contract
 functionDecoder =
-    Json.Decode.map4 makeFunction
+    JD.map3 makeFunction
         (field "argument" typeDecoder)
-        (field "name" string)
         (field "retval" typeDecoder)
-        (field "data" dataDecoder)
+        (field "subcontract" mapDecoder)
+
+constantDecoder : Decoder Contract
+constantDecoder =
+    JD.map2 makeConstant
+        (field "value" valueDecoder)
+        (field "subcontract" mapDecoder)
 
 
-mapDecoder : Decoder Contract
-mapDecoder =
-    Json.Decode.map MapContract <|
-        dict (Json.Decode.lazy (\_ -> contractDecoder))
+mapContractDecoder : Decoder Contract
+mapContractDecoder = JD.map MapContract mapDecoder
 
-
-listDecoder : Decoder Contract
-listDecoder =
-    Json.Decode.map ListContract <|
-        Json.Decode.list (Json.Decode.lazy (\_ -> contractDecoder))
+mapDecoder : Decoder Children
+mapDecoder = dict (JD.lazy (\_ -> contractDecoder))
 
 
 dataDecoder : Decoder Data
 dataDecoder =
-    dict Json.Decode.value
+    dict JD.value
 
 
-makeDelegate : Int -> Data -> Contract
-makeDelegate destination data =
-    Delegate
-        { destination = destination
-        , data = data
-        }
+makeProperty : Type -> Children -> Contract
+makeProperty t subcontract = PropertyKey
+    { path = "", propertyType = t, setter = Nothing }
+    subcontract
 
-
-makeFunction : Type -> String -> Type -> Data -> Contract
-makeFunction argument name retval data =
+makeFunction : Type -> Type -> Children -> Contract
+makeFunction argument retval subcontract =
     Function
         { argument = argument
-        , name = name
+        , path = ""
         , retval = retval
-        , data = data
         }
+        subcontract
+
+makeConstant : Value -> Children -> Contract
+makeConstant value subcontract =
+    Constant
+        value
+        subcontract
 
 
-channelDecoder : Decoder Channel
-channelDecoder =
-    field "__type__" string
-        |> andThen
-            (\t ->
-                case t of
-                    "channel" ->
-                        field "id" int
-
-                    _ ->
-                        fail "not a channel"
-            )
-
-
-dataEncoder : Data -> Json.Encode.Value
+dataEncoder : Data -> JE.Value
 dataEncoder d =
-    Json.Encode.object (Dict.toList d)
+    JE.object (Dict.toList d)
 
-
-delegateEncoder : DelegateStruct -> Json.Encode.Value
-delegateEncoder { destination, data } =
-    Json.Encode.object
-        [ ( "destination", Json.Encode.int destination )
-        , ( "data", dataEncoder data )
-        , ( "__type__", Json.Encode.string "delegate" )
-        ]
-
-
-channelEncoder : Channel -> Json.Encode.Value
-channelEncoder id =
-    Json.Encode.object
-        [ ( "id", Json.Encode.int id )
-        , ( "__type__", Json.Encode.string "channel" )
-        ]
 
 
 typeDecoder : Decoder Type
 typeDecoder =
+    (oneOf
+        [ JD.field "_meta" dataDecoder
+        , JD.succeed Dict.empty ]
+    ) |> andThen
+        (\meta ->
+            JD.map (\t ->
+                { meta = meta, t = t }
+            ) typeDescrDecoder
+        )
+
+recursiveTypeDecoder : Decoder Type
+recursiveTypeDecoder = JD.lazy <| \_ -> typeDecoder
+
+typeDescrDecoder : Decoder TypeDescr
+typeDescrDecoder =
     oneOf
-        [ recursiveTypeDecoder
+        [ recursiveTypeDescrDecoder
         , tUnknownDecoder
         ]
 
 
-recursiveTypeDecoder : Decoder Type
-recursiveTypeDecoder =
-    Json.Decode.lazy <|
+recursiveTypeDescrDecoder : Decoder TypeDescr
+recursiveTypeDescrDecoder =
+    JD.lazy <|
         \_ ->
             oneOf
-                [ tNilDecoder
-                , tSimpleDecoder
-                , Json.Decode.lazy <| \_ -> tComplexDecoder
+                [ tBasicDecoder
+                , JD.lazy <| \_ -> tComplexDecoder
                 ]
 
 
-tNilDecoder : Decoder Type
+tNilDecoder : Decoder TypeDescr
 tNilDecoder =
     null TNil
 
 
-tSimpleDecoder : Decoder Type
-tSimpleDecoder =
+tBasicDecoder : Decoder TypeDescr
+tBasicDecoder =
     string
         |> andThen
-            (\t ->
-                case t of
+            (\name ->
+                case name of
+                    "void" ->
+                        succeed TVoid
+
+                    "null" ->
+                        succeed TNil
+
                     "int" ->
                         succeed TInt
 
@@ -330,100 +264,95 @@ tSimpleDecoder =
                     "string" ->
                         succeed TString
 
-                    "atom" ->
-                        succeed TAtom
-
-                    "delegate" ->
-                        succeed TDelegate
-
                     _ ->
-                        fail <| "type '" ++ t ++ "' is not simple"
+                        fail <| "type '" ++ name ++ "' is not a basic type"
             )
 
 
-tComplexDecoder : Decoder Type
+tComplexDecoder : Decoder TypeDescr
 tComplexDecoder =
-    Json.Decode.index 0 string
+    JD.field "_t" string
         |> andThen
             (\t ->
                 case t of
-                    "struct" ->
-                        oneOf [ tStructDecoder, tTupleDecoder ]
+                    "type-basic" ->
+                        JD.field "name" tBasicDecoder
 
-                    "map" ->
-                        tBinaryDecoder TMap
-
-                    "list" ->
-                        tUnaryDecoder TList
-
-                    "union" ->
-                        tBinaryDecoder TUnion
-
-                    "channel" ->
-                        tUnaryDecoder TChannel
-
-                    "type" ->
-                        tTaggedTypeDecoder
-
-                    "literal" ->
+                    "type-literal" ->
                         tLiteralDecoder
+
+                    "type-map" ->
+                        tMapDecoder
+
+                    "type-union" ->
+                        tUnionDecoder
+
+                    "type-list" ->
+                        tListDecoder
+
+                    "type-tuple" ->
+                        tTupleDecoder
+
+                    "type-struct" ->
+                        tStructDecoder
 
                     _ ->
                         fail <| "complex type '" ++ t ++ "' is unknown"
             )
 
 
-tStructDecoder : Decoder Type
+tStructDecoder : Decoder TypeDescr
 tStructDecoder =
-    Json.Decode.index 1 <|
-        Json.Decode.map TStruct <|
-            Json.Decode.dict recursiveTypeDecoder
+    JD.field "fields" <|
+        JD.map TStruct <|
+            JD.dict recursiveTypeDecoder
 
 
-tTupleDecoder : Decoder Type
+tTupleDecoder : Decoder TypeDescr
 tTupleDecoder =
-    Json.Decode.index 1 <|
-        Json.Decode.map TTuple <|
-            Json.Decode.list recursiveTypeDecoder
+    JD.field "fields" <|
+        JD.map TTuple <|
+            JD.list recursiveTypeDecoder
 
 
-tUnaryDecoder : (Type -> Type) -> Decoder Type
-tUnaryDecoder f =
-    Json.Decode.map f
-        (Json.Decode.index 1 recursiveTypeDecoder)
+tListDecoder : Decoder TypeDescr
+tListDecoder =
+    JD.map TList
+        (JD.field "value" recursiveTypeDecoder)
 
 
-tBinaryDecoder : (Type -> Type -> Type) -> Decoder Type
-tBinaryDecoder f =
-    Json.Decode.map2 f
-        (Json.Decode.index 1 recursiveTypeDecoder)
-        (Json.Decode.index 2 recursiveTypeDecoder)
+tMapDecoder : Decoder TypeDescr
+tMapDecoder =
+    JD.map2 TMap
+        (JD.field "key" recursiveTypeDecoder)
+        (JD.field "value" recursiveTypeDecoder)
 
 
-tTaggedTypeDecoder : Decoder Type
-tTaggedTypeDecoder =
-    Json.Decode.map2 TType
-        (Json.Decode.index 1 recursiveTypeDecoder)
-        (Json.Decode.index 2 dataDecoder)
-
-
-tLiteralDecoder : Decoder Type
+tLiteralDecoder : Decoder TypeDescr
 tLiteralDecoder =
-    Json.Decode.map TLiteral
-        (Json.Decode.index 1 <|
-            Json.Decode.map (\v -> Json.Encode.encode 0 v) Json.Decode.value
+    JD.map TLiteral
+        (JD.field "value" <| JD.value
         )
 
+tUnionDecoder : Decoder TypeDescr
+tUnionDecoder =
+    JD.map TUnion
+        (JD.field "alts" <| JD.list
+        <| recursiveTypeDecoder)
 
-tUnknownDecoder : Decoder Type
+
+tUnknownDecoder : Decoder TypeDescr
 tUnknownDecoder =
-    Json.Decode.map
-        (\v -> TUnknown <| Json.Encode.encode 4 v)
-        Json.Decode.value
+    JD.map
+        (\v -> TUnknown <| JE.encode 4 v)
+        JD.value
 
 
 inspectType : Type -> String
-inspectType givenType =
+inspectType { t, meta } = inspectTypeDescr t ++ inspectData meta
+
+inspectTypeDescr : TypeDescr -> String
+inspectTypeDescr givenType =
     case givenType of
         TStruct d ->
             d
@@ -438,17 +367,11 @@ inspectType givenType =
                 |> String.join ", "
                 |> (\s -> "( " ++ s ++ " )")
 
-        TUnion a b ->
-            "(" ++ inspectType a ++ " | " ++ inspectType b ++ ")"
-
-        TType t d ->
-            inspectType t ++ inspectData d
+        TUnion l ->
+            "(" ++ (String.join " | " (List.map inspectType l)) ++ ")"
 
         TLiteral json ->
-            json
-
-        TChannel t ->
-            "channel[" ++ inspectType t ++ "]"
+            JE.encode 0 json
 
         TList t ->
             "list[" ++ inspectType t ++ "]"
@@ -468,191 +391,116 @@ inspectType givenType =
         TBool ->
             "bool"
 
-        TAtom ->
-            "atom"
-
-        TDelegate ->
-            "delegate"
-
         TNil ->
             "nil"
+
+        TVoid ->
+            "void"
 
         TUnknown v ->
             v
 
 
 inspectData : Data -> String
-inspectData d =
-    d
-        |> Dict.toList
-        |> List.map (\( k, v ) -> k ++ ": " ++ Json.Encode.encode 0 v)
-        |> String.join ", "
-        |> (\s -> "<" ++ s ++ ">")
+inspectData d = if Dict.isEmpty d then
+        ""
+    else
+        d
+            |> Dict.toList
+            |> List.map (\( k, v ) -> k ++ ": " ++ JE.encode 0 v)
+            |> String.join ", "
+            |> (\s -> "<" ++ s ++ ">")
 
 
 propertify : Contract -> ( Contract, ContractProperties )
 propertify contract =
     let
-        ( newContract, ( properties, _ ) ) =
-            propertify_ contract ( Dict.fromList [], 1 )
+        ( newContract, properties ) =
+            propertify_ "" contract ( Dict.fromList [] )
     in
-    ( newContract, properties )
+        ( newContract, properties )
 
 
-propertify_ : Contract -> ( ContractProperties, Int ) -> ( Contract, ( ContractProperties, Int ) )
-propertify_ contract data =
+propertify_ : Topic -> Contract -> ContractProperties -> ( Contract, ContractProperties )
+propertify_ path contract properties =
     case contract of
-        ListContract l ->
-            let
-                ( subcontracts, newData ) =
-                    propertifyList l data
-            in
-            ( ListContract subcontracts, newData )
-
         MapContract d ->
             let
-                ( subcontractList, newData1 ) =
-                    propertifyMap (Dict.toList d) data
+                ( subcontractList, newProperties ) =
+                    propertifyMap path (Dict.toList d) properties
 
                 subcontract =
                     MapContract <| Dict.fromList subcontractList
             in
-            case checkProperty d of
-                Just prop ->
-                    let
-                        ( properties, lastProp ) =
-                            newData1
+                ( subcontract, newProperties )
 
-                        newLastProp =
-                            lastProp + 1
-
-                        newProperties =
-                            Dict.insert newLastProp prop properties
-                    in
-                    ( PropertyKey newLastProp subcontract, ( newProperties, newLastProp ) )
-
-                Nothing ->
-                    ( subcontract, newData1 )
-
-        _ ->
-            ( contract, data )
+        Function f subcontract ->
+            let
+                ( subcontractList, newProperties ) =
+                    propertifyMap path (Dict.toList subcontract) properties
+            in
+                ( Function { f | path = path } (Dict.fromList subcontractList), newProperties )
 
 
-checkProperty : Dict String Contract -> Maybe Property
-checkProperty fields =
-    let
-        getter =
-            Dict.get "get" fields |> Maybe.andThen getFunction
+        PropertyKey prop subcontract ->
+            let
+                ( subcontractList, newProperties ) =
+                    propertifyMap path (Dict.toList subcontract) properties
+                newerProperties =
+                    Dict.insert path Loading newProperties
+            in let
+                subcontractDict = Dict.fromList subcontractList
+            in
+                ( PropertyKey
+                    { prop | path = path, setter = makeSetter prop subcontractDict }
+                    subcontractDict
+                , newerProperties )
 
-        setter =
-            Dict.get "set" fields |> Maybe.andThen getFunction
-
-        subscriber =
-            Dict.get "subscribe" fields |> Maybe.andThen getFunction
-    in
-    case getter of
-        Nothing ->
-            Nothing
-
-        Just { retval } ->
-            checkPropertyConsistency <|
-                { getter = getter
-                , setter = setter
-                , subscriber = subscriber
-                , propertyType = retval
-                , value = Nothing
-                }
+        Constant c subcontract ->
+            let
+                ( subcontractList, newProperties ) =
+                    propertifyMap path (Dict.toList subcontract) properties
+            in
+                ( Constant c (Dict.fromList subcontractList), newProperties )
 
 
-checkPropertyConsistency : Property -> Maybe Property
-checkPropertyConsistency prop =
-    let
-        getterType =
-            Maybe.map (\f -> f.retval) prop.getter
 
-        setterType =
-            Maybe.map (\f -> f.argument) prop.setter
+makeSetter : Property -> Children -> Maybe Callee
+makeSetter { propertyType } children =
+    Dict.get "set" children |> Maybe.andThen getFunction
+        |> Maybe.andThen (checkSetterType propertyType)
 
-        subscriberType =
-            Maybe.andThen (\f -> unChannel f.retval) prop.subscriber
 
-        equiv =
-            maybeEquivTypes getterType setterType && maybeEquivTypes getterType subscriberType
-    in
-    case equiv of
-        True ->
-            Just prop
-
-        False ->
-            Nothing
+checkSetterType : Type -> Callee -> Maybe Callee
+checkSetterType t f = case equivTypes f.argument t of
+    True  -> Just f
+    False -> Nothing
 
 numericContract : Contract -> Maybe Float
 numericContract c =
     case c of
-        FloatValue f ->
+        Constant (SimpleFloat f) _ ->
             Just f
 
-        IntValue i ->
+        Constant (SimpleInt i) _ ->
             Just <| toFloat i
 
         _ ->
             Nothing
 
 
-getFunction : Contract -> Maybe FunctionStruct
+getFunction : Contract -> Maybe Callee
 getFunction c =
     case c of
-        Function f ->
+        Function f _ ->
             Just f
 
         _ ->
             Nothing
 
 
-maybeEquivTypes : Maybe Type -> Maybe Type -> Bool
-maybeEquivTypes t1 t2 =
-    case ( t1, t2 ) of
-        ( Nothing, _ ) ->
-            True
-
-        ( _, Nothing ) ->
-            True
-
-        ( Just it1, Just it2 ) ->
-            equivTypes it1 it2
-
-
-unChannel : Type -> Maybe Type
-unChannel t =
-    case t of
-        -- this needs to be smarter
-        TChannel t2 ->
-            Just t2
-
-        _ ->
-            Nothing
-
-
-propertifyList : List Contract -> ( ContractProperties, Int ) -> ( List Contract, ( ContractProperties, Int ) )
-propertifyList l data =
-    case l of
-        [] ->
-            ( [], data )
-
-        h :: t ->
-            let
-                ( newTail, newData1 ) =
-                    propertifyList t data
-            in
-            let
-                ( contract, newData2 ) =
-                    propertify_ h newData1
-            in
-            ( contract :: newTail, newData2 )
-
-
-propertifyMap : List ( String, Contract ) -> ( ContractProperties, Int ) -> ( List ( String, Contract ), ( ContractProperties, Int ) )
-propertifyMap l data =
+propertifyMap : Topic -> List ( String, Contract ) -> ContractProperties -> ( List ( String, Contract ), ContractProperties )
+propertifyMap path l data =
     case l of
         [] ->
             ( [], data )
@@ -660,41 +508,30 @@ propertifyMap l data =
         ( hk, hv ) :: t ->
             let
                 ( newTail, newData1 ) =
-                    propertifyMap t data
+                    propertifyMap path t data
             in
             let
                 ( contract, newData2 ) =
-                    propertify_ hv newData1
+                    propertify_ (appendPath path hk) hv newData1
             in
             ( ( hk, contract ) :: newTail, newData2 )
 
 
 -- todo: make those work on deep types
 
-
-getTypeFields : Type -> Dict String Json.Encode.Value
-getTypeFields t =
-    case t of
-        TType _ data ->
-            data
-
-        _ ->
-            Dict.empty
-
-
-stripType : Type -> Type
-stripType t =
-    case t of
-        TType t1 data ->
-            t1
-
-        t2 ->
-            t2
+getTypeFields : Type -> Dict String JE.Value
+getTypeFields { meta } = meta
 
 
 
 -- utils
 
+appendPath : Topic -> Topic -> Topic
+appendPath a b = case (a, b) of
+    ("", "") -> ""
+    (_, "")  -> a
+    ("", _)  -> b
+    _        -> a ++ "/" ++ b
 
 fetch : comparable -> Dict comparable v -> v
 fetch k d =
@@ -703,7 +540,18 @@ fetch k d =
             v
 
         Nothing ->
-            Debug.todo "the author of this page is a moron"
+            Debug.todo <| "trying to get " ++ (Debug.toString k) ++ " out of "
+                       ++ (Debug.toString d)
+
+fetch2 : comparable -> Dict comparable v -> v
+fetch2 k d =
+    case Dict.get k d of
+        Just v ->
+            v
+
+        Nothing ->
+            Debug.todo <| "!!!trying to get " ++ (Debug.toString k) ++ " out of "
+                       ++ (Debug.toString d)
 
 
 firstJust : List (Maybe a) -> Maybe a
@@ -736,33 +584,31 @@ typeErrorToString err = case err of
     NotSupported s   -> s
     KeysDiffer a b   -> "keys differ: " ++ (String.join "," a) ++ " ≠ " ++ (String.join "," b)
 
-typeCheck : Type -> Json.Encode.Value -> TypeError
-typeCheck t v = Json.Decode.decodeValue (typeChecker t) v
+typeCheck : Type -> JE.Value -> TypeError
+typeCheck t v = JD.decodeValue (typeChecker t) v
     |> Result.withDefault (CannotCoerce v t)
 
 typeChecker : Type -> Decoder TypeError
-typeChecker t_ =
+typeChecker typ =  -- todo: use the metadata
     let
         ok = andThen (\_ -> succeed NoError)
         reduce = andThen (succeed << (List.foldl typeErrorPlus NoError))
-    in case t_ of
+        { t } = typ
+    in case t of
         TNil        -> null     NoError
         TInt        -> int      |> ok
         TFloat      -> float    |> ok
-        TAtom       -> string   |> ok
         TString     -> string   |> ok
         TBool       -> bool     |> ok
         TLiteral _  -> succeed  <| NotSupported "literal types not supported yet"
-        TType t _   -> typeChecker t
-        TDelegate   -> succeed  <| NotSupported "delegate types not supported yet"
-        TChannel _  -> succeed  <| NotSupported "channel types not supported yet"
-        TUnion a b  -> oneOf [ typeChecker a, typeChecker b ]
-        TList t     -> list (typeChecker t) |> reduce
-        TMap TString t -> dict (typeChecker t) |> andThen (succeed << Dict.values) |> reduce
-        TMap _ _    -> succeed  <| NotSupported "maps with non-string keys not supported yet"
+        TUnion l    -> oneOf    <| List.map typeChecker l
+        TList t_     -> list (typeChecker t_) |> reduce
+        TMap keyType t_ -> case keyType.t of
+            TString -> dict (typeChecker t_) |> andThen (succeed << Dict.values) |> reduce
+            _       -> succeed  <| NotSupported "maps with non-string keys not supported yet"
         TTuple _    -> succeed  <| NotSupported "tuples not supported yet"
         TStruct d   -> dict value |> andThen (structChecker d)
-        _           -> value    |> andThen (\v -> succeed <| CannotCoerce v t_)
+        _           -> value    |> andThen (\v -> succeed <| CannotCoerce v typ)
 
 structChecker : Dict String Type -> Dict String JE.Value -> Decoder TypeError
 structChecker td vd = succeed <| case sameKeys td vd of
