@@ -17,6 +17,6 @@
   "license": "MIT",
   "devDependencies": {
     "typedoc": "^0.15.0",
-    "typescript": "^3.3.3333"
+    "typescript": "^3.6.2"
   }
 }
