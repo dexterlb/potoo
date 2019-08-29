@@ -104,6 +104,30 @@ export function is_void(t: Type): t is TVoid {
  * Check if a Javascript value conforms to the given type
  */
 export function typecheck(x: any, t: Type): boolean {
-    console.log('please implement typecheck')
+    switch(t._t) {
+        case "type-basic": {
+            switch(t.name) {
+                case "void":   return false;
+                case "null":   return (x == null);
+                case "bool":   return (typeof x == "boolean");
+                case "int":    return (typeof x == "number");
+                case "float":  return (typeof x == "number");
+                case "string": return (typeof x == "string");
+            }
+            return false;
+        }
+        case "type-literal": {
+            return JSON.stringify(x) == JSON.stringify(t.value);
+        }
+        case "type-union": {
+            for (let alt of t.alts) {
+                if (typecheck(x, alt)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+    }
+    console.log('please finish the implementation of typecheck')
     return true
 }

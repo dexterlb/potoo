@@ -120,7 +120,7 @@ export class Connection {
         if (message.topic in this.value_index) {
             let v = this.value_index[message.topic]
             let value = JSON.parse(message.payload)
-            typecheck(v.type, value)
+            typecheck(value, v.type)
             v.bus.send(value)
             if (message.topic in this.persistent_value_index) {
                 this.persistent_value_index[message.topic].send(value)
@@ -130,11 +130,11 @@ export class Connection {
 
         if (message.topic in this.service_callable_index) {
             let c = this.service_callable_index[message.topic]
-            // TODO: insert typecheck with the io-ts library here.
+            // TODO: insert meta-typecheck here
             let request = JSON.parse(message.payload) as Call
-            typecheck(c.argument, request.argument)
+            typecheck(request.argument, c.argument)
             c.handler(request.argument).then(result => {
-                typecheck(c.retval, result)
+                typecheck(result, c.retval)
                 if (!is_void(c.retval)) {
                     this.publish_reply(request.topic, request.token, result)
                 }
@@ -159,7 +159,7 @@ export class Connection {
         let contract_topic = mqtt.strip_topic('_contract', message.topic)
         if (contract_topic != null) {
             let raw_contract = JSON.parse(message.payload) as RawContract
-            // TODO: insert typecheck with the io-ts library here.
+            // TODO: insert meta-typecheck here
             this.incoming_contract(contract_topic, raw_contract)
             return
         }

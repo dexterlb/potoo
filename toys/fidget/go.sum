@@ -2,6 +2,8 @@ github.com/DexterLB/potoo v0.0.0-20190325130919-8925288ab100 h1:Mm6oUbp2e4ry8/QD
 github.com/DexterLB/potoo v0.0.0-20190711095137-a9cc3e19e806 h1:cPFTxYvBRYJ4bak56enuqiK0nfRUxHLHsXIP1rkwNSY=
 github.com/DexterLB/potoo/go/potoo v0.0.0-20190331090903-6fda96831e5b h1:Lm6HhqXehimSVz08kS/0keyTtQjZbdiFmjPA+TGJC2s=
 github.com/DexterLB/potoo/go/potoo v0.0.0-20190331090903-6fda96831e5b/go.mod h1:6hnOIX/Cl9AIJCDesmHDwUe4+ceXpn4hnYGUqusNxGA=
+github.com/DexterLB/potoo/go/potoo v0.0.0-20190828141230-a2dda9473c54 h1:vip0M2dWKpUqQcbMJWeyT+HNmmOSOMXEUwJrjKOZ5D8=
+github.com/DexterLB/potoo/go/potoo v0.0.0-20190828141230-a2dda9473c54/go.mod h1:5hISdq1/wxTN/5ufbXbnAN92VYNsViumM1T373smLb4=
 github.com/francoispqt/gojay v1.2.10 h1:KxoQWTsAXfAF3krbnFKXjQcI3VP1HqDAqS9LL3ibGvQ=
 github.com/francoispqt/gojay v1.2.10/go.mod h1:H8Wgri1Asi1VevY3ySdpIK5+KCpqzToVswNq8g2xZj4=
 github.com/valyala/fastjson v1.4.1 h1:hrltpHpIpkaxll8QltMU8c3QZ5+qIiCL8yKqPFJI/yE=
