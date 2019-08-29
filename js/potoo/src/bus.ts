@@ -1,4 +1,8 @@
 /**
+ * Communication [[Bus]]es used for broadcasting values to multiple subscribers
+ */
+
+/**
  * This class represents a very simple
  * communication bus with one or more subscribers.
  * Each subscriber is simply a callback (see [[Subscriber]]).
@@ -41,6 +45,8 @@ export class Bus<T> {
     /**
      * Gets the last value sent on the bus. If no value has been sent yet,
      * async-blocks until this happens.
+     * @param timeout Maximum time to wait before giving up on receiving a first
+     *                value. `0` means wait forever.
      */
     public async get(timeout: number = 5000): Promise<T> {
         if (this.value != undefined) {
@@ -49,7 +55,9 @@ export class Bus<T> {
         return new Promise((resolve, reject) => {
             let action = this.check_subscribe()
             this.transient_subscribers.push(resolve)
-            setTimeout(() => reject('timeout'), timeout)
+            if (timeout != 0) {
+                setTimeout(() => reject('timeout'), timeout)
+            }
             action().then(() => {}).catch(reject)
         })
     }
