@@ -109,12 +109,6 @@ parseContract s =
         |> Result.mapError JD.errorToString
 
 
-parseType : String -> Result String Type
-parseType s =
-    decodeString typeDecoder s
-        |> Result.mapError JD.errorToString
-
-
 contractDecoder : Decoder Contract
 contractDecoder =
     oneOf
@@ -146,14 +140,14 @@ objectDecoder =
 propertyDecoder : Decoder Contract
 propertyDecoder =
     JD.map2 makeProperty
-        (field "type" typeDecoder)
+        (field "type" schemaDecoder)
         (field "subcontract" mapDecoder)
 
 functionDecoder : Decoder Contract
 functionDecoder =
     JD.map3 makeFunction
-        (field "argument" typeDecoder)
-        (field "retval" typeDecoder)
+        (field "argument" schemaDecoder)
+        (field "retval" schemaDecoder)
         (field "subcontract" mapDecoder)
 
 constantDecoder : Decoder Contract
@@ -201,11 +195,13 @@ dataEncoder d =
     JE.object (Dict.toList d)
 
 
+schemaDecoder : Decoder Type
+schemaDecoder = JD.field "t" typeDecoder
 
 typeDecoder : Decoder Type
 typeDecoder =
     (oneOf
-        [ JD.field "_meta" dataDecoder
+        [ JD.field "meta" dataDecoder
         , JD.succeed Dict.empty ]
     ) |> andThen
         (\meta ->
@@ -271,12 +267,12 @@ tBasicDecoder =
 
 tComplexDecoder : Decoder TypeDescr
 tComplexDecoder =
-    JD.field "_t" string
+    JD.field "kind" string
         |> andThen
             (\t ->
                 case t of
                     "type-basic" ->
-                        JD.field "name" tBasicDecoder
+                        JD.field "sub" tBasicDecoder
 
                     "type-literal" ->
                         tLiteralDecoder
