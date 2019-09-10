@@ -1,2 +1,3 @@
 todo:
     - make potoo responsible for MQTT clientIDs
+    - meta schemas

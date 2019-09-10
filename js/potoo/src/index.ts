@@ -158,8 +158,7 @@ export class Connection {
 
         if (message.topic in this.service_callable_index) {
             let c = this.service_callable_index[message.topic]
-            // fixme: possible malicious data?
-            let [topic, token, argData] = message.payload.split(' ', 3)
+            let [topic, token, argData] = limited_split(message.payload, ' ', 3)
             let decArg = c.argDecoder(argData)
             if (hoshi.is_err(decArg)) {
                 console.log("error processing call argument: ", decArg.error)
@@ -183,8 +182,7 @@ export class Connection {
         }
 
         if (message.topic == mqtt.join_topics('_reply', this.reply_topic)) {
-            let [token, retvalData] = message.payload.split(' ', 2)
-            // fixme: possible malicious data?
+            let [token, retvalData] = limited_split(message.payload, ' ', 2)
             if (!(token in this.active_calls)) {
                 console.log('someone responded to an unknown call: ', token)
                 return
@@ -445,4 +443,19 @@ function random_string(n: number) {
     }
 
     return text;
+}
+
+function limited_split(x: string, sep: string, n: number): Array<string> {
+    let result: Array<string> = []
+    for (let i = 0; i < n; i++) {
+        let idx = x.indexOf(sep)
+        if (idx >= 0 && i < n - 1) {
+            result.push(x.substr(0, idx))
+            x = x.substr(idx + 1)
+        } else {
+            result.push(x)
+            x = ''
+        }
+    }
+    return result
 }
