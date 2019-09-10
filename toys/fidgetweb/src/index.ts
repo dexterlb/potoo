@@ -2,6 +2,7 @@ require('./index.html');
 
 import * as potoo from 'potoo';
 import * as MQTT from 'paho-mqtt';
+import * as hoshi from 'hoshi';
 
 function con(value: any): potoo.Contract {
     return { _t: "constant", value: value, subcontract: {} }
@@ -35,8 +36,8 @@ function make_contract() : potoo.Contract {
         "methods": {
             "hello": {
                 _t: "callable",
-                argument: {_t: "type-struct", fields: { item: {_t: "type-basic", name: "string", _meta: {description: "item to greet"}} } },
-                retval: {_t: "type-basic", name: "string"},
+                argument: hoshi.json({kind: "type-struct", fields: { item: {kind: "type-basic", sub: "string", meta: {description: "item to greet"}} } }),
+                retval: hoshi.json({kind: "type-basic", sub: "string"}),
                 handler: async (arg: any) => `hello, ${arg.item}!`,
                 subcontract: {
                     "description": con("Performs a greeting"),
@@ -45,8 +46,8 @@ function make_contract() : potoo.Contract {
             },
             "boing": {
                 _t: "callable",
-                argument: {_t: "type-basic", name: "null"},
-                retval:   {_t: "type-basic", name: "void"},
+                argument: hoshi.json({kind: "type-basic", sub: "null"}),
+                retval:   hoshi.json({kind: "type-basic", sub: "void"}),
                 handler: async (_: any) => boingval.send((await boingval.get() + 1) % 20),
                 subcontract: {
                     "description": con("Boing!"),
@@ -55,7 +56,7 @@ function make_contract() : potoo.Contract {
             },
             "boinger": {
                 _t: "value",
-                type: {_t: "type-basic", name: "float", _meta: {min: 0, max: 20}},
+                type: hoshi.json({kind: "type-basic", sub: "float", meta: {min: 0, max: 20}}),
                 bus: boingval,
                 subcontract: {
                     "ui_tags": con("order:4,decimals:0"),
@@ -63,7 +64,7 @@ function make_contract() : potoo.Contract {
             },
             "wooo": {
                 _t: "value",
-                type: {_t: "type-basic", name: "float", _meta: {min: 0, max: 20}},
+                type: hoshi.json({kind: "type-basic", sub: "float", meta: {min: 0, max: 20}}),
                 bus: wooval,
                 subcontract: {
                     "ui_tags": con("order:4,decimals:2"),
@@ -71,13 +72,13 @@ function make_contract() : potoo.Contract {
             },
             "slider": {
                 _t: "value",
-                type: {_t: "type-basic", name: "float", _meta: {min: 0, max: 20}},
+                type: hoshi.json({kind: "type-basic", sub: "float", meta: {min: 0, max: 20}}),
                 bus: sliderval,
                 subcontract: {
                     "set": {
                         _t: "callable",
-                        argument: {_t: "type-basic", name: "float"},
-                        retval:   {_t: "type-basic", name: "void"},
+                        argument: hoshi.json({kind: "type-basic", sub: "float"}),
+                        retval:   hoshi.json({kind: "type-basic", sub: "void"}),
                         handler: async (val: any) => sliderval.send(val as number),
                         subcontract: { },
                     },
@@ -86,7 +87,7 @@ function make_contract() : potoo.Contract {
             },
             "clock": {
                 _t: "value",
-                type: { _t: "type-basic", name: "string" },
+                type: hoshi.json({ kind: "type-basic", sub: "string" }),
                 subcontract: { "description": con("current time") },
                 bus: timechan,
             },

@@ -33,9 +33,9 @@ module.exports = {
         ]
       },
       {
-          test: /\.tsx?$/,
-          use: 'ts-loader',
-          exclude: /node_modules/
+        test: /\.tsx?$/,
+        use: 'ts-loader',
+        exclude: /node_modules/
       },
       {
         test:    /\.html$/,
@@ -61,17 +61,17 @@ module.exports = {
   },
 
   devServer: {
-      inline: false,
-      hot: false,
-      stats: { colors: true },
-      proxy: {
-          '/ws': {
-              target: 'ws://localhost:1880',
-              ws: true
-            }
-      },
-      port: 8081,
-      disableHostCheck: true
+    inline: false,
+    hot: false,
+    stats: { colors: true },
+    proxy: {
+      '/ws': {
+        target: 'ws://localhost:1880',
+        ws: true
+      }
+    },
+    port: 8081,
+    disableHostCheck: true
   },
 
 

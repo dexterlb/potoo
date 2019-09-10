@@ -1,6 +1,6 @@
-import {Type}    from './types';
-import {Bus} from './bus';
-import {Topic}   from './mqtt'
+import {Schema}    from 'hoshi';
+import {Bus}       from './bus';
+import {Topic}     from './mqtt'
 
 export type RawContract     = RawConstant
                             | RawValue
@@ -24,13 +24,13 @@ export interface MapContract {
 
 export interface ValueDescr {
     _t: "value",
-    type: Type,
+    type: Schema,
 }
 
 export interface CallableDescr {
     _t: "callable",
-    argument: Type,
-    retval: Type,
+    argument: Schema,
+    retval: Schema,
 }
 
 export interface ConstantDescr {

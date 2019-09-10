@@ -15,6 +15,7 @@
   },
   "author": "dexterlb",
   "license": "MIT",
+  "dependencies": {},
   "devDependencies": {
     "typedoc": "^0.15.0",
     "typescript": "^3.6.2"

@@ -5,7 +5,7 @@ export * from './bus'
 import * as mqtt from './mqtt';
 export * from './mqtt';
 export * from './mqtt_wrappers';
-import {typecheck, is_void} from './types'
+import * as hoshi from 'hoshi'
 
 export interface ConnectionOptions {
     mqtt_client: mqtt.Client,
@@ -54,10 +54,10 @@ export class Connection {
     }
 
     private service_value_index: { [topic: string]: {
-        callback: (v: any) => void,
+        callback: (v: hoshi.Data) => void,
         value: Value,
     } } = {}
-    private service_callable_index: { [topic: string]: Callable } = {}
+    private service_callable_index: { [topic: string]: ServiceCallable } = {}
 
 
     async update_contract(contract: Contract) {
@@ -69,7 +69,15 @@ export class Connection {
         traverse(contract, (c, subtopic) => {
             if (isValue(c)) {
                 let topic = this.service_topic('_value', subtopic)
-                let f = (v: any) => this.publish_value(topic, c, v)
+                let f = (v: any) => {
+                    let encoder = hoshi.encoder(c.type)
+                    if (hoshi.is_err(encoder)) {
+                        side_effects.unshift(Promise.reject(encoder.error));
+                        return
+                    }
+                    this.publish_value(topic, {value: c, encoder: encoder}, v)
+                }
+
                 this.service_value_index[topic] = {
                     callback: f,
                     value: c,
@@ -80,7 +88,21 @@ export class Connection {
             }
             if (isCallable(c)) {
                 let topic = this.service_topic('_call', subtopic)
-                this.service_callable_index[topic] = c
+                let argDecoder = hoshi.decoder(c.argument)
+                if (hoshi.is_err(argDecoder)) {
+                    side_effects.unshift(Promise.reject(argDecoder.error))
+                    return
+                }
+                let retEncoder = hoshi.encoder(c.retval)
+                if (hoshi.is_err(retEncoder)) {
+                    side_effects.unshift(Promise.reject(retEncoder.error))
+                    return
+                }
+                this.service_callable_index[topic] = {
+                    callable: c,
+                    argDecoder: argDecoder,
+                    retEncoder: retEncoder,
+                }
                 side_effects.push(this.mqtt_client.subscribe(topic))
                 return
             }
@@ -118,25 +140,41 @@ export class Connection {
 
     private on_message(message: mqtt.Message) {
         if (message.topic in this.value_index) {
-            let v = this.value_index[message.topic]
-            let value = JSON.parse(message.payload)
-            typecheck(value, v.type)
-            v.bus.send(value)
+            let { value, decoder } = this.value_index[message.topic]
+
+            let result = decoder(message.payload)
+            if (hoshi.is_err(result)) {
+                console.log("error processing value: ", result.error)
+                return
+            }
+
+            value.bus.send(result.term)
+
             if (message.topic in this.persistent_value_index) {
-                this.persistent_value_index[message.topic].send(value)
+                this.persistent_value_index[message.topic].send(result.term)
             }
             return
         }
 
         if (message.topic in this.service_callable_index) {
             let c = this.service_callable_index[message.topic]
-            // TODO: insert meta-typecheck here
-            let request = JSON.parse(message.payload) as Call
-            typecheck(request.argument, c.argument)
-            c.handler(request.argument).then(result => {
-                typecheck(result, c.retval)
-                if (!is_void(c.retval)) {
-                    this.publish_reply(request.topic, request.token, result)
+            // fixme: possible malicious data?
+            let [topic, token, argData] = message.payload.split(' ', 3)
+            let decArg = c.argDecoder(argData)
+            if (hoshi.is_err(decArg)) {
+                console.log("error processing call argument: ", decArg.error)
+                return
+            }
+            let arg = decArg.term
+
+            c.callable.handler(arg).then(retval => {
+                let data = c.retEncoder(retval)
+                if (hoshi.is_err(data)) {
+                    console.log("error encoding call reply: ", data.error)
+                    return
+                }
+                if (!hoshi.is_void(c.callable.retval.t)) {
+                    this.publish_reply(topic, token, data)
                 }
             }).catch(err => {
                 console.log('error while processing call to ', message.topic, ': ', err)
@@ -145,21 +183,22 @@ export class Connection {
         }
 
         if (message.topic == mqtt.join_topics('_reply', this.reply_topic)) {
-            // TODO: insert typecheck with the io-ts library here.
-            let response = JSON.parse(message.payload) as CallResponse
-            if (!(response.token in this.active_calls)) {
-                console.log('someone responded to an unknown call: ', response.token)
+            let [token, retvalData] = message.payload.split(' ', 2)
+            // fixme: possible malicious data?
+            if (!(token in this.active_calls)) {
+                console.log('someone responded to an unknown call: ', token)
                 return
             }
-            this.active_calls[response.token].resolve(response.result)
-            delete this.active_calls[response.token]
+
+            this.active_calls[token].resolve(retvalData)
+            delete this.active_calls[token]
             return
         }
 
         let contract_topic = mqtt.strip_topic('_contract', message.topic)
         if (contract_topic != null) {
             let raw_contract = JSON.parse(message.payload) as RawContract
-            // TODO: insert meta-typecheck here
+            // TODO: insert hoshi decode here
             this.incoming_contract(contract_topic, raw_contract)
             return
         }
@@ -174,7 +213,7 @@ export class Connection {
     public value(topic: string): Bus<any> | null {
         let value_topic = this.client_topic('_value', topic)
         if (value_topic in this.value_index) {
-            return this.value_index[value_topic].bus
+            return this.value_index[value_topic].value.bus
         }
         return null
     }
@@ -199,7 +238,7 @@ export class Connection {
         if (!(topic in this.callable_index)) {
             return Promise.reject("topic ${topic} not available for call")
         }
-        return this.callable_index[topic].handler(argument)
+        return this.callable_index[topic].callable.handler(argument)
     }
 
     private make_value_bus(value_topic: string): Bus<any>{
@@ -219,8 +258,8 @@ export class Connection {
     }
 
     private contract_index: { [topic: string]: Contract } = {}
-    private callable_index: { [topic: string]: Callable } = {}
-    private value_index: { [topic: string]: Value } = {}
+    private callable_index: { [topic: string]: ClientCallable } = {}
+    private value_index: { [topic: string]: ClientValue } = {}
     private persistent_value_index: { [topic: string]: Bus<any> } = {}
     private incoming_contract(topic: mqtt.Topic, raw: RawContract) {
         this.destroy_contract(topic)
@@ -228,6 +267,7 @@ export class Connection {
             valueBus: c => this.dummyChan,
             callHandler: c => async x => undefined,
         })
+        let fail = () => this.destroy_contract(topic)
 
         if (contract != null) {
             this.contract_index[topic] = contract
@@ -236,12 +276,31 @@ export class Connection {
                 if (isValue(c)) {
                     let value_topic = this.client_topic('_value', full_topic)
                     c.bus = this.make_value_bus(value_topic)
-                    this.value_index[value_topic] = c
+                    let decoder = hoshi.decoder(c.type)
+                    if (hoshi.is_err(decoder)) {
+                        fail()
+                        console.log("unable to create decoder for value in incoming contract: ", decoder)
+                        return
+                    }
+                    this.value_index[value_topic] = { value: c, decoder: decoder }
                     return
                 }
                 if (isCallable(c)) {
-                    this.callable_index[full_topic] = c
-                    c.handler = arg => this.perform_call(c, full_topic, arg)
+                    let retDecoder = hoshi.decoder(c.retval)
+                    if (hoshi.is_err(retDecoder)) {
+                        fail()
+                        console.log("unable to create return value decoder for callable in incoming contract: ", retDecoder)
+                        return
+                    }
+                    let argEncoder = hoshi.encoder(c.argument)
+                    if (hoshi.is_err(argEncoder)) {
+                        fail()
+                        console.log("unable to create argument encoder for callable in incoming contract: ", argEncoder)
+                        return
+                    }
+                    let sc = { callable: c, retDecoder: retDecoder, argEncoder: argEncoder }
+                    this.callable_index[full_topic] = sc
+                    c.handler = arg => this.perform_call(sc, full_topic, arg)
                     return
                 }
             })
@@ -250,28 +309,37 @@ export class Connection {
         this.on_contract(topic, contract)
     }
 
-    private active_calls: { [token: string]: Promiser<any> } = {}
-    private perform_call(c: RawCallable, topic: mqtt.Topic, arg: any): Promise<any> {
-        typecheck(arg, c.argument)
+    private active_calls: { [token: string]: Promiser<string> } = {}
+    private perform_call(sc: ClientCallable, topic: mqtt.Topic, arg: hoshi.Data): Promise<any> {
         return new Promise<any>((resolve, reject) => {
+            let argData = sc.argEncoder(arg)
+            if (hoshi.is_err(argData)) {
+                reject(argData.error);
+                return
+            }
+
             let token = random_string(16)
 
             this.mqtt_client.publish({
                 topic: this.client_topic('_call', topic),
                 retain: false,
-                payload: JSON.stringify({topic: this.reply_topic, token: token, argument: arg}),
+                payload: this.reply_topic + ' ' + token + ' ' + argData,
             })
 
-            if (is_void(c.retval)) {
+            if (hoshi.is_void(sc.callable.retval.t)) {
                 resolve()
                 return
             }
 
-            let resolve_result = (result: any) => {
-                typecheck(result, c.retval)
-                resolve(result)
+            let resolve_retval = (retvalData: string) => {
+                let retval = sc.retDecoder(retvalData)
+                if (hoshi.is_err(retval)) {
+                    reject(retval.error);
+                    return
+                }
+                resolve(retval.term)
             }
-            this.active_calls[token] = {resolve: resolve_result, reject: reject}
+            this.active_calls[token] = {resolve: resolve_retval, reject: reject}
             setTimeout(() => {
                 if (token in this.active_calls) {
                     delete this.active_calls[token]
@@ -293,20 +361,25 @@ export class Connection {
         // hooray for the garbage collector :)
     }
 
-    private publish_reply(topic: mqtt.Topic, token: string, result: any): void {
+    private publish_reply(topic: mqtt.Topic, token: string, replyData: string): void {
         this.mqtt_client.publish({
             topic: mqtt.join_topics('_reply', topic),
             retain: false,
-            payload: JSON.stringify({token: token, result: result}),
+            payload: token + ' ' + replyData,
         })
     }
 
-    private publish_value(topic: mqtt.Topic, c: Value, v: any): void {
-        typecheck(v, c.type)
+    private publish_value(topic: mqtt.Topic, sv: ServiceValue, v: hoshi.Data): void {
+        let data = sv.encoder(v)
+        if (hoshi.is_err(data)) {
+            console.log("unable to encode value: ", data)
+            return
+        }
+
         this.mqtt_client.publish({
             topic: topic,
             retain: true,
-            payload: JSON.stringify(v),
+            payload: data,
         })
     }
 
@@ -339,6 +412,28 @@ interface Subscription {
 interface Promiser<T> {
     resolve: (v: T)     => void,
     reject:  (err: any) => void,
+}
+
+interface ServiceValue {
+    value: Value,
+    encoder: hoshi.Encoder,
+}
+
+interface ServiceCallable {
+    callable: Callable,
+    argDecoder: hoshi.Decoder,
+    retEncoder: hoshi.Encoder,
+}
+
+interface ClientValue {
+    value: Value,
+    decoder: hoshi.Decoder,
+}
+
+interface ClientCallable {
+    callable: Callable,
+    retDecoder: hoshi.Decoder,
+    argEncoder: hoshi.Encoder,
 }
 
 function random_string(n: number) {
