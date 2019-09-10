@@ -1,4 +1,5 @@
 todo:
     - make potoo responsible for MQTT clientIDs
     - meta schemas
-    - fix elm decoders
+    - see why vasil complex structs don't typecheck in elm
+    - die when someone else publishes on your contract topic
