@@ -5,7 +5,7 @@ export * from './bus'
 import * as mqtt from './mqtt';
 export * from './mqtt';
 export * from './mqtt_wrappers';
-import * as hoshi from 'hoshi'
+import * as hoshi from 'hoshi-types'
 
 export interface ConnectionOptions {
     mqtt_client: mqtt.Client,
