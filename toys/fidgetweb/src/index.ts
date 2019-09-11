@@ -1,8 +1,8 @@
 require('./index.html');
 
-import * as potoo from 'potoo';
+import * as potoo from 'qtrp-potoo';
 import * as MQTT from 'paho-mqtt';
-import * as hoshi from 'hoshi';
+import * as hoshi from 'qtrp-hoshi';
 
 function con(value: any): potoo.Contract {
     return { _t: "constant", value: value, subcontract: {} }

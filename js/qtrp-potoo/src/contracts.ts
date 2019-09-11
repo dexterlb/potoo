@@ -1,4 +1,4 @@
-import {Schema}    from 'hoshi-types';
+import {Schema}    from 'qtrp-hoshi';
 import {Bus}       from './bus';
 import {Topic}     from './mqtt'
 

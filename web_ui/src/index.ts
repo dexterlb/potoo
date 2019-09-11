@@ -11,7 +11,7 @@ if (theme == 'slick') {
 
 let elm = require('./Main.elm')
 
-import * as potoo from 'potoo';
+import * as potoo from 'qtrp-potoo';
 import * as MQTT from 'paho-mqtt';
 
 type ElmApp = any   // he he

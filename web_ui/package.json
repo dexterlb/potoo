@@ -6,7 +6,7 @@
   "dependencies": {
     "@types/paho-mqtt": "^1.0.4",
     "paho-mqtt": "^1.1.0",
-    "potoo": "file:../js/potoo"
+    "qtrp-potoo": "file:../js/qtrp-potoo"
   },
   "devDependencies": {
     "@types/node": "^12.6.2",
