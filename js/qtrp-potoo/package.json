@@ -1,5 +1,5 @@
 {
-  "name": "potoo",
+  "name": "qtrp-potoo",
   "version": "0.0.1-0",
   "description": "Abstraction layer over MQTT which allows IDL, RPC and service discovery",
   "repository": {
@@ -12,12 +12,12 @@
     "build": "tsc",
     "test": "echo \"Error: no test specified\" && exit 1",
     "docs": "typedoc --excludePrivate --out docs src/",
-    "prepare": "npm run build"
+    "prepare": "npm run build && npm run docs"
   },
   "author": "dexterlb",
   "license": "MIT",
   "dependencies": {
-    "hoshi-types": "latest"
+    "qtrp-hoshi": "latest"
   },
   "devDependencies": {
     "typedoc": "^0.15.0",
