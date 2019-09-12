@@ -14,21 +14,33 @@ func MustDecode(v *fastjson.Value) Type {
 	return t
 }
 
+func DecodeSchema(v *fastjson.Value) (Type, error) {
+    if v == nil {
+        return Type{}, fmt.Errorf("item does not exist")
+    }
+	keyVal := v.Get("t")
+	if keyVal == nil {
+		return Type{}, fmt.Errorf("no t field in schema")
+	}
+
+	return Decode(keyVal)
+}
+
 func Decode(v *fastjson.Value) (Type, error) {
     if v == nil {
         return Type{}, fmt.Errorf("item does not exist")
     }
 
-	keyVal := v.Get("_t")
+	keyVal := v.Get("kind")
 	if keyVal == nil {
-		return Type{}, fmt.Errorf("no _t field in type")
+		return Type{}, fmt.Errorf("no kind field in type")
 	}
 	key, err := keyVal.StringBytes()
 	if err != nil {
 		return Type{}, fmt.Errorf("cannot decode type key: %s", err)
 	}
 
-    nameVal := v.Get("name")
+    nameVal := v.Get("sub")
     var name []byte
     if nameVal != nil {
         name, err = nameVal.StringBytes()
@@ -48,11 +60,20 @@ func Decode(v *fastjson.Value) (Type, error) {
 	return Type{}, fmt.Errorf("no such type: %s", string(name))
 }
 
+func EncodeSchema(a *fastjson.Arena, t Type) *fastjson.Value {
+	o := a.NewObject()
+	o.Set("t", Encode(a, t))
+	o.Set("version", a.NewString("0"))
+	o.Set("encoding", a.NewString("json"))
+	o.Set("meta", a.NewObject())
+	return o
+}
+
 func Encode(a *fastjson.Arena, t Type) *fastjson.Value {
     o := a.NewObject()
-    o.Set("_t", a.NewString(t.T.typeKey()))
+    o.Set("kind", a.NewString(t.T.typeKey()))
     if t.T.typeName() != "" {
-        o.Set("name", a.NewString(t.T.typeName()))
+        o.Set("sub", a.NewString(t.T.typeName()))
     }
     encodeMetaData(a, t.Meta, o)
     t.T.encode(a, o)

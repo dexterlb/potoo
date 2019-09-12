@@ -38,7 +38,7 @@ func Decode(v *fastjson.Value) (Contract, error) {
 }
 
 func decodeValue(v *fastjson.Value) (Contract, error) {
-    typ, err := types.Decode(v.Get("type"))
+    typ, err := types.DecodeSchema(v.Get("type"))
     if err != nil {
         return nil, fmt.Errorf("invalid type on value: %s", err)
     }
@@ -71,11 +71,11 @@ func decodeConstant(v *fastjson.Value) (Contract, error) {
 }
 
 func decodeCallable(v *fastjson.Value) (Contract, error) {
-    argument, err := types.Decode(v.Get("argument"))
+    argument, err := types.DecodeSchema(v.Get("argument"))
     if err != nil {
         return nil, fmt.Errorf("invalid argument on callable: %s", err)
     }
-    retval, err := types.Decode(v.Get("retval"))
+    retval, err := types.DecodeSchema(v.Get("retval"))
     if err != nil {
         return nil, fmt.Errorf("invalid retval on callable: %s", err)
     }
@@ -142,7 +142,7 @@ func (c Constant) encode(a *fastjson.Arena) *fastjson.Value {
 func (v Value) encode(a *fastjson.Arena) *fastjson.Value {
 	o := a.NewObject()
 	o.Set("_t", a.NewString(v.contractNode()))
-	o.Set("type", types.Encode(a, v.Type))
+	o.Set("type", types.EncodeSchema(a, v.Type))
 	o.Set("subcontract", Encode(a, v.Subcontract))
 	return o
 }
@@ -150,8 +150,8 @@ func (v Value) encode(a *fastjson.Arena) *fastjson.Value {
 func (c Callable) encode(a *fastjson.Arena) *fastjson.Value {
 	o := a.NewObject()
 	o.Set("_t", a.NewString(c.contractNode()))
-	o.Set("argument", types.Encode(a, c.Argument))
-	o.Set("retval", types.Encode(a, c.Retval))
+	o.Set("argument", types.EncodeSchema(a, c.Argument))
+	o.Set("retval", types.EncodeSchema(a, c.Retval))
 	o.Set("subcontract", Encode(a, c.Subcontract))
 	return o
 }
