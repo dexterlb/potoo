@@ -204,8 +204,13 @@ func (c *Connection) publishContractMessage(contract contracts.Contract) mqtt.Me
 	)
 }
 
-func (c *Connection) msg(topic mqtt.Topic, payload *fastjson.Value, retain bool) mqtt.Message {
+func (c *Connection) msg(topic mqtt.Topic, payload *fastjson.Value, retain bool, prefixes ...[]byte) mqtt.Message {
 	c.msgBuf = c.msgBuf[0:0]
+	for _, pref := range prefixes {
+		c.msgBuf = append(c.msgBuf, pref...)
+		c.msgBuf = append(c.msgBuf, ' ')
+	}
+
 	c.msgBuf = payload.MarshalTo(c.msgBuf)
 	return mqtt.Message{
 		Topic:   topic,
@@ -248,7 +253,7 @@ func (c *Connection) finaliseCall(result callResult) error {
 		// void call
 		return nil
 	}
-	c.publish(c.msg(result.topic, result.payload, false))
+	c.publish(c.msg(result.topic, result.payload, false, result.token))
 	return nil
 }
 
@@ -262,28 +267,22 @@ type asyncCallResult struct {
 type callResult struct {
 	err     error
 	topic   mqtt.Topic
+	token   []byte
 	payload *fastjson.Value
 }
 
 func handleCallHelper(arena *fastjson.Arena, parser *fastjson.Parser, msg mqtt.Message, callable *contracts.Callable) callResult {
-	req, err := parser.ParseBytes(msg.Payload)
+	var topic []byte
+	var token []byte
+	var argumentData []byte
+
+	limitedSplit(msg.Payload, ' ', &topic, &token, &argumentData)
+	fmt.Fprintf(os.Stderr, "payload: '%s', topic: '%s', token: '%s', data: '%s'\n",
+		string(msg.Payload), string(topic), string(token), string(argumentData))
+
+	argument, err := parser.ParseBytes(argumentData)
 	if err != nil {
-		return callResult{err: fmt.Errorf("cannot parse call request JSON: %s", err)}
-	}
-
-	retTopic := req.GetStringBytes("topic")
-	if retTopic == nil {
-		return callResult{err: fmt.Errorf("missing 'topic' string in request json")}
-	}
-
-	token := req.Get("token")
-	if token == nil {
-		return callResult{err: fmt.Errorf("missing 'token' string in request json")}
-	}
-
-	argument := req.Get("argument")
-	if argument == nil {
-		return callResult{err: fmt.Errorf("missing 'argument' string in request json")}
+		return callResult{err: fmt.Errorf("unable to parse argument data: %s", err)}
 	}
 
 	// TODO: skip this in insane mode
@@ -293,7 +292,6 @@ func handleCallHelper(arena *fastjson.Arena, parser *fastjson.Parser, msg mqtt.M
 	}
 
 	retval := callable.Handler(arena, argument)
-
 	switch callable.Retval.T.(type) {
 	case *types.TVoid:
 		if retval != nil {
@@ -303,7 +301,7 @@ func handleCallHelper(arena *fastjson.Arena, parser *fastjson.Parser, msg mqtt.M
 	}
 
 	if retval == nil {
-		return callResult{err: fmt.Errorf("call failed.")}
+		return callResult{err: fmt.Errorf("non-void call handler returned nil!")}
 	}
 
 	// TODO: skip this in unsafe mode
@@ -312,11 +310,11 @@ func handleCallHelper(arena *fastjson.Arena, parser *fastjson.Parser, msg mqtt.M
 		return callResult{err: fmt.Errorf("Handler returned value of wrong type: %s", err)}
 	}
 
-	payload := arena.NewObject()
-	payload.Set("token", token)
-	payload.Set("result", retval)
-
-	return callResult{topic: mqtt.JoinTopics(mqtt.Topic("_reply"), retTopic), payload: payload}
+	return callResult{
+		topic:   mqtt.JoinTopics(mqtt.Topic("_reply"), mqtt.Topic(topic)),
+		token:   append([]byte(nil), token...),
+		payload: retval,
+	}
 }
 
 func (c *Connection) handleMsg(msg mqtt.Message) {
@@ -352,4 +350,23 @@ func (c *Connection) clientTopic(prefix mqtt.Topic, suffixes ...mqtt.Topic) mqtt
 
 func (c *Connection) publish(msg mqtt.Message) {
 	c.opts.MqttClient.Publish(msg)
+}
+
+func limitedSplit(x []byte, sep byte, into ...(*[]byte)) {
+	for i := 0; i < len(into); i++ {
+		idx := -1
+		for j := 0; j < len(x); j++ {
+			if x[j] == ' ' {
+				idx = j
+				break
+			}
+		}
+		if idx >= 0 && i < len(into)-1 {
+			(*(into[i])) = x[0:idx]
+			x = x[idx+1:]
+		} else {
+			(*(into[i])) = x
+			x = x[0:0]
+		}
+	}
 }

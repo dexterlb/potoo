@@ -259,7 +259,7 @@ func makeDescrDic() map[string](func() TypeDescr) {
 }
 
 func decodeMetaData(v *fastjson.Value) MetaData {
-	metaVal := v.Get("_meta")
+	metaVal := v.Get("meta")
 
 	if metaVal == nil {
 		return nil
@@ -286,5 +286,5 @@ func encodeMetaData(a *fastjson.Arena, meta MetaData, v *fastjson.Value) {
     for k := range meta {
          o.Set(k, meta[k])
     }
-    v.Set("_meta", o)
+    v.Set("meta", o)
 }

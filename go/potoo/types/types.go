@@ -66,8 +66,8 @@ type TLiteral struct {
 	Value *fastjson.Value
 }
 
-func (t *TLiteral) typeKey() string    { return "type-basic" }
-func (t *TLiteral) typeName() string   { return "literal" }
+func (t *TLiteral) typeKey() string    { return "type-literal" }
+func (t *TLiteral) typeName() string   { return "" }
 func (t *TLiteral) typeString() string { return "literal" }
 func Literal(val *fastjson.Value) Type { return Type{T: &TLiteral{Value: val}} }
 

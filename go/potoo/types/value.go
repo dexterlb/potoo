@@ -28,7 +28,11 @@ func TypeCheck(v *fastjson.Value, t Type) error {
 			return nil
 		}
     case *TLiteral:
-        panic("literals not yet implemented")
+        if sameValue(v, typ.Value) {
+            return nil
+        } else {
+            return fmt.Errorf("literal value doesn't match")
+        }
     case *TMap:
         var o *fastjson.Object
         o, err = v.Object()
@@ -110,4 +114,13 @@ func TypeCheck(v *fastjson.Value, t Type) error {
 	    err = fmt.Errorf("type mismatch")
 	}
     return fmt.Errorf("value %s doesn't match %s: %s", v, t, err)
+}
+
+func sameValue(a *fastjson.Value, b *fastjson.Value) bool {
+    // FIXME: this is very wrong and slow and must be fixed
+    var adat []byte
+    var bdat []byte
+    adat = a.MarshalTo(adat)
+    bdat = b.MarshalTo(bdat)
+    return string(adat) == string(bdat)
 }
