@@ -1,15 +1,11 @@
-# Junkpotoo
+# potoo
 
-A framework for creating realtime services (mostly focused at IoT), with the
-following features:
+A framework for creating realtime services (mostly focused at embedded devices),
+built on top of MQTT.
 
-- Services offer type-safe contracts (SOAP-like)
-- Channels as a first-class type (Go-like)
-- Network transparency
+It provides a standard way for a service to publish its API and
+for its properties and calls to be discovered.
 
-Written in elixir.
+For details, see (protocol.md)[protocol.md].
 
-Yet another work in progress project... may or may not be usable some time in
-the future.
-
-
+Work in progress.

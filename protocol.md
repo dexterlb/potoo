@@ -40,22 +40,6 @@ automated discovery of services.
 
 ## Contract format
 
-### Representing data types
-| Datum           | JSON                              |
-| --------------- | --------------------------------- |
-| basic type      | `{ "_t": "type-basic", "name": "<basic type name>"` |
-| literal type    | `{ "_t": "type-literal", "value": <any JSON value> }` |
-| union type      | `{ "_t": "type-union", "alts": [ <type> ... <type> ] }` |
-| map type        | `{ "_t": "type-map", "key": <type>, "value": <type> }` |
-| list type       | `{ "_t": "type-list", "value": <type> }` |
-| tuple type      | `{ "_t": "type-tuple", "fields": <list of types> }` |
-| struct type     | `{ "_t": "type-struct", "fields": <map from field names to types> }` |
-
-Types may also have a `"_meta"` field which is a JSON object containing
-metadata.
-
-Basic type names: `void`, `null`, `bool`, `int`, `float`, `string`
-
 ### Contract fields
 A contract is just a JSON document with a recursive stucture - a contract is one
 of the following:
@@ -63,9 +47,13 @@ of the following:
 | Contract           | JSON                              |
 | ------------------ | --------------------------------- |
 | constant           | `{ "_t": "constant", "value": <any JSON value> }` |
-| value              | `{ "_t": "value", "type": <type>, "subcontract": <contract> }` |
-| callable           | `{ "_t": "callable", "argument": <type>, "retval": <type>, "subcontract": <contract> }` |
+| value              | `{ "_t": "value", "type": <hoshi schema>, "subcontract": <contract> }` |
+| callable           | `{ "_t": "callable", "argument": <hoshi schema>, "retval": <hoshi schema>, "subcontract": <contract> }` |
 | map                | a map without a `"_t"` key whose values are contracts |
 
 Each contract node is associated with a topic, which is composed of the map
 keys in the path from root to it, delimited by slashes.
+
+## API documentation
+
+See the readmes in the respective language directories.
