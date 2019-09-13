@@ -3,10 +3,10 @@ require('./index.html');
 let fragment = new URLSearchParams(window.location.hash.substr(1));
 let theme = fragment.get('theme');
 
-if (theme == 'slick') {
-    require('./styles/slick.scss');
-} else {
+if (theme == 'main') {
     require('./styles/main.scss');
+} else {
+    require('./styles/slick.scss');
 }
 
 let elm = require('./Main.elm')
