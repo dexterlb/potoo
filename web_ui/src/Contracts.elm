@@ -572,6 +572,7 @@ type TypeError
     | CannotCoerce JE.Value Type
     | NotSupported String
     | KeysDiffer (List String) (List String)
+    | WrongLiteral JE.Value JE.Value
 
 typeErrorToString : TypeError -> String
 typeErrorToString err = case err of
@@ -579,6 +580,7 @@ typeErrorToString err = case err of
     CannotCoerce v t -> "cannot coerce '" ++ (JE.encode 0 v) ++ "' to type " ++ (inspectType t)
     NotSupported s   -> s
     KeysDiffer a b   -> "keys differ: " ++ (String.join "," a) ++ " ≠ " ++ (String.join "," b)
+    WrongLiteral a b -> "value '" ++ (JE.encode 0 b) ++ "' does not match literal '" ++ (JE.encode 0 b) ++ "'"
 
 typeCheck : Type -> JE.Value -> TypeError
 typeCheck t v = JD.decodeValue (typeChecker t) v
@@ -591,20 +593,22 @@ typeChecker typ =  -- todo: use the metadata
         reduce = andThen (succeed << (List.foldl typeErrorPlus NoError))
         { t } = typ
     in case t of
-        TNil        -> null     NoError
-        TInt        -> int      |> ok
-        TFloat      -> float    |> ok
-        TString     -> string   |> ok
-        TBool       -> bool     |> ok
-        TLiteral _  -> succeed  <| NotSupported "literal types not supported yet"
-        TUnion l    -> oneOf    <| List.map typeChecker l
-        TList t_     -> list (typeChecker t_) |> reduce
+        TNil            -> null     NoError
+        TInt            -> int      |> ok
+        TFloat          -> float    |> ok
+        TString         -> string   |> ok
+        TBool           -> bool     |> ok
+        TLiteral ev     -> JD.map (\v -> case v == ev of
+            True  -> NoError
+            False -> WrongLiteral ev v) value
+        TUnion l        -> oneOf    <| List.map typeChecker l
+        TList t_        -> list (typeChecker t_) |> reduce
         TMap keyType t_ -> case keyType.t of
-            TString -> dict (typeChecker t_) |> andThen (succeed << Dict.values) |> reduce
-            _       -> succeed  <| NotSupported "maps with non-string keys not supported yet"
-        TTuple _    -> succeed  <| NotSupported "tuples not supported yet"
-        TStruct d   -> dict value |> andThen (structChecker d)
-        _           -> value    |> andThen (\v -> succeed <| CannotCoerce v typ)
+            TString     -> dict (typeChecker t_) |> andThen (succeed << Dict.values) |> reduce
+            _           -> succeed  <| NotSupported "maps with non-string keys not supported yet"
+        TTuple _        -> succeed  <| NotSupported "tuples not supported yet"
+        TStruct d       -> dict value |> andThen (structChecker d)
+        _               -> value    |> andThen (\v -> succeed <| CannotCoerce v typ)
 
 structChecker : Dict String Type -> Dict String JE.Value -> Decoder TypeError
 structChecker td vd = succeed <| case sameKeys td vd of
