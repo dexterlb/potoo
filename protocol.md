@@ -54,6 +54,9 @@ of the following:
 Each contract node is associated with a topic, which is composed of the map
 keys in the path from root to it, delimited by slashes.
 
+The description for "hoshi schema" may be seen in the
+[hoshi readme](https://github.com/DexterLB/hoshi)
+
 ## API documentation
 
 See the readmes in the respective language directories.
