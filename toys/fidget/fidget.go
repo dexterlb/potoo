@@ -60,11 +60,12 @@ func (f *Fidget) contract() contracts.Contract {
 			},
 			"boing": contracts.Callable{
 				Argument: types.Null(),
-				Retval:   types.Void(),
+				Retval:   types.Literal(q.String("ok")),
 				Handler: func(a *fastjson.Arena, arg *fastjson.Value) *fastjson.Value {
 					f.wooing = !f.wooing
-					return nil
+					return a.NewString("ok")
 				},
+				Async: true,
 			},
 			"slider": q.Property(
 				types.Float().M(types.MetaData{"min": q.Float(0), "max": q.Float(20)}),
@@ -91,7 +92,7 @@ func New() *Fidget {
 		var arena fastjson.Arena
 		var val int
 		for {
-			time.Sleep(10 * time.Millisecond)
+			time.Sleep(100 * time.Millisecond)
 			f.clockBus.Send(q.String(time.Now().Format("2006-01-02 15:04:05")))
 			if f.wooing {
 				val = (val + 1) % 200

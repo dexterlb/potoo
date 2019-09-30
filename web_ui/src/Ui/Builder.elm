@@ -59,6 +59,8 @@ toTree_ c key properties widgets =
         Contracts.Function ({ argument, retval } as callee) subcontract ->
             let
                 widget = case (argument.t, retval.t) of
+                    (TNil, TLiteral _) ->
+                        ButtonWidget <| Ui.Widgets.Button.init metaData callee
                     (TNil, TNil) ->
                         ButtonWidget <| Ui.Widgets.Button.init metaData callee
                     (TNil, TVoid) ->
