@@ -2,7 +2,9 @@ package wrappers
 
 import (
 	"fmt"
+	"os"
 	"sync"
+	"time"
 
 	"github.com/DexterLB/potoo/go/potoo/mqtt"
 	"github.com/yosssi/gmq/mqtt/client"
@@ -142,6 +144,14 @@ func (g *GmqWrapper) DisconnectWithWill() {
 	if err != nil {
 		done()
 	}
+
+	go func() {
+		time.Sleep(2 * time.Second)
+		once.Do(func() {
+			close(sentWill) // timeout
+			fmt.Fprintf(os.Stderr, "*** FIXME *** timing out a MQTT will\n")
+		})
+	}()
 
 	<-sentWill
 
