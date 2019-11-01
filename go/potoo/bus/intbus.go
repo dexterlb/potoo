@@ -29,14 +29,16 @@ func NewIntBusWithOpts(dflt int, opts *Options) *IntBus {
 }
 
 func (b *IntBus) Get(arena *fastjson.Arena) *fastjson.Value {
-	return arena.NewNumberInt64(b.value)
+	return arena.NewNumberFloat64(float64(b.value))
 }
 
 func (b *IntBus) Send(val *fastjson.Value) {
-	v, err := val.Int64()
+	fv, err := val.Float64()
 	if err != nil {
 		panic(fmt.Errorf("trying to send a non-int value to int bus: %s", err))
 	}
+
+	v := int(fv)
 
 	b.Lock()
 	defer b.Unlock()
@@ -64,7 +66,7 @@ func (b *IntBus) SendV(val int) {
 
 func (b *IntBus) handle(v int) {
 	b.arena.Reset()
-	jv := b.arena.NewNumberInt64(v)
+	jv := b.arena.NewNumberFloat64(float64(v))
 	for _, h := range b.handlers {
 		h(jv)
 	}
