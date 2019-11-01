@@ -50,6 +50,15 @@ func FloatConst(x float64) contracts.Contract {
 	return contracts.Constant{Value: Float(x)}
 }
 
+func Int(x int) *fastjson.Value {
+	var a fastjson.Arena
+	return a.NewNumberFloat64(float64(x))
+}
+
+func IntConst(x int) contracts.Contract {
+	return contracts.Constant{Value: Int(x)}
+}
+
 func Json(x interface{}) *fastjson.Value {
 	data, err := json.Marshal(x)
 	if err != nil {
