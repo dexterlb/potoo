@@ -10,7 +10,7 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "mocha -r ts-node/register tests/**/*.test.ts",
     "docs": "typedoc --excludePrivate --out docs src/",
     "prepare": "npm run build && npm run docs"
   },
@@ -20,7 +20,12 @@
     "qtrp-hoshi": "latest"
   },
   "devDependencies": {
+    "@types/chai": "^4.2.3",
+    "@types/mocha": "^5.2.7",
+    "chai": "^4.2.0",
+    "mocha": "^6.2.1",
+    "ts-node": "^8.4.1",
     "typedoc": "^0.15.0",
-    "typescript": "^3.6.2"
+    "typescript": "^3.6.4"
   }
 }
