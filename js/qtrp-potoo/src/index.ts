@@ -1,7 +1,8 @@
 import {Contract, RawContract, Value, RawCallable, Callable, Call, CallResponse, traverse, encode, decode, isValue, isCallable, attach_at, MapContract} from './contracts';
-export {Contract, RawContract} from './contracts';
+export {Contract, RawContract, check} from './contracts';
 import {Bus} from './bus'
 export * from './bus'
+export * from './sugar'
 import * as mqtt from './mqtt';
 export * from './mqtt';
 export * from './mqtt_wrappers';

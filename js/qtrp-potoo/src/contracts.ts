@@ -1,6 +1,7 @@
-import {Schema}    from 'qtrp-hoshi';
-import {Bus}       from './bus';
-import {Topic}     from './mqtt'
+import * as hoshi     from 'qtrp-hoshi'
+import {Bus}          from './bus'
+import {Topic}        from './mqtt'
+import {contractType} from './meta'
 
 export type RawContract     = RawConstant
                             | RawValue
@@ -24,18 +25,18 @@ export interface MapContract {
 
 export interface ValueDescr {
     _t: "value",
-    type: Schema,
+    type: hoshi.Schema,
 }
 
 export interface CallableDescr {
     _t: "callable",
-    argument: Schema,
-    retval: Schema,
+    argument: hoshi.Schema,
+    retval: hoshi.Schema,
 }
 
 export interface ConstantDescr {
     _t: "constant",
-    value: any,
+    value: hoshi.Data,
 }
 
 export function isValue(x: any) : x is ValueDescr {
@@ -212,4 +213,8 @@ export function attach_at(into: MapContract, path: Topic, contract: Contract): M
 
 export function make_topic(items: Array<string>): Topic {
     return items.join('/')
+}
+
+export function check(contract: RawContract): hoshi.Ok | hoshi.TypeErr {
+    return hoshi.typecheck(contract as hoshi.Data, contractType)
 }
