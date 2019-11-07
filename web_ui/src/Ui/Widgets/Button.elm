@@ -8,7 +8,7 @@ import Ui.Action exposing (..)
 import Ui.MetaData exposing (..)
 
 import Html exposing (Html, div, text, button, input)
-import Html.Attributes exposing (class)
+import Html.Attributes exposing (class, disabled)
 import Html.Events exposing (onClick, onInput)
 
 import Json.Encode as JE
@@ -50,7 +50,7 @@ pushResult : ActionResult -> Model -> ( Model, Cmd Msg, List Action )
 pushResult result model = case result of
     CallResult v token -> case (Just token) == model.token of
         False -> ( model, Cmd.none, [] )
-        True  -> ( model, Cmd.none, [] )    -- probably do something here?
+        True  -> ( { model | token = Nothing }, Cmd.none, [] )
 
 updateMetaData : MetaData -> Model -> ( Model, Cmd Msg, List Action )
 updateMetaData meta model =
@@ -60,6 +60,6 @@ view : (Msg -> msg) -> Model -> List (Html msg) -> Html msg
 view lift m children =
     div ((metaAttributes m.metaData) ++ [ class "button" ]) <|
         [ div [ class "body" ]
-            [ button [ onClick (lift Call) ] [ text <| label m.metaData ]
+            [ button [ onClick (lift Call), disabled (m.token /= Nothing) ] [ text <| label m.metaData ]
             ]
         ]

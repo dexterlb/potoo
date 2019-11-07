@@ -580,12 +580,13 @@ typeErrorToString err = case err of
     CannotCoerce v t -> "cannot coerce '" ++ (JE.encode 0 v) ++ "' to type " ++ (inspectType t)
     NotSupported s   -> s
     KeysDiffer a b   -> "keys differ: " ++ (String.join "," a) ++ " ≠ " ++ (String.join "," b)
-    WrongLiteral a b -> "value '" ++ (JE.encode 0 b) ++ "' does not match literal '" ++ (JE.encode 0 b) ++ "'"
+    WrongLiteral a b -> "value '" ++ (JE.encode 0 b) ++ "' does not match literal '" ++ (JE.encode 0 a) ++ "' ??"
 
 typeCheck : Type -> JE.Value -> TypeError
 typeCheck t v = JD.decodeValue (typeChecker t) v
     |> Result.withDefault (CannotCoerce v t)
 
+-- oops, this is semantically wrong
 typeChecker : Type -> Decoder TypeError
 typeChecker typ =  -- todo: use the metadata
     let
@@ -598,9 +599,9 @@ typeChecker typ =  -- todo: use the metadata
         TFloat          -> float    |> ok
         TString         -> string   |> ok
         TBool           -> bool     |> ok
-        TLiteral ev     -> JD.map (\v -> case v == ev of
-            True  -> NoError
-            False -> WrongLiteral ev v) value
+        TLiteral ev     -> JD.andThen (\v -> case v == ev of
+            True  -> succeed NoError
+            False -> fail <| typeErrorToString <| WrongLiteral ev v) value
         TUnion l        -> oneOf    <| List.map typeChecker l
         TList t_        -> list (typeChecker t_) |> reduce
         TMap keyType t_ -> case keyType.t of

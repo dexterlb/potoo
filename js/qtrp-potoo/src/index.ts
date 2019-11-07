@@ -1,6 +1,7 @@
 import {Contract, RawContract, Value, RawCallable, Callable, Call, CallResponse, traverse, encode, decode, isValue, isCallable, attach_at, MapContract} from './contracts';
 export {Contract, RawContract, check} from './contracts';
 import {Bus} from './bus'
+import {contractJson} from './meta'
 export * from './bus'
 export * from './sugar'
 import * as mqtt from './mqtt';
@@ -26,6 +27,8 @@ export class Connection {
     private on_contract: (topic: mqtt.Topic, contract: Contract) => void
     private call_timeout: number
     private dummyChan: Bus<any>
+    private contract_encoder: hoshi.Encoder
+    private contract_decoder: hoshi.Decoder
 
     constructor(options: ConnectionOptions) {
         this.reply_topic  = random_string(16)
@@ -37,6 +40,17 @@ export class Connection {
         }
         this.on_contract  = options.on_contract  || ((t, c) => {})
         this.call_timeout = options.call_timeout || 25000
+
+        let dec = hoshi.decoder(contractJson)
+        let enc = hoshi.encoder(contractJson)
+        if ('error' in dec) {
+            throw new Error("unable to initialise contract decoder")
+        }
+        if ('error' in enc) {
+            throw new Error("unable to initialise contract encoder")
+        }
+        this.contract_encoder = enc
+        this.contract_decoder = dec
     }
 
     private root_topic: string
@@ -196,9 +210,12 @@ export class Connection {
 
         let contract_topic = mqtt.strip_topic('_contract', message.topic)
         if (contract_topic != null) {
-            let raw_contract = JSON.parse(message.payload) as RawContract
-            // TODO: insert hoshi decode here
-            this.incoming_contract(contract_topic, raw_contract)
+            let raw_contract = this.contract_decoder(message.payload)
+            if ('error' in raw_contract) {
+                console.log('received malformed contract', raw_contract)
+                return
+            }
+            this.incoming_contract(contract_topic, raw_contract as RawContract)
             return
         }
 
@@ -387,10 +404,16 @@ export class Connection {
     }
 
     private publish_contract_message(contract: Contract): mqtt.Message {
+        let payload = this.contract_encoder(contract as unknown as hoshi.Data)
+        if (typeof payload != 'string') {
+            console.log('cannot publish invalid contract', payload)
+            // FIXME - maybe we shouldn't blow up everything
+            throw new Error('invalid outbound contract')
+        }
         return {
             topic:   this.service_topic('_contract'),
             retain:  true,
-            payload: JSON.stringify(encode(contract)),
+            payload: payload,
         }
     }
 
