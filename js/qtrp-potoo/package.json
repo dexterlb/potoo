@@ -1,6 +1,6 @@
 {
   "name": "qtrp-potoo",
-  "version": "0.0.1-4",
+  "version": "0.0.1-5",
   "description": "Abstraction layer over MQTT which allows IDL, RPC and service discovery",
   "repository": {
     "type": "git",
@@ -17,7 +17,7 @@
   "author": "dexterlb",
   "license": "MIT",
   "dependencies": {
-    "qtrp-hoshi": "0.0.1-3"
+    "qtrp-hoshi": "0.0.1-5"
   },
   "devDependencies": {
     "@types/chai": "^4.2.4",
