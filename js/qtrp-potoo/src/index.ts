@@ -211,11 +211,11 @@ export class Connection {
         let contract_topic = mqtt.strip_topic('_contract', message.topic)
         if (contract_topic != null) {
             let raw_contract = this.contract_decoder(message.payload)
-            if ('error' in raw_contract) {
+            if (hoshi.is_err(raw_contract)) {
                 console.log('received malformed contract', raw_contract)
                 return
             }
-            this.incoming_contract(contract_topic, raw_contract as RawContract)
+            this.incoming_contract(contract_topic, raw_contract.term as RawContract)
             return
         }
 
