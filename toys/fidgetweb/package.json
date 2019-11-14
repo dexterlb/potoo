@@ -22,7 +22,7 @@
     "webpack-dev-server": "^3.9.0",
     "ws": "^7.2.0",
     "qtrp-potoo": "file:../../js/qtrp-potoo",
-    "qtrp-hoshi": "latest"
+    "qtrp-hoshi": "file:../../js/qtrp-potoo/node_modules/qtrp-hoshi"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
