@@ -10,60 +10,6 @@ body {
     color: white;
 }
 
-.ui-slick-amplifier {
-    > .children {
-        max-width: 600px;
-        display: flex;
-    }
-}
-
-.ui-slick-sec-info {
-    > .children {
-        display: flex;
-        flex-direction: row;
-        width: 100%;
-    }
-}
-
-.ui-slick-flags {
-    > .children {
-        display: flex;
-        flex-direction: row;
-    }
-}
-
-.ui-slick-slider {
-    > .body {
-        .header {
-            display: inline;
-        }
-        > .value {
-            display: inline;
-            float: right;
-        }
-        .outer {
-            display: block;
-            width: 100%;
-        }
-    }
-    flex-grow: 1;
-    padding: 2px;
-}
-
-.ui-slick-panel {
-      box-shadow:
-            2px 0 0 0 $slick-border,
-            0 2px 0 0 $slick-border,
-            2px 2px 0 0 $slick-border,   /* Just to fix the corner */
-            2px 0 0 0 $slick-border inset,
-            0 2px 0 0 $slick-border inset;
-    padding-bottom: 8px;
-    padding-left: 4px;
-    padding-right: 4px;
-    padding-top: 4px;
-}
-
-
 .mode-basic {
     .level-average {
         display: none;
@@ -73,24 +19,13 @@ body {
         display: none;
     }
 
-    .widget.connected-delegate {
-        > .body {
-            > .header {
-                display: none;
-            }
-            margin-left: 0px;
-        }
-    }
-
     .enabled-no {
         pointer-events: none;
     }
 }
 
 .widget {
-    &:not(.connected-delegate) {
-        // border: 1px solid #ccc;
-    }
+    border: 1px solid green;
 
     &.ui-proxy {
         > .body {
@@ -359,6 +294,10 @@ body {
 .children {
     display: flex;
     flex-direction: column;
+
+    > .widget {
+        margin: 5px;
+    }
 }
 
 .enabled-no {
