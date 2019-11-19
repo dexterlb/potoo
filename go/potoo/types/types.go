@@ -68,7 +68,7 @@ type TLiteral struct {
 
 func (t *TLiteral) typeKey() string    { return "type-literal" }
 func (t *TLiteral) typeName() string   { return "" }
-func (t *TLiteral) typeString() string { return "literal" }
+func (t *TLiteral) typeString() string { return fmt.Sprintf("literal[%s]", t.Value) }
 func Literal(val *fastjson.Value) Type { return Type{T: &TLiteral{Value: val}} }
 
 type TMap struct {
