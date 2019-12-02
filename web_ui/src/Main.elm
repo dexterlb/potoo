@@ -109,7 +109,7 @@ connectionUrl { protocol, host, path, port_ } =
             Url.Https -> "wss"
             Url.Http  -> "ws")
     in
-        (wsProtocol ++ "://" ++ authority ++ "/ws")
+        (wsProtocol ++ "://" ++ (stripTrailingSlash authority) ++ "/ws")
 
 
 
@@ -338,3 +338,8 @@ stringFromBool : Bool -> String
 stringFromBool b = case b of
     True -> "true"
     False -> "false"
+
+stripTrailingSlash : String -> String
+stripTrailingSlash s = case String.endsWith "/" s of
+    True -> stripTrailingSlash <| String.dropRight 1 s
+    False -> s
