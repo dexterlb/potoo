@@ -187,6 +187,10 @@ handleResponse m resp =
                     pushUiResult id (Ui.Action.CallResult value t) m
                 _ -> ( m, Cmd.none )
 
+                -- todo: fix those two
+        CallError _ _ -> (m, Cmd.none)
+        Unknown _ -> (m, Cmd.none)
+
         GotValue path value ->
             updateUiProperty path <|
                 ( { m | allProperties = m.allProperties |> Dict.insert path (parseValue value) }
@@ -198,8 +202,6 @@ handleResponse m resp =
 
         Disconnected ->
             ( { m | status = Reconnecting }, Process.sleep 1000 |> Task.perform (always Reconnect) )
-
-        other -> ( m, Debug.log "received unknown response." Cmd.none )
 
 
 subscribeProperties : ContractProperties -> Cmd Msg

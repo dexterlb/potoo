@@ -1,7 +1,6 @@
 module Ui.Tree exposing (..)
 
 import Contracts exposing (Callee, Data, PropertyID, Property, Type, Value, fetch)
-import Debug
 import Dict exposing (Dict)
 import Ui.Action exposing (..)
 import Ui.MetaData exposing (..)
@@ -163,7 +162,8 @@ updateWidget outerMsg ( widget, node ) =
                 ( ListWidget newModel, Cmd.map ListMsg cmd, actions )
 
         _ ->
-            Debug.todo "widget message of wrong type"
+            -- Debug.todo "widget message of wrong type"
+            (widget, Cmd.none, [])
 
 animateWidget : (Float, Float) -> Widget -> Widget
 animateWidget time widget = case widget of
@@ -188,7 +188,8 @@ pushResultToWidget result ( widget, node ) =
                 ( ButtonWidget newModel, Cmd.map ButtonMsg cmd, actions )
 
         _ ->
-            Debug.todo "widget of wrong type"
+            -- Debug.todo "widget of wrong type"
+            (widget, Cmd.none, [])
 
 
 updateWidgetValue : Value -> ( Widget, Node ) -> ( Widget, Cmd WidgetMsg, List Action )
@@ -232,7 +233,8 @@ updateWidgetValue v ( widget, node ) =
             ( SliderWidget newModel, Cmd.map SliderMsg cmd, actions )
 
         _ ->
-            Debug.todo "trying to update unupdatable widget"
+            -- Debug.todo "trying to update unupdatable widget"
+            (widget, Cmd.none, [])
 
 
 updateWidgetMetaData : MetaData -> ( Widget, Node ) -> ( Widget, Cmd WidgetMsg, List Action )

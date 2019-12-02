@@ -535,19 +535,11 @@ fetch k d =
         Just v ->
             v
 
-        Nothing ->
-            Debug.todo <| "trying to get " ++ (Debug.toString k) ++ " out of "
-                       ++ (Debug.toString d)
+            -- here be dragons
+        Nothing -> makeUndefined k
 
-fetch2 : comparable -> Dict comparable v -> v
-fetch2 k d =
-    case Dict.get k d of
-        Just v ->
-            v
-
-        Nothing ->
-            Debug.todo <| "!!!trying to get " ++ (Debug.toString k) ++ " out of "
-                       ++ (Debug.toString d)
+makeUndefined : a -> b
+makeUndefined a = (\_ -> makeUndefined a) ()
 
 
 firstJust : List (Maybe a) -> Maybe a

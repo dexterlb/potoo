@@ -46,4 +46,4 @@ renderWidget lift w children = case w of
     ChoiceWidget   model              -> Choice.view   (lift << ChoiceMsg  ) model children
     TextWidget     model              -> Text.view     (lift << TextMsg  ) model children
     SliderWidget   model              -> Slider.view   (lift << SliderMsg  ) model children
-    any                               -> renderUnknownWidget (Debug.toString any) children
+    any                               -> renderUnknownWidget "<unknown widget>" children
