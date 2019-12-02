@@ -1,9 +1,6 @@
 var path = require("path");
 
 module.exports = {
-  mode: 'development',
-
-  devtool: 'inline-source-map',
   entry: {
     app: [
       './src/index.ts'
@@ -58,21 +55,5 @@ module.exports = {
     ],
 
     noParse: /\.elm$/,
-  },
-
-
-  devServer: {
-    host: '0.0.0.0',
-    port: '8082',
-    inline: false,
-    hot: false,
-    stats: { colors: true },
-    proxy: {
-      '/ws': {
-        target: 'ws://localhost:1880',
-        ws: true
-      }
-    },
-    disableHostCheck: true,
   },
 };
