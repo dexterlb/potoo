@@ -19,6 +19,7 @@ import Ui.Action
 import Ui.MetaData exposing (..)
 import Animation
 import Url exposing (Url)
+import Url as Url
 import Url.Parser as UP
 import Url.Parser exposing ((</>))
 import Browser
@@ -100,12 +101,15 @@ fragmentParser s = case s of
     _               -> Basic
 
 connectionUrl : Url -> String
-connectionUrl { host, port_ } =
+connectionUrl { protocol, host, path, port_ } =
     let authority = (case port_ of
-            Nothing -> host
-            (Just p)  -> host ++ ":" ++ (String.fromInt p))
+            Nothing -> host ++ path
+            (Just p)  -> host ++ ":" ++ (String.fromInt p) ++ path)
+        wsProtocol = (case protocol of
+            Url.Https -> "wss"
+            Url.Http  -> "ws")
     in
-        ("ws://" ++ authority ++ "/ws")
+        (wsProtocol ++ "://" ++ authority ++ "/ws")
 
 
 
