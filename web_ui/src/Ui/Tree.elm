@@ -168,6 +168,7 @@ updateWidget outerMsg ( widget, node ) =
 animateWidget : (Float, Float) -> Widget -> Widget
 animateWidget time widget = case widget of
     SliderWidget model -> SliderWidget <| Ui.Widgets.Slider.animate time model
+    SwitchWidget model -> SwitchWidget <| Ui.Widgets.Switch.animate time model
     _ -> widget
 
 pushResultToWidget : ActionResult -> ( Widget, Node ) -> ( Widget, Cmd WidgetMsg, List Action )

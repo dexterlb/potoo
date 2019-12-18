@@ -145,10 +145,10 @@ body {
                 width: 20px;
                 height: 20px;
 
-                &.transitioning {
+                &.waiting {
                     background-color: yellow;
                 }
-                &:not(.transitioning) {
+                &:not(.waiting) {
                     &.on {
                         background-color: green;
                     }

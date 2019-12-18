@@ -1,4 +1,4 @@
-module Ui.Widgets.Switch exposing (Model, Msg, init, update, updateMetaData, updateValue, view)
+module Ui.Widgets.Switch exposing (Model, Msg, init, update, updateMetaData, updateValue, view, animate)
 
 import Ui.Widgets.Simple exposing (renderHeaderWithChildren)
 
@@ -21,7 +21,9 @@ import Random.String
 type alias Model =
     { metaData:      MetaData
     , value:         Maybe Bool
-    , transitioning: Bool
+    , dirty:         Bool
+    , waiting:       Bool
+    , lastUpdate:    Float
     }
 
 
@@ -33,7 +35,9 @@ init : MetaData -> Value -> Model
 init meta v =
     { metaData = meta
     , value = getValue v
-    , transitioning = False
+    , dirty = False
+    , waiting = False
+    , lastUpdate = -42
     }
 
 
@@ -41,7 +45,7 @@ update : Msg -> Model -> ( Model, Cmd Msg, List Action )
 update msg model = case (msg, model.value) of
     (Toggle, Just b) ->
         let v = JE.bool (not b) in
-            ( { model | transitioning = True },
+            ( { model | dirty = True },
               Cmd.none, case model.metaData.property of
                   Just prop -> [ RequestSet prop v ]
                   Nothing   -> [])
@@ -51,7 +55,7 @@ update msg model = case (msg, model.value) of
 
 updateValue : Value -> Model -> ( Model, Cmd Msg, List Action )
 updateValue v model =
-    ( { model | value = getValue v, transitioning = updateTransitioning model.transitioning model.value (getValue v) }, Cmd.none, [] )
+    ( { model | value = getValue v, waiting = False }, Cmd.none, [] )
 
 updateMetaData : MetaData -> Model -> ( Model, Cmd Msg, List Action )
 updateMetaData meta model =
@@ -60,7 +64,7 @@ updateMetaData meta model =
 view : (Msg -> msg) -> Model -> List (Html msg) -> Html msg
 view lift m children =
     renderHeaderWithChildren [ class "switch" ] m.metaData children <|
-        [ div ([ class "checkbox" ] ++ action lift m ++ transitioningClass m ++ valueClass m)
+        [ div ([ class "checkbox" ] ++ action lift m ++ waitingClass m ++ valueClass m)
             [ ]
         ]
 
@@ -69,14 +73,9 @@ getValue v = case v of
     SimpleBool b -> Just b
     _            -> Nothing
 
-updateTransitioning : Bool -> Maybe Bool -> Maybe Bool -> Bool
-updateTransitioning trans old new = case (trans, old, new) of
-    (True, Just o, Just n) -> o /= n
-    (_, _, _)              -> False
-
-transitioningClass : Model -> List (Attribute msg)
-transitioningClass { transitioning } = case transitioning of
-    True  -> [ class "transitioning" ]
+waitingClass : Model -> List (Attribute msg)
+waitingClass { waiting } = case waiting of
+    True  -> [ class "waiting" ]
     False -> []
 
 valueClass : Model -> List (Attribute msg)
@@ -90,3 +89,18 @@ action : (Msg -> msg) -> Model -> List (Attribute msg)
 action lift m = case hasSetter m.metaData of
     False -> []
     True  -> [ onClick (lift Toggle) ]
+
+animate : (Float, Float) -> Model -> Model
+animate t = animateLastUpdate t >> animateWaiting t
+
+animateLastUpdate : (Float, Float) -> Model -> Model
+animateLastUpdate (time, _) model = case model.dirty of
+    True  -> { model | lastUpdate = time, dirty = False, waiting = True }
+    False -> model
+
+animateWaiting : (Float, Float) -> Model -> Model
+animateWaiting (time, _) model = case model.waiting of
+    True -> case time < model.lastUpdate + 2 of
+        True  -> model
+        False -> { model | waiting = False }
+    False -> model
