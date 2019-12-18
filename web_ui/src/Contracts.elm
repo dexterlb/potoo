@@ -408,22 +408,22 @@ inspectData d = if Dict.isEmpty d then
             |> (\s -> "<" ++ s ++ ">")
 
 
-propertify : Contract -> ( Contract, ContractProperties )
-propertify contract =
+propertify : Contract -> ContractProperties -> ( Contract, ContractProperties )
+propertify contract prevProperties =
     let
         ( newContract, properties ) =
-            propertify_ "" contract ( Dict.fromList [] )
+            propertify_ "" contract prevProperties ( Dict.fromList [] )
     in
         ( newContract, properties )
 
 
-propertify_ : Topic -> Contract -> ContractProperties -> ( Contract, ContractProperties )
-propertify_ path contract properties =
+propertify_ : Topic -> Contract -> ContractProperties -> ContractProperties -> ( Contract, ContractProperties )
+propertify_ path contract prevProperties properties =
     case contract of
         MapContract d ->
             let
                 ( subcontractList, newProperties ) =
-                    propertifyMap path (Dict.toList d) properties
+                    propertifyMap path (Dict.toList d) prevProperties properties
 
                 subcontract =
                     MapContract <| Dict.fromList subcontractList
@@ -433,7 +433,7 @@ propertify_ path contract properties =
         Function f subcontract ->
             let
                 ( subcontractList, newProperties ) =
-                    propertifyMap path (Dict.toList subcontract) properties
+                    propertifyMap path (Dict.toList subcontract) prevProperties properties
             in
                 ( Function { f | path = path } (Dict.fromList subcontractList), newProperties )
 
@@ -441,9 +441,9 @@ propertify_ path contract properties =
         PropertyKey prop subcontract ->
             let
                 ( subcontractList, newProperties ) =
-                    propertifyMap path (Dict.toList subcontract) properties
+                    propertifyMap path (Dict.toList subcontract) prevProperties properties
                 newerProperties =
-                    Dict.insert path Loading newProperties
+                    Dict.insert path (Maybe.withDefault Loading (Dict.get path prevProperties)) newProperties
             in let
                 subcontractDict = Dict.fromList subcontractList
             in
@@ -455,7 +455,7 @@ propertify_ path contract properties =
         Constant c subcontract ->
             let
                 ( subcontractList, newProperties ) =
-                    propertifyMap path (Dict.toList subcontract) properties
+                    propertifyMap path (Dict.toList subcontract) prevProperties properties
             in
                 ( Constant c (Dict.fromList subcontractList), newProperties )
 
@@ -495,8 +495,8 @@ getFunction c =
             Nothing
 
 
-propertifyMap : Topic -> List ( String, Contract ) -> ContractProperties -> ( List ( String, Contract ), ContractProperties )
-propertifyMap path l data =
+propertifyMap : Topic -> List ( String, Contract ) -> ContractProperties -> ContractProperties -> ( List ( String, Contract ), ContractProperties )
+propertifyMap path l prevProperties data =
     case l of
         [] ->
             ( [], data )
@@ -504,11 +504,11 @@ propertifyMap path l data =
         ( hk, hv ) :: t ->
             let
                 ( newTail, newData1 ) =
-                    propertifyMap path t data
+                    propertifyMap path t prevProperties data
             in
             let
                 ( contract, newData2 ) =
-                    propertify_ (appendPath path hk) hv newData1
+                    propertify_ (appendPath path hk) hv prevProperties newData1
             in
             ( ( hk, contract ) :: newTail, newData2 )
 
@@ -538,6 +538,7 @@ fetch k d =
             -- here be dragons
         Nothing -> makeUndefined k
 
+-- warning: you will feel dirty and violated after grasping the following function:
 makeUndefined : a -> b
 makeUndefined a = (\_ -> makeUndefined a) ()
 

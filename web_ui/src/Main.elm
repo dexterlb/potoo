@@ -175,7 +175,7 @@ handleResponse m resp =
             updateUiCmd <|
                 let
                     ( newContract, properties ) =
-                        propertify contract
+                        propertify contract m.allProperties
 
                     newModel =
                         { m

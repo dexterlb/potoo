@@ -97,8 +97,10 @@ toTree_ c key properties widgets =
                     , metaMaker = metaMaker
                     , children = children
                     }
+                propval = Maybe.withDefault Contracts.Loading <|
+                    Dict.get property.path properties
             in
-                addWidget ( propertyWidget property metaData, node ) newWidgets
+                addWidget ( propertyWidget property propval metaData, node ) newWidgets
 
 
 toTreeMany : ContractProperties -> Widgets -> List ( String, Contract ) -> ( List WidgetID, Widgets )
@@ -109,41 +111,41 @@ toTreeMany properties initialWidgets l =
         l
 
 
-propertyWidget : Contracts.Property -> MetaData -> Widget
-propertyWidget prop metaData =
+propertyWidget : Contracts.Property -> Contracts.Value -> MetaData -> Widget
+propertyWidget prop value metaData =
     case prop.propertyType.t of
         Contracts.TFloat ->
             case (metaData.valueMeta.min, metaData.valueMeta.max) of
                 (Just _, Just _) ->
-                    SliderWidget <| Ui.Widgets.Slider.init metaData Contracts.Loading
+                    SliderWidget <| Ui.Widgets.Slider.init metaData value
 
                 _ ->
-                    NumberWidget metaData Contracts.Loading
+                    NumberWidget metaData value
 
         Contracts.TInt ->
-            NumberWidget metaData Contracts.Loading
+            NumberWidget metaData value
 
         Contracts.TString -> case metaData.valueMeta.oneOf of
             Nothing ->
                 case hasSetter metaData of
                     False ->
-                        StringWidget metaData Contracts.Loading
+                        StringWidget metaData value
                     True ->
                         TextWidget <|
                             Ui.Widgets.Text.init metaData Nothing
             Just _ ->
                 case hasSetter metaData of
                     False ->
-                        StringWidget metaData Contracts.Loading
+                        StringWidget metaData value
                     True ->
                         ChoiceWidget <|
                             Ui.Widgets.Choice.init metaData Nothing
 
         Contracts.TBool -> SwitchWidget <|
-            Ui.Widgets.Switch.init metaData Contracts.Loading
+            Ui.Widgets.Switch.init metaData value
 
         unk ->
-            UnknownWidget prop.propertyType metaData Contracts.Loading
+            UnknownWidget prop.propertyType metaData value
 
 
 propertyMap : ContractProperties -> Widgets -> Dict PropertyID WidgetID
