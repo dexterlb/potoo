@@ -21,6 +21,7 @@ import (
 type Fidget struct {
 	wooBus    bus.Bus
 	sliderBus bus.Bus
+	switchBus bus.Bus
 	clockBus  bus.Bus
 	wooing    bool
 }
@@ -29,6 +30,19 @@ func (f *Fidget) contract() contracts.Contract {
 	return contracts.Map{
 		"description": q.StringConst("Various knobs for testing purposes"),
 		"methods": contracts.Map{
+			"switch": q.Property(
+				types.Bool(),
+				f.switchBus,
+				func(a *fastjson.Arena, arg *fastjson.Value) *fastjson.Value {
+					time.Sleep(1 * time.Second)
+					f.switchBus.Send(arg)
+					return nil
+				},
+				map[string]contracts.Contract{
+					"description": q.StringConst("Slow switch"),
+				},
+				true,
+			),
 			"hello": contracts.Callable{
 				Argument: types.Struct(
 					map[string]types.Type{
@@ -88,6 +102,7 @@ func New() *Fidget {
 	f.wooBus = bus.New(q.Float(0))
 	f.clockBus = bus.NewWithOpts(q.String("bla"), &bus.Options{Deduplicate: true})
 	f.sliderBus = bus.New(q.Float(0))
+	f.switchBus = bus.New(q.Bool(false))
 	go func() {
 		var arena fastjson.Arena
 		var val int
@@ -110,7 +125,7 @@ func main() {
 	mqttClient := wrappers.NewGmqWrapper(&wrappers.GmqOpts{
 		ConnectOptions: client.ConnectOptions{
 			Network:  "tcp",
-			Address:  "localhost:1883",
+			Address:  "tardis:1883",
 			ClientID: []byte(fmt.Sprintf("the-go-fidget-%s", fid)),
 		},
 		Debug: func(msg string) {
