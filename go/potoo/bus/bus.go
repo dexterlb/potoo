@@ -117,6 +117,10 @@ func cloneValue(arena *fastjson.Arena, val *fastjson.Value) *fastjson.Value {
         case fastjson.TypeString:
             s, _ := val.StringBytes()
             return arena.NewStringBytes(s)
+        case fastjson.TypeTrue:
+			return arena.NewTrue()
+		case fastjson.TypeFalse:
+			return arena.NewFalse()
     }
     panic("not implemented")
 }

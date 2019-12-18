@@ -46,6 +46,15 @@ func Float(x float64) *fastjson.Value {
 	return a.NewNumberFloat64(x)
 }
 
+func Bool(x bool) *fastjson.Value {
+	var a fastjson.Arena
+	if x {
+		return a.NewTrue()
+	} else {
+		return a.NewFalse()
+	}
+}
+
 func FloatConst(x float64) contracts.Contract {
 	return contracts.Constant{Value: Float(x)}
 }
