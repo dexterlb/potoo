@@ -94,7 +94,11 @@ func (c *Connection) Loop(exit <-chan struct{}) error {
 		case msg := <-c.mqttMessage:
 			c.handleMsg(msg)
 		case contract := <-c.updateContract:
-			c.handleUpdateContract(contract)
+			err = c.handleUpdateContract(contract)
+			if err != nil {
+				// TODO: should we crash like this, or use c.err()?
+				return fmt.Errorf("Unable to update contract: %s", err)
+			}
 		case ov := <-c.outgoingValues:
 			err = c.handleOutgoingValue(ov)
 			if err != nil {
