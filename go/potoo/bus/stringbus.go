@@ -63,6 +63,10 @@ func (b *StringBus) SendV(val string) {
 	b.handle(val)
 }
 
+func (b *StringBus) GetV() string {
+	return b.value
+}
+
 func (b *StringBus) handle(v string) {
 	b.arena.Reset()
 	jv := b.arena.NewString(v)
