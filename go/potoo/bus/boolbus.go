@@ -62,6 +62,10 @@ func (b *BoolBus) SendV(val bool) {
 	b.handle(val)
 }
 
+func (b *BoolBus) GetV() bool {
+	return b.value
+}
+
 func (b *BoolBus) handle(v bool) {
 	b.arena.Reset()
 	jv := newBool(&b.arena, v)

@@ -64,6 +64,10 @@ func (b *IntBus) SendV(val int) {
 	b.handle(val)
 }
 
+func (b *IntBus) GetV() int {
+	return b.value
+}
+
 func (b *IntBus) handle(v int) {
 	b.arena.Reset()
 	jv := b.arena.NewNumberFloat64(float64(v))
