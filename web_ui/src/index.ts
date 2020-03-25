@@ -1,5 +1,3 @@
-require('./index.html');
-
 let fragment = new URLSearchParams(window.location.hash.substr(1));
 let theme = fragment.get('theme');
 

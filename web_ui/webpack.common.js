@@ -1,4 +1,7 @@
-var path = require("path");
+const   path                          = require("path");
+const { CleanWebpackPlugin }          = require('clean-webpack-plugin');
+const   HtmlWebpackPlugin             = require('html-webpack-plugin');
+const   HtmlWebpackInlineSourcePlugin = require('html-webpack-inline-source-plugin');
 
 module.exports = {
   entry: {
@@ -11,6 +14,19 @@ module.exports = {
     path: path.resolve(__dirname + '/dist'),
     filename: '[name].js',
   },
+
+  plugins: [
+    new HtmlWebpackPlugin({
+      inlineSource: '.js$',
+      template: 'src/index.ejs',
+    }),
+    new HtmlWebpackInlineSourcePlugin(),
+    new CleanWebpackPlugin({
+      cleanAfterEveryBuildPatterns: ['app.js'],
+      verbose: true,
+      protectWebpackAssets: false,
+    }),
+  ],
 
   module: {
     rules: [
@@ -37,7 +53,7 @@ module.exports = {
       {
         test:    /\.html$/,
         exclude: /node_modules/,
-        loader:  'file-loader?name=[name].[ext]',
+        loader:  'url-loader?name=[name].[ext]',
       },
       {
         test:    /\.elm$/,
@@ -50,7 +66,7 @@ module.exports = {
       },
       {
         test: /\.(ttf|eot|svg)(\?v=[0-9]\.[0-9]\.[0-9])?$/,
-        loader: 'file-loader',
+        loader: 'url-loader',
       },
     ],
 
