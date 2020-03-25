@@ -1,7 +1,13 @@
-const   path                          = require("path");
+const   fs                            = require('fs');
+const   path                          = require('path');
 const { CleanWebpackPlugin }          = require('clean-webpack-plugin');
 const   HtmlWebpackPlugin             = require('html-webpack-plugin');
 const   HtmlWebpackInlineSourcePlugin = require('html-webpack-inline-source-plugin');
+
+function base64_encode(file) {
+    var bitmap = fs.readFileSync(file);
+    return new Buffer(bitmap).toString('base64');
+}
 
 module.exports = {
   entry: {
@@ -19,6 +25,18 @@ module.exports = {
     new HtmlWebpackPlugin({
       inlineSource: '.js$',
       template: 'src/index.ejs',
+      templateParameters: (compilation, assets, assetTags, options) => {
+        return {
+          compilation,
+          webpackConfig: compilation.options,
+          htmlWebpackPlugin: {
+            tags: assetTags,
+            files: assets,
+            options
+          },
+          'favicon': 'data:image/png;base64,' + base64_encode('./src/images/favicon.png'),
+        };
+      },
     }),
     new HtmlWebpackInlineSourcePlugin(),
     new CleanWebpackPlugin({
