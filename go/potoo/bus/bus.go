@@ -121,6 +121,13 @@ func cloneValue(arena *fastjson.Arena, val *fastjson.Value) *fastjson.Value {
 			return arena.NewTrue()
 		case fastjson.TypeFalse:
 			return arena.NewFalse()
+		case fastjson.TypeArray:
+			a, _ := val.Array()
+			result := arena.NewArray()
+			for i := range a {
+				result.SetArrayItem(i, cloneValue(arena, a[i]))
+			}
+			return result
     }
     panic("not implemented")
 }
