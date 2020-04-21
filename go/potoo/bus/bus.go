@@ -137,14 +137,32 @@ func sameValue(a *fastjson.Value, b *fastjson.Value) bool {
         return false
     }
     switch(a.Type()) {
-        case fastjson.TypeString:
-            sa, _ := a.StringBytes()
-            sb, _ := b.StringBytes()
-			return string(sa) == string(sb)
+		case fastjson.TypeNull:
+			return true
+		case fastjson.TypeTrue:
+			return true
+		case fastjson.TypeFalse:
+			return true
 		case fastjson.TypeNumber:
 			sa, _ := a.Float64()
 			sb, _ := b.Float64()
 			return sa == sb
+        case fastjson.TypeString:
+            sa, _ := a.StringBytes()
+            sb, _ := b.StringBytes()
+			return string(sa) == string(sb)
+		case fastjson.TypeArray:
+			arra, _ := a.Array()
+			arrb, _ := b.Array()
+			if len(arra) != len(arrb) {
+				return false
+			}
+			for i := range arra {
+				if !sameValue(arra[i], arrb[i]) {
+					return false
+				}
+			}
+			return true
     }
 	panic("not implemented")
 }
