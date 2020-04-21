@@ -128,11 +128,22 @@ func cloneValue(arena *fastjson.Arena, val *fastjson.Value) *fastjson.Value {
 				result.SetArrayItem(i, cloneValue(arena, a[i]))
 			}
 			return result
+		case fastjson.TypeObject:
+			o, _ := val.Object()
+			result := arena.NewObject()
+			o.Visit(func(k []byte, v *fastjson.Value) {
+				result.Set(string(k), cloneValue(arena, v))
+			})
+			return result
     }
     panic("not implemented")
 }
 
 func sameValue(a *fastjson.Value, b *fastjson.Value) bool {
+	if a == nil || b == nil {
+		return false
+	}
+
     if a.Type() != b.Type() {
         return false
     }
@@ -163,6 +174,21 @@ func sameValue(a *fastjson.Value, b *fastjson.Value) bool {
 				}
 			}
 			return true
+		case fastjson.TypeObject:
+			oa, _ := a.Object()
+			ob, _ := b.Object()
+
+			return objectSubset(oa, ob) && objectSubset(ob, oa)
     }
 	panic("not implemented")
+}
+
+func objectSubset(oa *fastjson.Object, ob *fastjson.Object) bool {
+	var fail bool
+	oa.Visit(func(k []byte, v *fastjson.Value) {
+		if !sameValue(v, ob.Get(string(k))) {
+			fail = true
+		}
+	})
+	return !fail
 }
