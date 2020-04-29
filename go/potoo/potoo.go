@@ -39,6 +39,9 @@ type Connection struct {
 
 	serviceCallableIndex map[string]*contracts.Callable
 	unsubscribers        []func()
+
+	connected bool
+	errored   bool
 }
 
 func New(opts *ConnectionOptions) *Connection {
@@ -67,8 +70,12 @@ func (c *Connection) UpdateContract(contract contracts.Contract) {
 	c.updateContract <- contract
 }
 
-func (c *Connection) Loop(exit <-chan struct{}) error {
-	defer c.destroyService()
+func (c *Connection) Connect() error {
+	if c.connected {
+		panic("already connected!")
+	}
+
+	c.connected = true
 
 	connConfig := &mqtt.ConnectConfig{
 		OnDisconnect: c.mqttDisconnect,
@@ -78,8 +85,28 @@ func (c *Connection) Loop(exit <-chan struct{}) error {
 
 	err := c.opts.MqttClient.Connect(connConfig)
 	if err != nil {
+		c.errored = true
 		return fmt.Errorf("Could not connect to MQTT: %s", err)
 	}
+
+	return nil
+}
+
+func (c *Connection) Loop(exit <-chan struct{}) error {
+	defer c.destroyService()
+
+	var err error
+	if c.errored {
+		return fmt.Errorf("Client has been unable to connect")
+	}
+
+	if !c.connected {
+		err = c.Connect()
+		if err != nil {
+			return err
+		}
+	}
+
 	defer c.opts.MqttClient.DisconnectWithWill()
 
 	for {
