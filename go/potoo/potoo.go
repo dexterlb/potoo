@@ -225,6 +225,7 @@ func (c *Connection) destroyService() {
 	for i := range c.unsubscribers {
 		c.unsubscribers[i]()
 	}
+	c.unsubscribers = nil
 }
 
 func (c *Connection) publishContractMessage(contract contracts.Contract) mqtt.Message {
