@@ -63,7 +63,7 @@ renderNumberValue : MetaData -> Float -> Html msg
 renderNumberValue m v = div [ class "value" ] <|
     [ span [ class "value-number" ]
         [ text <| Maybe.withDefault (String.fromFloat v)
-               <| Maybe.map (\d -> round d v) <| getIntTag "decimals" m.uiTags ]
+               <| Maybe.map (\d -> Round.round d v) <| getIntTag "decimals" m.uiTags ]
     ] ++ (case getStringTag "units" m.uiTags of
         Nothing -> []
         (Just units) -> [ span [ class "value-units", class "units" ] [ text units ] ]
