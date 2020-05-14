@@ -13,9 +13,9 @@ type Type struct {
 }
 
 type TypeDescr interface {
-    typeKey() string
+	typeKey() string
 	typeName() string
-    typeString() string
+	typeString() string
 	decode(v *fastjson.Value) error
 	encode(a *fastjson.Arena, v *fastjson.Value)
 }
@@ -76,7 +76,7 @@ type TMap struct {
 	ValueType Type
 }
 
-func (t *TMap) typeKey() string { return "type-map" }
+func (t *TMap) typeKey() string  { return "type-map" }
 func (t *TMap) typeName() string { return "" }
 func (t *TMap) typeString() string {
 	return fmt.Sprintf("map[%s: %s]", t.KeyType, t.ValueType)
@@ -87,7 +87,7 @@ type TList struct {
 	ValueType Type
 }
 
-func (t *TList) typeKey() string { return "type-list" }
+func (t *TList) typeKey() string  { return "type-list" }
 func (t *TList) typeName() string { return "list" }
 func (t *TList) typeString() string {
 	return fmt.Sprintf("list[%s]", t.ValueType)
@@ -98,7 +98,7 @@ type TUnion struct {
 	Alts []Type
 }
 
-func (t *TUnion) typeKey()  string { return "type-union" }
+func (t *TUnion) typeKey() string  { return "type-union" }
 func (t *TUnion) typeName() string { return "" }
 func (t *TUnion) typeString() string {
 	alts := make([]string, len(t.Alts))
@@ -113,7 +113,7 @@ type TStruct struct {
 	Fields map[string]Type
 }
 
-func (t *TStruct) typeKey() string { return "type-struct" }
+func (t *TStruct) typeKey() string  { return "type-struct" }
 func (t *TStruct) typeName() string { return "" }
 func (t *TStruct) typeString() string {
 	fields := make([]string, len(t.Fields))
@@ -130,7 +130,7 @@ type TTuple struct {
 	Fields []Type
 }
 
-func (t *TTuple) typeKey()  string { return "type-tuple" }
+func (t *TTuple) typeKey() string  { return "type-tuple" }
 func (t *TTuple) typeName() string { return "" }
 func (t *TTuple) typeString() string {
 	fields := make([]string, len(t.Fields))

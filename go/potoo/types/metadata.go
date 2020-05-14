@@ -15,13 +15,13 @@ func (m MetaData) String() string {
 	}
 	items := make([]string, 0, len(m))
 	for k := range m {
-        items = append(items, fmt.Sprintf("%s: %s", k, m[k].String()))
+		items = append(items, fmt.Sprintf("%s: %s", k, m[k].String()))
 	}
 
 	return fmt.Sprintf("<%s>", strings.Join(items, ", "))
 }
 
 func (t Type) M(meta MetaData) Type {
-    t.Meta = meta
-    return t
+	t.Meta = meta
+	return t
 }

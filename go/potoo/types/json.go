@@ -15,9 +15,9 @@ func MustDecode(v *fastjson.Value) Type {
 }
 
 func DecodeSchema(v *fastjson.Value) (Type, error) {
-    if v == nil {
-        return Type{}, fmt.Errorf("item does not exist")
-    }
+	if v == nil {
+		return Type{}, fmt.Errorf("item does not exist")
+	}
 	keyVal := v.Get("t")
 	if keyVal == nil {
 		return Type{}, fmt.Errorf("no t field in schema")
@@ -27,9 +27,9 @@ func DecodeSchema(v *fastjson.Value) (Type, error) {
 }
 
 func Decode(v *fastjson.Value) (Type, error) {
-    if v == nil {
-        return Type{}, fmt.Errorf("item does not exist")
-    }
+	if v == nil {
+		return Type{}, fmt.Errorf("item does not exist")
+	}
 
 	keyVal := v.Get("kind")
 	if keyVal == nil {
@@ -40,16 +40,16 @@ func Decode(v *fastjson.Value) (Type, error) {
 		return Type{}, fmt.Errorf("cannot decode type key: %s", err)
 	}
 
-    nameVal := v.Get("sub")
-    var name []byte
-    if nameVal != nil {
-        name, err = nameVal.StringBytes()
-        if err != nil {
-            return Type{}, fmt.Errorf("cannot decode type name: %s", err)
-        }
+	nameVal := v.Get("sub")
+	var name []byte
+	if nameVal != nil {
+		name, err = nameVal.StringBytes()
+		if err != nil {
+			return Type{}, fmt.Errorf("cannot decode type name: %s", err)
+		}
 	}
 
-    if descrCtor, ok := descrDic[fmt.Sprintf("%s:%s", string(key), string(name))]; ok {
+	if descrCtor, ok := descrDic[fmt.Sprintf("%s:%s", string(key), string(name))]; ok {
 		descr := descrCtor()
 		descr.decode(v)
 		return Type{
@@ -70,14 +70,14 @@ func EncodeSchema(a *fastjson.Arena, t Type) *fastjson.Value {
 }
 
 func Encode(a *fastjson.Arena, t Type) *fastjson.Value {
-    o := a.NewObject()
-    o.Set("kind", a.NewString(t.T.typeKey()))
-    if t.T.typeName() != "" {
-        o.Set("sub", a.NewString(t.T.typeName()))
-    }
-    encodeMetaData(a, t.Meta, o)
-    t.T.encode(a, o)
-    return o
+	o := a.NewObject()
+	o.Set("kind", a.NewString(t.T.typeKey()))
+	if t.T.typeName() != "" {
+		o.Set("sub", a.NewString(t.T.typeName()))
+	}
+	encodeMetaData(a, t.Meta, o)
+	t.T.encode(a, o)
+	return o
 }
 
 func (t *TVoid) decode(v *fastjson.Value) error              { return nil }
@@ -253,7 +253,7 @@ func makeDescrDic() map[string](func() TypeDescr) {
 	}
 	dic := make(map[string](func() TypeDescr))
 	for _, descr := range descrs {
-        dic[fmt.Sprintf("%s:%s", descr().typeKey(), descr().typeName())] = descr
+		dic[fmt.Sprintf("%s:%s", descr().typeKey(), descr().typeName())] = descr
 	}
 	return dic
 }
@@ -278,13 +278,13 @@ func decodeMetaData(v *fastjson.Value) MetaData {
 }
 
 func encodeMetaData(a *fastjson.Arena, meta MetaData, v *fastjson.Value) {
-    if meta == nil || len(meta) == 0 {
-        return
-    }
+	if meta == nil || len(meta) == 0 {
+		return
+	}
 
-    o := a.NewObject()
-    for k := range meta {
-         o.Set(k, meta[k])
-    }
-    v.Set("meta", o)
+	o := a.NewObject()
+	for k := range meta {
+		o.Set(k, meta[k])
+	}
+	v.Set("meta", o)
 }
