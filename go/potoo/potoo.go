@@ -41,7 +41,7 @@ type Connection struct {
 	unsubscribers        []func()
 
 	connected bool
-	errored   bool
+	dead   bool
 }
 
 func New(opts *ConnectionOptions) *Connection {
@@ -67,6 +67,9 @@ func New(opts *ConnectionOptions) *Connection {
 }
 
 func (c *Connection) UpdateContract(contract contracts.Contract) {
+	if c.dead {
+		return
+	}
 	c.updateContract <- contract
 }
 
@@ -85,7 +88,7 @@ func (c *Connection) Connect() error {
 
 	err := c.opts.MqttClient.Connect(connConfig)
 	if err != nil {
-		c.errored = true
+		c.dead = true
 		return fmt.Errorf("Could not connect to MQTT: %s", err)
 	}
 
@@ -93,10 +96,15 @@ func (c *Connection) Connect() error {
 }
 
 func (c *Connection) Loop(exit <-chan struct{}) error {
-	defer c.destroyService()
+	defer func() {
+		c.closeUpdateContract()
+		c.closeOutgoingValues()
+		c.closeAsyncCalls()
+		c.destroyService()
+	}()
 
 	var err error
-	if c.errored {
+	if c.dead {
 		return fmt.Errorf("Client has been unable to connect")
 	}
 
@@ -196,6 +204,9 @@ func (c *Connection) handleUpdateContract(contract contracts.Contract) error {
 		case contracts.Value:
 			topic := c.serviceTopic(mqtt.Topic("_value"), subtopic)
 			sub := s.Bus.Subscribe(func(v *fastjson.Value) {
+				if c.dead {
+					return
+				}
 				sync := make(chan struct{}) // TODO: can this be done with less channels?
 				c.outgoingValues <- outgoingValue{topic: topic, v: v, sync: sync, contract: &s}
 				<-sync
@@ -257,6 +268,9 @@ func (c *Connection) handleCall(msg mqtt.Message, callable *contracts.Callable) 
 		return c.finaliseCall(handleCallHelper(c.arena, c.jsonparser, msg, callable))
 	} else {
 		go func() {
+			if c.dead {
+				return
+			}
 			arena := c.arenaPool.Get()
 			parser := c.parserPool.Get()
 			c.asyncCalls <- asyncCallResult{
@@ -401,4 +415,52 @@ func limitedSplit(x []byte, sep byte, into ...(*[]byte)) {
 			x = x[0:0]
 		}
 	}
+}
+
+// these three functions are three and not one because go is stupid
+// and has no generics
+
+func (c *Connection) closeUpdateContract() {
+	ch := c.updateContract
+
+    defer close(ch)
+
+    for {
+        select {
+        case _ = <-ch:
+        	// discard message to unblock the caller
+        default:
+            return
+        }
+    }
+}
+
+func (c *Connection) closeOutgoingValues() {
+	ch := c.outgoingValues
+
+    defer close(ch)
+
+    for {
+        select {
+        case _ = <-ch:
+        	// discard message to unblock the caller
+        default:
+            return
+        }
+    }
+}
+
+func (c *Connection) closeAsyncCalls() {
+	ch := c.asyncCalls
+
+    defer close(ch)
+
+    for {
+        select {
+        case _ = <-ch:
+        	// discard message to unblock the caller
+        default:
+            return
+        }
+    }
 }
