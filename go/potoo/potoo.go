@@ -97,6 +97,7 @@ func (c *Connection) Connect() error {
 
 func (c *Connection) Loop(exit <-chan struct{}) error {
 	defer func() {
+		c.dead = true
 		c.closeUpdateContract()
 		c.closeOutgoingValues()
 		c.closeAsyncCalls()
@@ -442,8 +443,8 @@ func (c *Connection) closeOutgoingValues() {
 
 	for {
 		select {
-		case _ = <-ch:
-			// discard message to unblock the caller
+		case ov := <-ch:
+			close(ov.sync)
 		default:
 			return
 		}
