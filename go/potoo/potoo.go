@@ -41,7 +41,7 @@ type Connection struct {
 	unsubscribers        []func()
 
 	connected bool
-	dead   bool
+	dead      bool
 }
 
 func New(opts *ConnectionOptions) *Connection {
@@ -423,44 +423,44 @@ func limitedSplit(x []byte, sep byte, into ...(*[]byte)) {
 func (c *Connection) closeUpdateContract() {
 	ch := c.updateContract
 
-    defer close(ch)
+	defer close(ch)
 
-    for {
-        select {
-        case _ = <-ch:
-        	// discard message to unblock the caller
-        default:
-            return
-        }
-    }
+	for {
+		select {
+		case _ = <-ch:
+			// discard message to unblock the caller
+		default:
+			return
+		}
+	}
 }
 
 func (c *Connection) closeOutgoingValues() {
 	ch := c.outgoingValues
 
-    defer close(ch)
+	defer close(ch)
 
-    for {
-        select {
-        case _ = <-ch:
-        	// discard message to unblock the caller
-        default:
-            return
-        }
-    }
+	for {
+		select {
+		case _ = <-ch:
+			// discard message to unblock the caller
+		default:
+			return
+		}
+	}
 }
 
 func (c *Connection) closeAsyncCalls() {
 	ch := c.asyncCalls
 
-    defer close(ch)
+	defer close(ch)
 
-    for {
-        select {
-        case _ = <-ch:
-        	// discard message to unblock the caller
-        default:
-            return
-        }
-    }
+	for {
+		select {
+		case _ = <-ch:
+			// discard message to unblock the caller
+		default:
+			return
+		}
+	}
 }
