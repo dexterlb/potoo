@@ -32,14 +32,18 @@ type handlerSet struct {
 	opts     *Options
 
 	// the following are used for throttling
-	throttled bool
-	lastValue *fastjson.Value
-	arena     fastjson.Arena
+	// this is very ugly and needs to be fixed with generics.
+	throttled      bool
+	lastValue      *fastjson.Value
+	lastValueArena fastjson.Arena
+	lastSent       *fastjson.Value
+	lastSentArena  fastjson.Arena
 }
 
 func (h *handlerSet) broadcast(lock sync.Locker, v *fastjson.Value) {
 	if h.throttled {
-		h.lastValue = cloneValue(&h.arena, v)
+		h.lastValueArena.Reset()
+		h.lastValue = cloneValue(&h.lastValueArena, v)
 		return
 	}
 
@@ -58,12 +62,24 @@ func (h *handlerSet) broadcast(lock sync.Locker, v *fastjson.Value) {
 					lock.Unlock()
 					return
 				}
-				h.sendToAll(lv)
+
+				if !h.opts.Deduplicate || !sameValue(h.lastSent, lv) {
+					h.sendToAll(lv)
+					if h.opts.Deduplicate {
+						h.lastSentArena.Reset()
+						h.lastSent = cloneValue(&h.lastSentArena, lv)
+					}
+				}
 				h.lastValue = nil
 
 				lock.Unlock()
 			}
 		}()
+
+		if h.opts.Deduplicate {
+			h.lastSentArena.Reset()
+			h.lastSent = cloneValue(&h.lastSentArena, v)
+		}
 	}
 
 	h.sendToAll(v)
