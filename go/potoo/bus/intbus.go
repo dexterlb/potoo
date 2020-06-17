@@ -19,14 +19,14 @@ type IntBus struct {
 func NewIntBus(dflt int) *IntBus {
 	bus := &IntBus{}
 	bus.value = dflt
-	initHandlerSet(bus.handlers())
+	initHandlerSet(bus.opts(), bus.handlers())
 	return bus
 }
 
 func NewIntBusWithOpts(dflt int, opts *Options) *IntBus {
 	bus := NewIntBus(dflt)
 	bus.theOpts = *opts
-	initHandlerSet(bus.handlers())
+	initHandlerSet(bus.opts(), bus.handlers())
 	return bus
 }
 
@@ -79,7 +79,7 @@ func (b *IntBus) GetV() int {
 func (b *IntBus) handle(v int) {
 	b.arena.Reset()
 	jv := b.arena.NewNumberInt(v)
-	b.handlers().broadcast(jv)
+	b.handlers().broadcast(b, jv)
 }
 
 func (b *IntBus) Subscribe(handler Handler) int {

@@ -18,14 +18,14 @@ type JsonBus struct {
 func New(dflt *fastjson.Value) *JsonBus {
 	bus := &JsonBus{}
 	bus.value = cloneValue(&bus.arena, dflt)
-	initHandlerSet(bus.handlers())
+	initHandlerSet(bus.opts(), bus.handlers())
 	return bus
 }
 
 func NewWithOpts(dflt *fastjson.Value, opts *Options) *JsonBus {
 	bus := New(dflt)
 	bus.theOpts = *opts
-	initHandlerSet(bus.handlers())
+	initHandlerSet(bus.opts(), bus.handlers())
 	return bus
 }
 
@@ -55,7 +55,7 @@ func (b *JsonBus) Send(val *fastjson.Value) {
 	b.arena.Reset()
 	b.value = cloneValue(&b.arena, val)
 
-	b.handlers().broadcast(b.value)
+	b.handlers().broadcast(b, b.value)
 }
 
 func (b *JsonBus) Subscribe(handler Handler) int {

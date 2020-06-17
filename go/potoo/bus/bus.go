@@ -1,6 +1,9 @@
 package bus
 
 import (
+	"sync"
+	"time"
+
 	"github.com/valyala/fastjson"
 )
 
@@ -16,6 +19,7 @@ type Bus interface {
 
 type Options struct {
 	Deduplicate        bool
+	Throttle           time.Duration
 	OnFirstSubscribed  func()
 	OnLastUnsubscribed func()
 	OnSubscribed       func()
@@ -25,17 +29,56 @@ type Options struct {
 type handlerSet struct {
 	Handlers map[int]Handler
 	N        int
+	opts     *Options
+
+	// the following are used for throttling
+	throttled bool
+	lastValue *fastjson.Value
+	arena     fastjson.Arena
 }
 
-func (h *handlerSet) broadcast(v *fastjson.Value) {
-	for _, h := range h.Handlers {
-		h(v)
+func (h *handlerSet) broadcast(lock sync.Locker, v *fastjson.Value) {
+	if h.throttled {
+		h.lastValue = cloneValue(&h.arena, v)
+		return
+	}
+
+	if h.opts.Throttle != 0 {
+		h.throttled = true
+		go func() {
+			var lv *fastjson.Value
+			for {
+				time.Sleep(h.opts.Throttle)
+
+				lock.Lock()
+
+				lv = h.lastValue
+				if lv == nil {
+					h.throttled = false
+					lock.Unlock()
+					return
+				}
+				h.sendToAll(lv)
+				h.lastValue = nil
+
+				lock.Unlock()
+			}
+		}()
+	}
+
+	h.sendToAll(v)
+}
+
+func (h *handlerSet) sendToAll(v *fastjson.Value) {
+	for _, handler := range h.Handlers {
+		handler(v)
 	}
 }
 
-func initHandlerSet(h *handlerSet) {
+func initHandlerSet(opts *Options, h *handlerSet) {
 	h.N = 0
 	h.Handlers = make(map[int]Handler)
+	h.opts = opts
 }
 
 type busInternals interface {

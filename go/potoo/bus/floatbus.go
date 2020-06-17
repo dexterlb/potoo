@@ -19,14 +19,14 @@ type FloatBus struct {
 func NewFloatBus(dflt float64) *FloatBus {
 	bus := &FloatBus{}
 	bus.value = dflt
-	initHandlerSet(bus.handlers())
+	initHandlerSet(bus.opts(), bus.handlers())
 	return bus
 }
 
 func NewFloatBusWithOpts(dflt float64, opts *Options) *FloatBus {
 	bus := NewFloatBus(dflt)
 	bus.theOpts = *opts
-	initHandlerSet(bus.handlers())
+	initHandlerSet(bus.opts(), bus.handlers())
 	return bus
 }
 
@@ -79,7 +79,7 @@ func (b *FloatBus) GetV() float64 {
 func (b *FloatBus) handle(v float64) {
 	b.arena.Reset()
 	jv := b.arena.NewNumberFloat64(v)
-	b.handlers().broadcast(jv)
+	b.handlers().broadcast(b, jv)
 }
 
 func (b *FloatBus) Subscribe(handler Handler) int {

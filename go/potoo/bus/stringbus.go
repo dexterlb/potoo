@@ -19,14 +19,14 @@ type StringBus struct {
 func NewStringBus(dflt string) *StringBus {
 	bus := &StringBus{}
 	bus.value = dflt
-	initHandlerSet(bus.handlers())
+	initHandlerSet(bus.opts(), bus.handlers())
 	return bus
 }
 
 func NewStringBusWithOpts(dflt string, opts *Options) *StringBus {
 	bus := NewStringBus(dflt)
 	bus.theOpts = *opts
-	initHandlerSet(bus.handlers())
+	initHandlerSet(bus.opts(), bus.handlers())
 	return bus
 }
 
@@ -80,7 +80,7 @@ func (b *StringBus) GetV() string {
 func (b *StringBus) handle(v string) {
 	b.arena.Reset()
 	jv := b.arena.NewString(v)
-	b.handlers().broadcast(jv)
+	b.handlers().broadcast(b, jv)
 }
 
 func (b *StringBus) Subscribe(handler Handler) int {

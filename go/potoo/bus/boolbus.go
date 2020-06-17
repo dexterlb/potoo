@@ -19,14 +19,14 @@ type BoolBus struct {
 func NewBoolBus(dflt bool) *BoolBus {
 	bus := &BoolBus{}
 	bus.value = dflt
-	initHandlerSet(bus.handlers())
+	initHandlerSet(bus.opts(), bus.handlers())
 	return bus
 }
 
 func NewBoolBusWithOpts(dflt bool, opts *Options) *BoolBus {
 	bus := NewBoolBus(dflt)
 	bus.theOpts = *opts
-	initHandlerSet(bus.handlers())
+	initHandlerSet(bus.opts(), bus.handlers())
 	return bus
 }
 
@@ -79,7 +79,7 @@ func (b *BoolBus) GetV() bool {
 func (b *BoolBus) handle(v bool) {
 	b.arena.Reset()
 	jv := newBool(&b.arena, v)
-	b.handlers().broadcast(jv)
+	b.handlers().broadcast(b, jv)
 }
 
 func (b *BoolBus) Subscribe(handler Handler) int {
