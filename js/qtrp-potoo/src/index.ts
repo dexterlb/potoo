@@ -17,6 +17,18 @@ export interface ConnectionOptions {
     call_timeout?: number,
 }
 
+export interface PersistentValueStatusEvent {
+    event: "offline" | "online",
+}
+
+export interface PersistentValueUpdateEvent {
+    event: "update",
+    value: hoshi.Data,
+}
+
+export type PersistentValueEvent = PersistentValueStatusEvent
+                                 | PersistentValueUpdateEvent
+
 export class Connection {
     private reply_topic: string
 
@@ -166,7 +178,10 @@ export class Connection {
             value.bus.send(result.term)
 
             if (message.topic in this.persistent_value_index) {
-                this.persistent_value_index[message.topic].send(result.term)
+                this.persistent_value_index[message.topic].send({
+                    event: "update",
+                    value: result.term,
+                })
             }
             return
         }
@@ -226,7 +241,7 @@ export class Connection {
         await this.mqtt_client.subscribe(this.client_topic('_contract', topic))
     }
 
-    public value(topic: string): Bus<any> | null {
+    public value(topic: string): Bus<hoshi.Data> | null {
         let value_topic = this.client_topic('_value', topic)
         if (value_topic in this.value_index) {
             return this.value_index[value_topic].value.bus
@@ -234,10 +249,11 @@ export class Connection {
         return null
     }
 
-    public value_persistent(topic: string): Bus<any> {
+    public value_persistent(topic: string): Bus<PersistentValueEvent> {
         let value_topic = this.client_topic('_value', topic)
         if (!(value_topic in this.persistent_value_index)) {
-            this.persistent_value_index[value_topic] = this.make_value_bus(value_topic)
+            this.persistent_value_index[value_topic] = this.make_value_bus<PersistentValueEvent>(value_topic)
+            this.persistent_value_index[value_topic].send({event: "online"})
         }
         return this.persistent_value_index[value_topic]
     }
@@ -250,15 +266,15 @@ export class Connection {
         return result
     }
 
-    public call(topic: string, argument: any): Promise<any> {
+    public call(topic: string, argument: hoshi.Data): Promise<hoshi.Data> {
         if (!(topic in this.callable_index)) {
             return Promise.reject("topic ${topic} not available for call")
         }
         return this.callable_index[topic].callable.handler(argument)
     }
 
-    private make_value_bus(value_topic: string): Bus<any>{
-        return new Bus<any>({
+    private make_value_bus<T>(value_topic: string): Bus<T>{
+        return new Bus<T>({
             on_first_subscribed: async () => {
                 await this.mqtt_client.subscribe(value_topic)
             },
@@ -276,7 +292,7 @@ export class Connection {
     private contract_index: { [topic: string]: Contract } = {}
     private callable_index: { [topic: string]: ClientCallable } = {}
     private value_index: { [topic: string]: ClientValue } = {}
-    private persistent_value_index: { [topic: string]: Bus<any> } = {}
+    private persistent_value_index: { [topic: string]: Bus<PersistentValueEvent> } = {}
     private incoming_contract(topic: mqtt.Topic, raw: RawContract) {
         this.destroy_contract(topic)
         let contract = decode(raw, {
@@ -291,7 +307,7 @@ export class Connection {
                 let full_topic = mqtt.join_topics(topic, subtopic)
                 if (isValue(c)) {
                     let value_topic = this.client_topic('_value', full_topic)
-                    c.bus = this.make_value_bus(value_topic)
+                    c.bus = this.make_value_bus<hoshi.Data>(value_topic)
                     let decoder = hoshi.decoder(c.type)
                     if (hoshi.is_err(decoder)) {
                         fail()
@@ -299,6 +315,11 @@ export class Connection {
                         return
                     }
                     this.value_index[value_topic] = { value: c, decoder: decoder }
+
+                    if (value_topic in this.persistent_value_index) {
+                        this.persistent_value_index[value_topic].send({event: "online"})
+                    }
+
                     return
                 }
                 if (isCallable(c)) {
@@ -326,8 +347,8 @@ export class Connection {
     }
 
     private active_calls: { [token: string]: Promiser<string> } = {}
-    private perform_call(sc: ClientCallable, topic: mqtt.Topic, arg: hoshi.Data): Promise<any> {
-        return new Promise<any>((resolve, reject) => {
+    private perform_call(sc: ClientCallable, topic: mqtt.Topic, arg: hoshi.Data): Promise<hoshi.Data> {
+        return new Promise<hoshi.Data>((resolve, reject) => {
             let argData = sc.argEncoder(arg)
             if (hoshi.is_err(argData)) {
                 reject(argData.error);
@@ -371,7 +392,12 @@ export class Connection {
         }
         traverse(this.contract_index[topic], (c, subtopic) => {
             delete this.callable_index[mqtt.join_topics(topic, subtopic)]
-            delete this.value_index[mqtt.join_topic_list(['_value', topic, subtopic])]
+            let value_topic = mqtt.join_topic_list(['_value', topic, subtopic])
+            delete this.value_index[value_topic]
+
+            if (value_topic in this.persistent_value_index) {
+                this.persistent_value_index[value_topic].send({event: "offline"})
+            }
         })
         delete this.contract_index[topic]
         // hooray for the garbage collector :)
@@ -424,11 +450,6 @@ export class Connection {
     private client_topic(prefix: mqtt.Topic, suffix: mqtt.Topic = ""): mqtt.Topic {
         return mqtt.join_topic_list([prefix, this.root, suffix])
     }
-}
-
-interface Subscription {
-    persistent: boolean,
-    bus: Bus<any>,
 }
 
 interface Promiser<T> {
