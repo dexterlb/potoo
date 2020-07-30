@@ -1,4 +1,4 @@
-import {Contract, RawContract, Value, RawCallable, Callable, Call, CallResponse, traverse, encode, decode, isValue, isCallable, attach_at, MapContract} from './contracts';
+import {Contract, RawContract, Value, RawCallable, Callable, Call, CallResponse, traverse, encode, decode, isValue, isCallable, isConstant, attach_at, MapContract} from './contracts';
 export {Contract, RawContract, check} from './contracts';
 import {Bus} from './bus'
 import {contractJson} from './meta'
@@ -22,7 +22,7 @@ export interface PersistentValueStatusEvent {
 }
 
 export interface PersistentValueUpdateEvent {
-    event: "update",
+    event: "update" | "constant",
     value: hoshi.Data,
 }
 
@@ -305,8 +305,16 @@ export class Connection {
             this.contract_index[topic] = contract
             traverse(contract, (c, subtopic) => {
                 let full_topic = mqtt.join_topics(topic, subtopic)
+                let value_topic = this.client_topic('_value', full_topic)
+                if (isConstant(c)) {
+                    if (value_topic in this.persistent_value_index) {
+                        this.persistent_value_index[value_topic].send({
+                            event: "constant",
+                            value: c.value,
+                        })
+                    }
+                }
                 if (isValue(c)) {
-                    let value_topic = this.client_topic('_value', full_topic)
                     c.bus = this.make_value_bus<hoshi.Data>(value_topic)
                     let decoder = hoshi.decoder(c.type)
                     if (hoshi.is_err(decoder)) {
