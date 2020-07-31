@@ -307,12 +307,14 @@ export class Connection {
                 let full_topic = mqtt.join_topics(topic, subtopic)
                 let value_topic = this.client_topic('_value', full_topic)
                 if (isConstant(c)) {
-                    if (value_topic in this.persistent_value_index) {
-                        this.persistent_value_index[value_topic].send({
-                            event: "constant",
-                            value: c.value,
-                        })
+                    if (!(value_topic in this.persistent_value_index)) {
+                        this.persistent_value_index[value_topic] = this.make_value_bus<PersistentValueEvent>(value_topic)
                     }
+
+                    this.persistent_value_index[value_topic].send({
+                        event: "constant",
+                        value: c.value,
+                    })
                 }
                 if (isValue(c)) {
                     c.bus = this.make_value_bus<hoshi.Data>(value_topic)
