@@ -1,0 +1,27 @@
+{
+  "name": "qtrp-potoo-tools",
+  "version": "0.0.1-1",
+  "description": "Command-line tools for working with qtrp-potoo",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DexterLB/potoo"
+  },
+  "scripts": {
+    "build": "tsc",
+    "potoo": "npm run build && bin/potoo.js"
+  },
+  "author": "dexterlb",
+  "license": "MIT",
+  "dependencies": {
+    "qtrp-hoshi": "0.0.1-7",
+    "qtrp-potoo": "file:../qtrp-potoo"
+  },
+  "devDependencies": {
+    "ts-node": "^8.4.1",
+    "typedoc": "^0.15.0",
+    "typescript": "^3.7.2"
+  },
+  "bin": {
+    "potoo": "bin/potoo.js"
+  }
+}
