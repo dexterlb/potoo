@@ -93,19 +93,21 @@ export interface Handler {
 }
 
 export function traverse(c: Contract, f: (c: Contract, topic: Topic) => void) {
-    traverse_helper(c, f, [])
+    traverse_helper(c, f, [], true)
 }
 
-function traverse_helper(c: Contract, f: (c: Contract, topic: Topic) => void, path: Array<string>) {
-    f(c, make_topic(path))
+function traverse_helper(c: Contract, f: (c: Contract, topic: Topic) => void, path: Array<string>, call_f: boolean) {
+    if (call_f) {
+        f(c, make_topic(path))
+    }
     if (isValue(c) || isCallable(c) || isConstant(c)) {
-        traverse_helper(c.subcontract, f, path)
+        traverse_helper(c.subcontract, f, path, false)
         return
     }
     if (typeof c == 'object') {
         for (let key in c) {
             path.push(key)
-            traverse_helper(c[key], f, path)
+            traverse_helper(c[key], f, path, true)
             path.pop()
         }
     }
