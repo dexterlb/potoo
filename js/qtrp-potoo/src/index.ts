@@ -265,9 +265,10 @@ export class Connection {
     }
 
     public subcontract(topic: string): Contract | null {
-        if (topic in this.contract_index) {
-            return this.contract_index[topic]
+        if (topic in this.subcontract_index) {
+            return this.subcontract_index[topic]
         }
+        console.log('topic ', topic, ' missing in index ', this.subcontract_index)
         return null
     }
 
@@ -295,6 +296,7 @@ export class Connection {
     }
 
     private contract_index: { [topic: string]: Contract } = {}
+    private subcontract_index: { [topic: string]: Contract } = {}
     private callable_index: { [topic: string]: ClientCallable } = {}
     private value_index: { [topic: string]: ClientValue } = {}
     private persistent_value_index: { [topic: string]: Bus<PersistentValueEvent> } = {}
@@ -310,6 +312,7 @@ export class Connection {
             this.contract_index[topic] = contract
             traverse(contract, (c, subtopic) => {
                 let full_topic = mqtt.join_topics(topic, subtopic)
+                this.subcontract_index[full_topic] = c
                 let value_topic = this.client_topic('_value', full_topic)
                 if (isConstant(c)) {
                     if (!(value_topic in this.persistent_value_index)) {
@@ -407,6 +410,7 @@ export class Connection {
         }
         traverse(this.contract_index[topic], (c, subtopic) => {
             delete this.callable_index[mqtt.join_topics(topic, subtopic)]
+            delete this.subcontract_index[mqtt.join_topics(topic, subtopic)]
             let value_topic = mqtt.join_topic_list(['_value', topic, subtopic])
             delete this.value_index[value_topic]
 
