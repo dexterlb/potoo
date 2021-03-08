@@ -77,7 +77,6 @@ export class Connection {
         }
         await this.mqtt_client.connect(config)
         await this.mqtt_client.subscribe(mqtt.join_topics('_reply', this.reply_topic))
-        console.log('connect')
     }
 
     private service_value_index: { [topic: string]: {
@@ -162,7 +161,6 @@ export class Connection {
 
     private on_disconnect(): void {
         this.destroy_service()
-        console.log('disconnect')
     }
 
     private on_message(message: mqtt.Message) {
@@ -264,6 +262,13 @@ export class Connection {
             result = attach_at(result, topic, this.contract_index[topic])
         })
         return result
+    }
+
+    public subcontract(topic: string): Contract | null {
+        if (topic in this.contract_index) {
+            return this.contract_index[topic]
+        }
+        return null
     }
 
     public call(topic: string, argument: hoshi.Data): Promise<hoshi.Data> {
