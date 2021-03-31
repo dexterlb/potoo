@@ -324,8 +324,6 @@ func handleCallHelper(arena *fastjson.Arena, parser *fastjson.Parser, msg mqtt.M
 	var argumentData []byte
 
 	limitedSplit(msg.Payload, ' ', &topic, &token, &argumentData)
-	fmt.Fprintf(os.Stderr, "payload: '%s', topic: '%s', token: '%s', data: '%s'\n",
-		string(msg.Payload), string(topic), string(token), string(argumentData))
 
 	argument, err := parser.ParseBytes(argumentData)
 	if err != nil {
