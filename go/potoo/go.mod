@@ -1,4 +1,4 @@
-module github.com/DexterLB/potoo/go/potoo
+module github.com/dexterlb/potoo/go/potoo
 
 go 1.12
 

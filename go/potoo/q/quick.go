@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/DexterLB/potoo/go/potoo/bus"
-	"github.com/DexterLB/potoo/go/potoo/contracts"
-	"github.com/DexterLB/potoo/go/potoo/types"
+	"github.com/dexterlb/potoo/go/potoo/bus"
+	"github.com/dexterlb/potoo/go/potoo/contracts"
+	"github.com/dexterlb/potoo/go/potoo/types"
 
 	"github.com/valyala/fastjson"
 )

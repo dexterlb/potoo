@@ -8,8 +8,8 @@ import (
 	"os/exec"
 	"time"
 
-	"github.com/DexterLB/junkpotoo/toys/mpv_controller/potoo"
-	"github.com/DexterLB/mpvipc"
+	"github.com/dexterlb/junkpotoo/toys/mpv_controller/potoo"
+	"github.com/dexterlb/mpvipc"
 )
 
 const contract = `

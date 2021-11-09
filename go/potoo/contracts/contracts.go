@@ -1,8 +1,8 @@
 package contracts
 
 import (
-	"github.com/DexterLB/potoo/go/potoo/bus"
-	"github.com/DexterLB/potoo/go/potoo/types"
+	"github.com/dexterlb/potoo/go/potoo/bus"
+	"github.com/dexterlb/potoo/go/potoo/types"
 	"github.com/valyala/fastjson"
 )
 

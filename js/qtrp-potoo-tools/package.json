@@ -4,7 +4,7 @@
   "description": "Command-line tools for working with qtrp-potoo",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/DexterLB/potoo"
+    "url": "git+https://github.com/dexterlb/potoo"
   },
   "scripts": {
     "build": "tsc",

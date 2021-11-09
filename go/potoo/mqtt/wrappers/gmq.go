@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/DexterLB/potoo/go/potoo/mqtt"
+	"github.com/dexterlb/potoo/go/potoo/mqtt"
 	"github.com/yosssi/gmq/mqtt/client"
 )
 

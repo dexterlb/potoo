@@ -32,12 +32,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/DexterLB/potoo.git"
+    "url": "git+https://github.com/dexterlb/potoo.git"
   },
-  "author": "DexterLB",
+  "author": "dexterlb",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/DexterLB/potoo/issues"
+    "url": "https://github.com/dexterlb/potoo/issues"
   },
-  "homepage": "https://github.com/DexterLB/potoo#readme"
+  "homepage": "https://github.com/dexterlb/potoo#readme"
 }

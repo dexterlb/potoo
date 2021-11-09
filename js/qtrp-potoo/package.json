@@ -4,7 +4,7 @@
   "description": "Abstraction layer over MQTT which allows IDL, RPC and service discovery",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/DexterLB/potoo"
+    "url": "git+https://github.com/dexterlb/potoo"
   },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

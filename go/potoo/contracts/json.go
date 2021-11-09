@@ -3,7 +3,7 @@ package contracts
 import (
 	"fmt"
 
-	"github.com/DexterLB/potoo/go/potoo/types"
+	"github.com/dexterlb/potoo/go/potoo/types"
 	"github.com/valyala/fastjson"
 )
 

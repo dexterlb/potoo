@@ -6,9 +6,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/DexterLB/potoo/go/potoo/contracts"
-	"github.com/DexterLB/potoo/go/potoo/mqtt"
-	"github.com/DexterLB/potoo/go/potoo/types"
+	"github.com/dexterlb/potoo/go/potoo/contracts"
+	"github.com/dexterlb/potoo/go/potoo/mqtt"
+	"github.com/dexterlb/potoo/go/potoo/types"
 	"github.com/valyala/fastjson"
 )
 
