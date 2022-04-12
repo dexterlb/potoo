@@ -1,8 +1,6 @@
 package pahowrapper
 
 import (
-	"fmt"
-
 	"github.com/dexterlb/potoo/go/potoo/mqtt"
 	paho "github.com/eclipse/paho.mqtt.golang"
 )
@@ -11,7 +9,10 @@ type Opts struct {
 	Protocol       string
 	BrokerHostname string
 	ClientID       string
-	Debug          func(string)
+	DebugLogger    paho.Logger
+	WarnLogger     paho.Logger
+	ErrorLogger    paho.Logger
+	CriticalLogger paho.Logger
 	ErrorHandler   func(error)
 }
 
@@ -63,6 +64,10 @@ func (p *Wrapper) Unsubscribe(filter mqtt.Topic) {
 }
 
 func (p *Wrapper) Connect(config *mqtt.ConnectConfig) error {
+	paho.DEBUG = p.opts.DebugLogger
+	paho.CRITICAL = p.opts.CriticalLogger
+	paho.WARN = p.opts.WarnLogger
+	paho.ERROR = p.opts.ErrorLogger
 	p.debug("connect with will %s : %s", string(config.WillMessage.Topic), string(config.WillMessage.Payload))
 	panic("not implemented")
 }
@@ -79,7 +84,5 @@ func (p *Wrapper) Disconnect() {
 }
 
 func (p *Wrapper) debug(s string, args ...interface{}) {
-	if p.opts.Debug != nil {
-		p.opts.Debug(fmt.Sprintf(s, args...))
-	}
+	p.opts.DebugLogger.Printf(s, args...)
 }
