@@ -46,10 +46,10 @@ func (p *Wrapper) handleToken(token paho.Token) {
 	}
 }
 
-func (p *Wrapper) handleMessage(_client paho.Client, msg paho.Message) {
-	topic := msg.Topic()
-	payload := msg.Payload()
-	retained := msg.Retained()
+func (p *Wrapper) handleMessage(_client paho.Client, pahoMsg paho.Message) {
+	topic := pahoMsg.Topic()
+	payload := pahoMsg.Payload()
+	retained := pahoMsg.Retained()
 
 	p.debug(" <- %s : %s", topic, string(payload))
 	msg := mqtt.Message{
