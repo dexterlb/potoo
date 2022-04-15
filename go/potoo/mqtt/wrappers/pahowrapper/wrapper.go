@@ -9,14 +9,15 @@ import (
 )
 
 type Opts struct {
-	BrokerHostname string
-	ClientID       string
-	Qos            int
-	DebugLogger    paho.Logger
-	WarnLogger     paho.Logger
-	ErrorLogger    paho.Logger
-	CriticalLogger paho.Logger
-	ErrorHandler   func(error)
+	BrokerHostname      string
+	ClientID            string
+	Qos                 int
+	DisconnectTimeoutMs uint
+	DebugLogger         paho.Logger
+	WarnLogger          paho.Logger
+	ErrorLogger         paho.Logger
+	CriticalLogger      paho.Logger
+	ErrorHandler        func(error)
 }
 
 type Wrapper struct {
@@ -61,7 +62,9 @@ func (p *Wrapper) handleMessage(_client paho.Client, pahoMsg paho.Message) {
 	// we use a goroutine here just to be safe (paho doesn't like its handler to block)
 	// maybe a buffered channel would be better?
 	go func() {
-		p.connConf.OnMessage <- msg
+		if p.connConf.OnMessage != nil {
+			p.connConf.OnMessage <- msg
+		}
 	}()
 }
 
@@ -86,12 +89,14 @@ func (p *Wrapper) Unsubscribe(filter mqtt.Topic) {
 	)
 }
 
-func (p *Wrapper) Connect(config *mqtt.ConnectConfig) error {
+func (p *Wrapper) Connect(connConf *mqtt.ConnectConfig) error {
+	p.connConf = connConf
+
 	paho.DEBUG = p.opts.DebugLogger
 	paho.CRITICAL = p.opts.CriticalLogger
 	paho.WARN = p.opts.WarnLogger
 	paho.ERROR = p.opts.ErrorLogger
-	p.debug("connect with will %s : %s", string(config.WillMessage.Topic), string(config.WillMessage.Payload))
+	p.debug("connect with will %s : %s", string(connConf.WillMessage.Topic), string(connConf.WillMessage.Payload))
 
 	opts := paho.NewClientOptions()
 	opts.AddBroker(p.opts.BrokerHostname)
@@ -111,8 +116,12 @@ func (p *Wrapper) DisconnectWithWill() {
 }
 
 func (p *Wrapper) Disconnect() {
-	panic("not implemented")
-	p.debug("Disconnecting")
+	timeout := p.opts.DisconnectTimeoutMs
+	if timeout == 0 {
+		timeout = 500
+	}
+
+	p.client.Disconnect(timeout)
 	close(p.connConf.OnDisconnect)
 }
 
