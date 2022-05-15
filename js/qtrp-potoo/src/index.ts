@@ -382,7 +382,7 @@ export class Connection {
             })
 
             if (hoshi.is_void(sc.callable.retval.t)) {
-                resolve()
+                resolve(null)
                 return
             }
 
