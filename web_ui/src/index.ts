@@ -133,4 +133,4 @@ function random_string(n: number) {
     return text;
 }
 
-main()
+setTimeout(main, 1);    // execute main() at startup

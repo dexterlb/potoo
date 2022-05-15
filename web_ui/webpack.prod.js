@@ -1,8 +1,8 @@
-var merge  = require('webpack-merge');
-var path   = require('path');
-var common = require('./webpack.common.js');
+var { merge }  = require('webpack-merge');
+var path       = require('path');
+var common     = require('./webpack.common.js');
 
-module.exports = merge.smart(common, {
+module.exports = merge(common, {
   mode: 'production',
   module: {
     rules: [
