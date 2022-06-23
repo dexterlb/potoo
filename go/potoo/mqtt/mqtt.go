@@ -24,3 +24,20 @@ type Client interface {
 	DisconnectWithWill()
 	Disconnect()
 }
+
+func (c *ConnectConfig) Copy() *ConnectConfig {
+	msg := c.WillMessage.Copy()
+	return &ConnectConfig{
+		OnDisconnect: c.OnDisconnect,
+		OnMessage:    c.OnMessage,
+		WillMessage:  *msg,
+	}
+}
+
+func (m *Message) Copy() *Message {
+	return &Message{
+		Topic:   append(Topic{}, m.Topic...),
+		Payload: append([]byte{}, m.Payload...),
+		Retain:  m.Retain,
+	}
+}

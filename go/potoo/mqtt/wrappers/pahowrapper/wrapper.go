@@ -90,7 +90,7 @@ func (p *Wrapper) Unsubscribe(filter mqtt.Topic) {
 }
 
 func (p *Wrapper) Connect(connConf *mqtt.ConnectConfig) error {
-	p.connConf = connConf
+	p.connConf = connConf.Copy()
 
 	paho.DEBUG = p.opts.DebugLogger
 	paho.CRITICAL = p.opts.CriticalLogger
@@ -111,6 +111,7 @@ func (p *Wrapper) Connect(connConf *mqtt.ConnectConfig) error {
 }
 
 func (p *Wrapper) DisconnectWithWill() {
+	p.debug("will send will message: %s : %s", string(p.connConf.WillMessage.Topic), string(p.connConf.WillMessage.Payload))
 	p.Publish(p.connConf.WillMessage)
 	p.Disconnect()
 }
