@@ -38,6 +38,7 @@ func (p *Wrapper) handleError(err error) {
 		p.opts.ErrorHandler(err)
 	}
 	p.connConf.OnDisconnect <- err
+	close(p.connConf.OnDisconnect)
 }
 
 func (p *Wrapper) handleToken(token paho.Token) {
@@ -105,6 +106,9 @@ func (p *Wrapper) Connect(connConf *mqtt.ConnectConfig) error {
 	opts.SetKeepAlive(60 * time.Second)
 	opts.SetDefaultPublishHandler(p.handleMessage)
 	opts.SetPingTimeout(1 * time.Second)
+	opts.SetConnectionLostHandler(func(client paho.Client, err error) {
+		p.handleError(fmt.Errorf("lost connection: %w", err))
+	})
 
 	p.client = paho.NewClient(opts)
 	return unwrap(p.client.Connect())
@@ -123,7 +127,6 @@ func (p *Wrapper) Disconnect() {
 	}
 
 	p.client.Disconnect(timeout)
-	close(p.connConf.OnDisconnect)
 }
 
 func (p *Wrapper) debug(s string, args ...interface{}) {
