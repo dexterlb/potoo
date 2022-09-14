@@ -26,12 +26,17 @@ func NewFloatBus(dflt float64) *FloatBus {
 }
 
 func NewFloatBusWithOpts(dflt float64, opts *Options) *FloatBus {
+	if opts.AveragingWindow > 1 {
+		return NewAveragingFloatBusWithOpts(dflt, opts, opts.AveragingWindow)
+	}
+
 	bus := NewFloatBus(dflt)
 	bus.theOpts = *opts
 	initHandlerSet(bus.opts(), bus.handlers())
 	return bus
 }
 
+// same as calling NewFloatBusWithOpts with a set AveragingWindow
 func NewAveragingFloatBusWithOpts(dflt float64, opts *Options, window int) *FloatBus {
 	bus := NewFloatBusWithOpts(dflt, opts)
 	bus.averaging = movavg.NewSMA(window)

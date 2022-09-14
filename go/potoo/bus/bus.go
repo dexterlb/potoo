@@ -20,6 +20,7 @@ type Bus interface {
 type Options struct {
 	Deduplicate        bool
 	Throttle           time.Duration
+	AveragingWindow    int
 	OnFirstSubscribed  func()
 	OnLastUnsubscribed func()
 	OnSubscribed       func()
