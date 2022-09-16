@@ -38,8 +38,10 @@ func NewFloatBusWithOpts(dflt float64, opts *Options) *FloatBus {
 
 // same as calling NewFloatBusWithOpts with a set AveragingWindow
 func NewAveragingFloatBusWithOpts(dflt float64, opts *Options, window int) *FloatBus {
-	bus := NewFloatBusWithOpts(dflt, opts)
+	bus := NewFloatBus(dflt)
+	bus.theOpts = *opts
 	bus.averaging = movavg.NewSMA(window)
+	initHandlerSet(bus.opts(), bus.handlers())
 	return bus
 }
 
