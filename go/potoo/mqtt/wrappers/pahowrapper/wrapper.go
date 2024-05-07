@@ -110,6 +110,12 @@ func (p *Wrapper) Connect(connConf *mqtt.ConnectConfig) error {
 		p.handleError(fmt.Errorf("lost connection: %w", err))
 	})
 
+	opts.WillEnabled = true
+	opts.WillTopic = string(connConf.WillMessage.Topic)
+	opts.WillPayload = connConf.WillMessage.Payload
+	opts.WillRetained = connConf.WillMessage.Retain
+	opts.WillQos = byte(p.opts.Qos)
+
 	p.client = paho.NewClient(opts)
 	return unwrap(p.client.Connect())
 }
