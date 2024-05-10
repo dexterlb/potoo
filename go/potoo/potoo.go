@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/dexterlb/potoo/go/potoo/contracts"
@@ -40,8 +41,10 @@ type Connection struct {
 	serviceCallableIndex map[string]*contracts.Callable
 	unsubscribers        []func()
 
-	connected bool
-	dead      bool
+	connected     bool
+	dead          bool
+	deathMutex    sync.Mutex
+	thatsAllFolks chan struct{}
 }
 
 func New(opts *ConnectionOptions) *Connection {
@@ -63,10 +66,14 @@ func New(opts *ConnectionOptions) *Connection {
 
 	c.serviceCallableIndex = make(map[string]*contracts.Callable)
 
+	c.thatsAllFolks = make(chan struct{})
+
 	return c
 }
 
 func (c *Connection) UpdateContract(contract contracts.Contract) {
+	c.deathMutex.Lock()
+	defer c.deathMutex.Unlock()
 	if c.dead {
 		return
 	}
@@ -98,9 +105,12 @@ func (c *Connection) Connect() error {
 func (c *Connection) Loop(exit <-chan struct{}) error {
 	defer func() {
 		c.dead = true
-		c.closeUpdateContract()
-		c.closeOutgoingValues()
-		c.closeAsyncCalls()
+		go c.closeUpdateContract()
+		go c.closeOutgoingValues()
+		go c.closeAsyncCalls()
+		c.deathMutex.Lock()
+		close(c.thatsAllFolks)
+		c.deathMutex.Unlock()
 		c.destroyService()
 	}()
 
@@ -205,11 +215,14 @@ func (c *Connection) handleUpdateContract(contract contracts.Contract) error {
 		case contracts.Value:
 			topic := c.serviceTopic(mqtt.Topic("_value"), subtopic)
 			sub := s.Bus.Subscribe(func(v *fastjson.Value) {
+				c.deathMutex.Lock()
 				if c.dead {
+					c.deathMutex.Unlock()
 					return
 				}
 				sync := make(chan struct{}) // TODO: can this be done with less channels?
 				c.outgoingValues <- outgoingValue{topic: topic, v: v, sync: sync, contract: &s}
+				c.deathMutex.Unlock()
 				<-sync
 			})
 			unsubscriber := func() {
@@ -269,13 +282,20 @@ func (c *Connection) handleCall(msg mqtt.Message, callable *contracts.Callable) 
 		return c.finaliseCall(handleCallHelper(c.arena, c.jsonparser, msg, callable))
 	} else {
 		go func() {
-			if c.dead {
-				return
-			}
 			arena := c.arenaPool.Get()
 			parser := c.parserPool.Get()
+			result := handleCallHelper(arena, parser, msg, callable)
+
+			c.deathMutex.Lock()
+			defer c.deathMutex.Unlock()
+			if c.dead {
+				// the potoo service died while handling the call, there
+				// is noone to return the result to
+				return
+			}
+
 			c.asyncCalls <- asyncCallResult{
-				callResult: handleCallHelper(arena, parser, msg, callable),
+				callResult: result,
 				arena:      arena,
 				parser:     parser,
 			}
@@ -428,6 +448,8 @@ func (c *Connection) closeUpdateContract() {
 		select {
 		case _ = <-ch:
 			// discard message to unblock the caller
+		case _ = <-c.thatsAllFolks:
+			return
 		default:
 			return
 		}
@@ -443,6 +465,8 @@ func (c *Connection) closeOutgoingValues() {
 		select {
 		case ov := <-ch:
 			close(ov.sync)
+		case _ = <-c.thatsAllFolks:
+			return
 		default:
 			return
 		}
@@ -458,6 +482,8 @@ func (c *Connection) closeAsyncCalls() {
 		select {
 		case _ = <-ch:
 			// discard message to unblock the caller
+		case _ = <-c.thatsAllFolks:
+			return
 		default:
 			return
 		}
