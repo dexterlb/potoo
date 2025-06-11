@@ -2,6 +2,7 @@ package bus
 
 import (
 	"fmt"
+	"math"
 	"sync"
 
 	"github.com/mxmCherry/movavg"
@@ -73,6 +74,10 @@ func (b *FloatBus) SendV(val float64) {
 	if b.averaging != nil {
 		b.averaging.Add(val)
 		val = b.averaging.Avg()
+	}
+
+	if math.Abs(val) < b.opts().MinAbsValue {
+		val = 0
 	}
 
 	if b.opts().Deduplicate && b.value == val {

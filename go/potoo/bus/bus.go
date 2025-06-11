@@ -21,6 +21,7 @@ type Options struct {
 	Deduplicate        bool
 	Throttle           time.Duration
 	AveragingWindow    int
+	MinAbsValue        float64
 	OnFirstSubscribed  func()
 	OnLastUnsubscribed func()
 	OnSubscribed       func()
