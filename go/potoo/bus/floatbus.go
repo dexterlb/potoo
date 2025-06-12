@@ -17,6 +17,7 @@ type FloatBus struct {
 	arena       fastjson.Arena
 	value       float64
 	averaging   *movavg.SMA
+	avgReset    bool
 }
 
 func NewFloatBus(dflt float64) *FloatBus {
@@ -41,6 +42,7 @@ func NewFloatBusWithOpts(dflt float64, opts *Options) *FloatBus {
 func NewAveragingFloatBusWithOpts(dflt float64, opts *Options, window int) *FloatBus {
 	bus := NewFloatBus(dflt)
 	bus.theOpts = *opts
+	bus.theOpts.AveragingWindow = window
 	bus.averaging = movavg.NewSMA(window)
 	initHandlerSet(bus.opts(), bus.handlers())
 	return bus
@@ -71,13 +73,16 @@ func (b *FloatBus) SendV(val float64) {
 	b.Lock()
 	defer b.Unlock()
 
-	if b.averaging != nil {
-		b.averaging.Add(val)
-		val = b.averaging.Avg()
-	}
-
 	if math.Abs(val) < b.opts().MinAbsValue {
 		val = 0
+		b.avgReset = true
+	} else if b.averaging != nil {
+		if b.avgReset {
+			b.avgReset = false
+			b.averaging = movavg.NewSMA(b.opts().AveragingWindow)
+		}
+		b.averaging.Add(val)
+		val = b.averaging.Avg()
 	}
 
 	if b.opts().Deduplicate && b.value == val {
