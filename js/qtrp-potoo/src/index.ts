@@ -274,7 +274,7 @@ export class Connection {
 
     public call(topic: string, argument: hoshi.Data): Promise<hoshi.Data> {
         if (!(topic in this.callable_index)) {
-            return Promise.reject("topic ${topic} not available for call")
+            return Promise.reject(`topic ${topic} not available for call`)
         }
         return this.callable_index[topic].callable.handler(argument)
     }
