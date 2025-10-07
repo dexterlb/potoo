@@ -36,7 +36,7 @@ function build_config(mode) {
         devtool: 'inline-source-map',
 
         devServer: {
-          host: '0.0.0.0',
+          host: '::',
           port: 8081,
           liveReload: false,
           hot: false,
