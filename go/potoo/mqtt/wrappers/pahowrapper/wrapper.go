@@ -60,13 +60,9 @@ func (p *Wrapper) handleMessage(_client paho.Client, pahoMsg paho.Message) {
 		Retain:  retained,
 	}
 
-	// we use a goroutine here just to be safe (paho doesn't like its handler to block)
-	// maybe a buffered channel would be better?
-	go func() {
-		if p.connConf.OnMessage != nil {
-			p.connConf.OnMessage <- msg
-		}
-	}()
+	if p.connConf.OnMessage != nil {
+		p.connConf.OnMessage <- msg
+	}
 }
 
 func (p *Wrapper) Publish(m mqtt.Message) {
