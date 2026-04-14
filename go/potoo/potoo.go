@@ -14,11 +14,12 @@ import (
 )
 
 type ConnectionOptions struct {
-	MqttClient  mqtt.Client
-	Root        mqtt.Topic
-	ServiceRoot mqtt.Topic
-	OnContract  func(mqtt.Topic, contracts.Contract)
-	CallTimeout time.Duration
+	MqttClient      mqtt.Client
+	Root            mqtt.Topic
+	ServiceRoot     mqtt.Topic
+	OnContract      func(mqtt.Topic, contracts.Contract)
+	CallTimeout     time.Duration
+	MQTTBacklogSize uint16
 }
 
 type Connection struct {
