@@ -142,6 +142,30 @@ func (c *Connection) Loop(exit <-chan struct{}) error {
 		}
 	}()
 
+	go func() {
+		for {
+			select {
+			case contract := <-c.updateContract:
+				err = c.handleUpdateContract(contract)
+				if err != nil {
+					// TODO: should we crash like this, or use c.err()?
+					return fmt.Errorf("Unable to update contract: %s", err)
+				}
+			case ov := <-c.outgoingValues:
+				err = c.handleOutgoingValue(ov)
+				if err != nil {
+					return fmt.Errorf("Unable to send value: %s", err)
+				}
+			case result := <-c.asyncCallResults:
+				err = c.finaliseAsyncCall(result)
+				if err != nil {
+					return fmt.Errorf("Error during async call: %s", err)
+				}
+			}
+			c.arena.Reset()
+		}
+	}()
+
 	for {
 		select {
 		case err = <-c.mqttDisconnect:
@@ -153,22 +177,6 @@ func (c *Connection) Loop(exit <-chan struct{}) error {
 			return nil
 		case msg := <-c.mqttMessage:
 			c.handleMsg(msg)
-		case contract := <-c.updateContract:
-			err = c.handleUpdateContract(contract)
-			if err != nil {
-				// TODO: should we crash like this, or use c.err()?
-				return fmt.Errorf("Unable to update contract: %s", err)
-			}
-		case ov := <-c.outgoingValues:
-			err = c.handleOutgoingValue(ov)
-			if err != nil {
-				return fmt.Errorf("Unable to send value: %s", err)
-			}
-		case result := <-c.asyncCallResults:
-			err = c.finaliseAsyncCall(result)
-			if err != nil {
-				return fmt.Errorf("Error during async call: %s", err)
-			}
 		}
 		c.arena.Reset()
 	}
