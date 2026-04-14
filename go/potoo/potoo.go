@@ -14,11 +14,12 @@ import (
 )
 
 type ConnectionOptions struct {
-	MqttClient  mqtt.Client
-	Root        mqtt.Topic
-	ServiceRoot mqtt.Topic
-	OnContract  func(mqtt.Topic, contracts.Contract)
-	CallTimeout time.Duration
+	MqttClient      mqtt.Client
+	Root            mqtt.Topic
+	ServiceRoot     mqtt.Topic
+	OnContract      func(mqtt.Topic, contracts.Contract)
+	CallTimeout     time.Duration
+	MQTTBacklogSize uint16
 }
 
 type Connection struct {
@@ -32,11 +33,12 @@ type Connection struct {
 
 	contractTopic mqtt.Topic
 
-	mqttDisconnect chan error
-	mqttMessage    chan mqtt.Message
-	updateContract chan contracts.Contract
-	outgoingValues chan outgoingValue
-	asyncCalls     chan asyncCallResult
+	mqttDisconnect   chan error
+	mqttMessage      chan mqtt.Message
+	updateContract   chan contracts.Contract
+	outgoingValues   chan outgoingValue
+	finalCallResults chan finalCallResult
+	syncCalls        chan func()
 
 	serviceCallableIndex map[string]*contracts.Callable
 	unsubscribers        []func()
@@ -58,11 +60,16 @@ func New(opts *ConnectionOptions) *Connection {
 
 	c.contractTopic = c.serviceTopic(mqtt.Topic("_contract"))
 
+	if opts.MQTTBacklogSize == 0 {
+		panic("MQTTBacklogSize should not be zero")
+	}
+
 	c.mqttDisconnect = make(chan error)
-	c.mqttMessage = make(chan mqtt.Message)
+	c.mqttMessage = make(chan mqtt.Message, opts.MQTTBacklogSize)
 	c.updateContract = make(chan contracts.Contract)
 	c.outgoingValues = make(chan outgoingValue)
-	c.asyncCalls = make(chan asyncCallResult)
+	c.finalCallResults = make(chan finalCallResult)
+	c.syncCalls = make(chan func(), opts.MQTTBacklogSize)
 
 	c.serviceCallableIndex = make(map[string]*contracts.Callable)
 
@@ -109,6 +116,7 @@ func (c *Connection) Loop(exit <-chan struct{}) error {
 		go c.closeOutgoingValues()
 		go c.closeAsyncCalls()
 		c.deathMutex.Lock()
+		close(c.syncCalls)
 		close(c.thatsAllFolks)
 		c.deathMutex.Unlock()
 		c.destroyService()
@@ -128,17 +136,31 @@ func (c *Connection) Loop(exit <-chan struct{}) error {
 
 	defer c.opts.MqttClient.DisconnectWithWill()
 
+	go func() {
+		for call := range c.syncCalls {
+			call()
+		}
+	}()
+
+	go func() error {
+		for {
+			select {
+			case err = <-c.mqttDisconnect:
+				if err != nil {
+					return fmt.Errorf("MQTT error: %s", err)
+				}
+			case msg := <-c.mqttMessage:
+				c.handleMsg(msg)
+			case <-exit:
+				return nil
+			case _ = <-c.thatsAllFolks:
+				return nil
+			}
+		}
+	}()
+
 	for {
 		select {
-		case err = <-c.mqttDisconnect:
-			if err != nil {
-				return fmt.Errorf("MQTT error: %s", err)
-			}
-			return nil
-		case <-exit:
-			return nil
-		case msg := <-c.mqttMessage:
-			c.handleMsg(msg)
 		case contract := <-c.updateContract:
 			err = c.handleUpdateContract(contract)
 			if err != nil {
@@ -150,11 +172,15 @@ func (c *Connection) Loop(exit <-chan struct{}) error {
 			if err != nil {
 				return fmt.Errorf("Unable to send value: %s", err)
 			}
-		case result := <-c.asyncCalls:
+		case result := <-c.finalCallResults:
 			err = c.finaliseAsyncCall(result)
 			if err != nil {
 				return fmt.Errorf("Error during async call: %s", err)
 			}
+		case <-exit:
+			return nil
+		case _ = <-c.thatsAllFolks:
+			return nil
 		}
 		c.arena.Reset()
 	}
@@ -278,33 +304,35 @@ func (c *Connection) msg(topic mqtt.Topic, payload *fastjson.Value, retain bool,
 
 // TODO: async calls (some way for the handler to return a channel which will be read later?)
 func (c *Connection) handleCall(msg mqtt.Message, callable *contracts.Callable) error {
+	call := func() {
+		arena := c.arenaPool.Get()
+		parser := c.parserPool.Get()
+		result := handleCallHelper(arena, parser, msg, callable)
+
+		c.deathMutex.Lock()
+		defer c.deathMutex.Unlock()
+		if c.dead {
+			// the potoo service died while handling the call, there
+			// is noone to return the result to
+			return
+		}
+
+		c.finalCallResults <- finalCallResult{
+			callResult: result,
+			arena:      arena,
+			parser:     parser,
+		}
+	}
+
 	if callable.Async == false {
-		return c.finaliseCall(handleCallHelper(c.arena, c.jsonparser, msg, callable))
+		c.syncCalls <- call
 	} else {
-		go func() {
-			arena := c.arenaPool.Get()
-			parser := c.parserPool.Get()
-			result := handleCallHelper(arena, parser, msg, callable)
-
-			c.deathMutex.Lock()
-			defer c.deathMutex.Unlock()
-			if c.dead {
-				// the potoo service died while handling the call, there
-				// is noone to return the result to
-				return
-			}
-
-			c.asyncCalls <- asyncCallResult{
-				callResult: result,
-				arena:      arena,
-				parser:     parser,
-			}
-		}()
+		go call()
 	}
 	return nil
 }
 
-func (c *Connection) finaliseAsyncCall(result asyncCallResult) error {
+func (c *Connection) finaliseAsyncCall(result finalCallResult) error {
 	defer c.parserPool.Put(result.parser)
 	defer c.arenaPool.Put(result.arena)
 	defer result.arena.Reset() // TODO: see if we really need this
@@ -324,7 +352,7 @@ func (c *Connection) finaliseCall(result callResult) error {
 	return nil
 }
 
-type asyncCallResult struct {
+type finalCallResult struct {
 	callResult
 
 	arena  *fastjson.Arena
@@ -474,7 +502,7 @@ func (c *Connection) closeOutgoingValues() {
 }
 
 func (c *Connection) closeAsyncCalls() {
-	ch := c.asyncCalls
+	ch := c.finalCallResults
 
 	defer close(ch)
 
