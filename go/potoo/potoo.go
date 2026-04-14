@@ -33,12 +33,12 @@ type Connection struct {
 
 	contractTopic mqtt.Topic
 
-	mqttDisconnect   chan error
-	mqttMessage      chan mqtt.Message
-	updateContract   chan contracts.Contract
-	outgoingValues   chan outgoingValue
-	asyncCallResults chan asyncCallResult
-	syncCalls        chan func()
+	mqttDisconnect chan error
+	mqttMessage    chan mqtt.Message
+	updateContract chan contracts.Contract
+	outgoingValues chan outgoingValue
+	callResults    chan callResult
+	syncCalls      chan func()
 
 	serviceCallableIndex map[string]*contracts.Callable
 	unsubscribers        []func()
@@ -68,7 +68,7 @@ func New(opts *ConnectionOptions) *Connection {
 	c.mqttMessage = make(chan mqtt.Message, opts.MQTTBacklogSize)
 	c.updateContract = make(chan contracts.Contract)
 	c.outgoingValues = make(chan outgoingValue)
-	c.asyncCallResults = make(chan asyncCallResult)
+	c.callResults = make(chan callResult)
 	c.syncCalls = make(chan func(), opts.MQTTBacklogSize)
 
 	c.serviceCallableIndex = make(map[string]*contracts.Callable)
@@ -172,7 +172,7 @@ func (c *Connection) Loop(exit <-chan struct{}) error {
 			if err != nil {
 				return fmt.Errorf("Unable to send value: %s", err)
 			}
-		case result := <-c.asyncCallResults:
+		case result := <-c.callResults:
 			err = c.finaliseAsyncCall(result)
 			if err != nil {
 				return fmt.Errorf("Error during async call: %s", err)
@@ -317,7 +317,7 @@ func (c *Connection) handleCall(msg mqtt.Message, callable *contracts.Callable) 
 			return
 		}
 
-		c.asyncCallResults <- asyncCallResult{
+		c.callResults <- callResult{
 			callResult: result,
 			arena:      arena,
 			parser:     parser,
@@ -332,7 +332,7 @@ func (c *Connection) handleCall(msg mqtt.Message, callable *contracts.Callable) 
 	return nil
 }
 
-func (c *Connection) finaliseAsyncCall(result asyncCallResult) error {
+func (c *Connection) finaliseAsyncCall(result callResult) error {
 	defer c.parserPool.Put(result.parser)
 	defer c.arenaPool.Put(result.arena)
 	defer result.arena.Reset() // TODO: see if we really need this
@@ -352,7 +352,7 @@ func (c *Connection) finaliseCall(result callResult) error {
 	return nil
 }
 
-type asyncCallResult struct {
+type callResult struct {
 	callResult
 
 	arena  *fastjson.Arena
@@ -502,7 +502,7 @@ func (c *Connection) closeOutgoingValues() {
 }
 
 func (c *Connection) closeAsyncCalls() {
-	ch := c.asyncCallResults
+	ch := c.callResults
 
 	defer close(ch)
 
