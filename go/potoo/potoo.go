@@ -149,11 +149,12 @@ func (c *Connection) Loop(exit <-chan struct{}) error {
 				if err != nil {
 					return fmt.Errorf("MQTT error: %s", err)
 				}
-				return nil
-			case <-exit:
-				return nil
 			case msg := <-c.mqttMessage:
 				c.handleMsg(msg)
+			case <-exit:
+				return nil
+			case _ = <-c.thatsAllFolks:
+				return nil
 			}
 		}
 	}()
@@ -176,6 +177,10 @@ func (c *Connection) Loop(exit <-chan struct{}) error {
 			if err != nil {
 				return fmt.Errorf("Error during async call: %s", err)
 			}
+		case <-exit:
+			return nil
+		case _ = <-c.thatsAllFolks:
+			return nil
 		}
 		c.arena.Reset()
 	}
